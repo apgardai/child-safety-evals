@@ -1,0 +1,60 @@
+# Child Safety Evals (UI + Benchmark)
+
+############################
+# OS / editor
+############################
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+############################
+# Secrets (never commit)
+############################
+**/.env
+**/.env.*
+!**/.env.example
+
+############################
+# Node / package managers
+############################
+**/node_modules/
+**/.npm/
+**/.yarn-integrity
+**/.pnp.*
+**/.yarn/*
+!**/.yarn/patches
+!**/.yarn/plugins
+!**/.yarn/releases
+!**/.yarn/sdks
+!**/.yarn/versions
+
+############################
+# Builds / caches
+############################
+**/.next/
+**/out/
+**/dist/
+**/build/
+**/*.tsbuildinfo
+**/.turbo/
+**/.cache/
+**/.parcel-cache/
+**/.eslintcache
+
+############################
+# Logs
+############################
+**/*.log
+**/logs
+
+############################
+# Benchmark outputs
+# - pipeline outputs (seeds/scenarios/results)
+# - temporary resume files
+# - archives
+############################
+benchmark/data/**
+benchmark/data/.kora-*-tmp/**
+benchmark/**/*.zip
+
