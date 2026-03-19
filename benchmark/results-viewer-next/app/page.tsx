@@ -158,7 +158,7 @@ export default function Page() {
 
   return (
     <main className="container">
-      <h1>KORA Benchmark Results</h1>
+      <h1>Child Safety SSH Benchmark Results</h1>
       <p className="muted">Standalone no-auth Next.js viewer.</p>
 
       <section className="card summary-grid">
