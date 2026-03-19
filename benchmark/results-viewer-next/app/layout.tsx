@@ -2,7 +2,7 @@ import "./globals.css";
 import type { ReactNode } from "react";
 
 export const metadata = {
-  title: "KORA Benchmark Results Viewer",
+  title: "Child Safety SSH Results Viewer",
   description: "Static benchmark results explorer",
 };
 
