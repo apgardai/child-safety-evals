@@ -15,7 +15,11 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "kora": "node ./packages/cli/build/src/cli.js",
-    "kora:env": "node --env-file=.env ./packages/cli/build/src/cli.js"
+    "kora:env": "node --env-file=.env ./packages/cli/build/src/cli.js",
+    "results-viewer:archive": "cp data/results.json results-viewer/archived-results/ && rm -rf results-viewer/archived-results/testResults && cp -r data/results/testResults results-viewer/archived-results/ && echo Archived to results-viewer/archived-results/",
+    "results-viewer:data": "node ./results-viewer/build-viewer-data.mjs",
+    "results-viewer-next:dev": "npm --prefix ./results-viewer-next run dev",
+    "results-viewer-next:build": "npm --prefix ./results-viewer-next run build"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
