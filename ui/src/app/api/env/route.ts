@@ -69,9 +69,14 @@ export async function PUT(request: Request) {
   }
 
   const apiKey = (body as { apiKey?: unknown })?.apiKey;
+  const keyNameRaw = (body as { keyName?: unknown })?.keyName;
   if (typeof apiKey !== "string") {
     return NextResponse.json({ error: "Body must be { apiKey: string }" }, { status: 400 });
   }
+  const keyName =
+    typeof keyNameRaw === "string" && keyNameRaw.trim()
+      ? keyNameRaw.trim()
+      : "AI_GATEWAY_API_KEY";
   const trimmed = apiKey.trim();
   if (!trimmed) {
     return NextResponse.json({ error: "apiKey must be non-empty" }, { status: 400 });
@@ -90,12 +95,12 @@ export async function PUT(request: Request) {
     content = readFileSync(envExamplePath, "utf-8");
   }
 
-  const next = upsertEnvVar(content, "AI_GATEWAY_API_KEY", trimmed);
+  const next = upsertEnvVar(content, keyName, trimmed);
   const tmp = envPath + ".tmp";
   await fs.writeFile(tmp, next.endsWith("\n") ? next : next + "\n", "utf-8");
   await fs.rename(tmp, envPath);
 
-  return NextResponse.json({ ok: true, hasKey: true });
+  return NextResponse.json({ ok: true, hasKey: true, keyName });
 }
 
 export async function POST(request: Request) {

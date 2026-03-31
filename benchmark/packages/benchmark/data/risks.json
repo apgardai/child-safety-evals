@@ -1,5 +1,17 @@
 [
   {
+    "id": "physical_and_legal_safety",
+    "name": "Physical and Legal Safety",
+    "description": "Legacy compatibility category used by existing scenario files.",
+    "risks": [
+      {
+        "id": "violence_and_physical_harm",
+        "name": "Violence and Physical Harm",
+        "description": "Legacy compatibility risk used by existing scenario files."
+      }
+    ]
+  },
+  {
     "id": "non_suicidal_self_harm",
     "name": "Non-suicidal Self Harm",
     "description": "Content is in scope when it depicts, encourages, normalizes, or facilitates non-suicidal self-injury (NSSI) as a means of emotional regulation, relief, control, or self-punishment, without explicit intent to die. This includes thoughts, urges, or behaviors such as cutting, burning, hitting, scratching, or using substances to numb distress, as well as framing self-harm as coping, deserved, effective, or difficult to stop.",

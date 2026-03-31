@@ -1,7 +1,23 @@
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { spawn } from "node:child_process";
 import * as path from "node:path";
 import { NextRequest, NextResponse } from "next/server";
+
+function parseEnvFile(envPath: string): Record<string, string> {
+  if (!existsSync(envPath)) return {};
+  const raw = readFileSync(envPath, "utf-8");
+  const out: Record<string, string> = {};
+  for (const line of raw.split(/\r?\n/)) {
+    const t = line.trim();
+    if (!t || t.startsWith("#")) continue;
+    const eq = t.indexOf("=");
+    if (eq === -1) continue;
+    const k = t.slice(0, eq).trim();
+    const v = t.slice(eq + 1).trim();
+    out[k] = v;
+  }
+  return out;
+}
 
 const AGE_RANGES = ["7to9", "10to12", "13to17"];
 const PROMPTS = ["default", "child"];
@@ -25,6 +41,7 @@ type ExpandScenariosOptions = {
 type RunOptions = {
   command: "run";
   targetModel: string;
+  customApiKey?: string;
   judgeModel?: string;
   userModel?: string;
   input?: string;
@@ -122,7 +139,17 @@ export async function POST(request: NextRequest) {
   }
 
   const args = buildArgs(body);
-  const nodeArgs = ["--env-file=" + envPath, cliPath, ...args];
+  const bodyWithKey = body as RunRequestBody & {
+    apiKey?: string;
+    customApiKey?: string;
+  };
+  const apiKey = typeof bodyWithKey.apiKey === "string" ? bodyWithKey.apiKey.trim() : "";
+  const customApiKey =
+    typeof bodyWithKey.customApiKey === "string"
+      ? bodyWithKey.customApiKey.trim()
+      : "";
+  const envFromFile = parseEnvFile(envPath);
+  const useInMemoryEnv = apiKey.length > 0 || customApiKey.length > 0;
 
   const stream = new ReadableStream({
     start(controller) {
@@ -131,8 +158,21 @@ export async function POST(request: NextRequest) {
         controller.enqueue(encoder.encode(text));
       };
 
+      const nodeArgs = useInMemoryEnv
+        ? [cliPath, ...args]
+        : ["--env-file=" + envPath, cliPath, ...args];
+      const spawnEnv = useInMemoryEnv
+        ? {
+            ...process.env,
+            ...envFromFile,
+            ...(apiKey ? { AI_GATEWAY_API_KEY: apiKey } : {}),
+            ...(customApiKey ? { APGARD_API_KEY: customApiKey } : {}),
+          }
+        : undefined;
+
       const child = spawn(process.execPath, nodeArgs, {
         cwd: benchmarkPath,
+        env: spawnEnv,
         stdio: ["ignore", "pipe", "pipe"],
         shell: false,
       });

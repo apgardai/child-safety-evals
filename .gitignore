@@ -58,3 +58,8 @@ benchmark/data/**
 benchmark/data/.kora-*-tmp/**
 benchmark/**/*.zip
 
+# Results viewer generated artifacts
+benchmark/results-viewer/data/viewer-data.json
+benchmark/results-viewer/archived-results/results.json
+benchmark/results-viewer/archived-results/testResults/**
+
