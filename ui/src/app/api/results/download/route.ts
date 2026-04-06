@@ -8,10 +8,10 @@ function getBenchmarkPath(): string {
   return path.resolve(uiRoot, "..", "benchmark");
 }
 
-/** Only allow safe basenames under data/results-*.json */
+/** Only allow safe basenames under data/results-*.(json|zip) */
 function isAllowedBasename(name: string): boolean {
   if (name.includes("/") || name.includes("..") || name.includes("\\")) return false;
-  return /^results-[a-zA-Z0-9._-]+\.json$/.test(name);
+  return /^results-[a-zA-Z0-9._-]+\.(json|zip)$/i.test(name);
 }
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
@@ -33,9 +33,12 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   }
 
   const buf = await fs.readFile(abs);
+  const isZip = file.toLowerCase().endsWith(".zip");
   return new NextResponse(buf, {
     headers: {
-      "Content-Type": "application/json; charset=utf-8",
+      "Content-Type": isZip
+        ? "application/zip"
+        : "application/json; charset=utf-8",
       "Content-Disposition": `attachment; filename="${file}"`,
     },
   });

@@ -42,6 +42,8 @@ type RunOptions = {
   command: "run";
   targetModel: string;
   customApiKey?: string;
+  /** Pass-through only; maps to CUSTOM_MODEL_API_ENDPOINT for custom-* targets */
+  customApiEndpoint?: string;
   judgeModel?: string;
   userModel?: string;
   input?: string;
@@ -142,14 +144,20 @@ export async function POST(request: NextRequest) {
   const bodyWithKey = body as RunRequestBody & {
     apiKey?: string;
     customApiKey?: string;
+    customApiEndpoint?: string;
   };
   const apiKey = typeof bodyWithKey.apiKey === "string" ? bodyWithKey.apiKey.trim() : "";
   const customApiKey =
     typeof bodyWithKey.customApiKey === "string"
       ? bodyWithKey.customApiKey.trim()
       : "";
+  const customApiEndpoint =
+    typeof bodyWithKey.customApiEndpoint === "string"
+      ? bodyWithKey.customApiEndpoint.trim()
+      : "";
   const envFromFile = parseEnvFile(envPath);
-  const useInMemoryEnv = apiKey.length > 0 || customApiKey.length > 0;
+  const useInMemoryEnv =
+    apiKey.length > 0 || customApiKey.length > 0 || customApiEndpoint.length > 0;
 
   const stream = new ReadableStream({
     start(controller) {
@@ -166,7 +174,10 @@ export async function POST(request: NextRequest) {
             ...process.env,
             ...envFromFile,
             ...(apiKey ? { AI_GATEWAY_API_KEY: apiKey } : {}),
-            ...(customApiKey ? { APGARD_API_KEY: customApiKey } : {}),
+            ...(customApiKey ? { CUSTOM_API_KEY: customApiKey } : {}),
+            ...(customApiEndpoint
+              ? { CUSTOM_MODEL_API_ENDPOINT: customApiEndpoint }
+              : {}),
           }
         : undefined;
 

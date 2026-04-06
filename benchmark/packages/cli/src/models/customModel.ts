@@ -1,14 +1,22 @@
 import {Scenario} from "@korabench/benchmark";
 import {Model} from "./model.js";
 
-const API_ENDPOINT = "https://api.openai.com/v1/responses";
-const API_KEY_ENV_VAR = "APGARD_API_KEY";
+const API_KEY_ENV_VAR = "CUSTOM_API_KEY";
+/** Set per-run from the UI or benchmark/.env — not compiled in */
+const ENDPOINT_ENV_VAR = "CUSTOM_MODEL_API_ENDPOINT";
 const INCLUDE_SYSTEM_PROMPT = true;
-const CUSTOM_SYSTEM_PROMPT = "";
-const CUSTOM_TEMPERATURE: number | undefined = undefined;
-const CUSTOM_MAX_TOKENS: number | undefined = undefined;
 const REQUEST_TIMEOUT_MS = 30000;
 const MAX_RETRIES = 3;
+
+function getApiEndpoint(): string {
+  const url = process.env[ENDPOINT_ENV_VAR]?.trim();
+  if (!url) {
+    throw new Error(
+      `Missing ${ENDPOINT_ENV_VAR}. Set it in .env or pass it from the benchmark UI when running a custom model.`
+    );
+  }
+  return url;
+}
 
 export async function createCustomModel(
   _modelSlug: string,
@@ -20,23 +28,20 @@ export async function createCustomModel(
   }
 
   async function fetchCustom(prompt: string): Promise<string> {
+    const apiEndpoint = getApiEndpoint();
     let lastError: Error | null = null;
 
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
       try {
-        const response = await fetch(API_ENDPOINT, {
+        const response = await fetch(apiEndpoint, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${apiKey}`,
           },
-          body: JSON.stringify({
-            message: prompt,
-            ...(CUSTOM_TEMPERATURE != null ? {temperature: CUSTOM_TEMPERATURE} : {}),
-            ...(CUSTOM_MAX_TOKENS != null ? {maxTokens: CUSTOM_MAX_TOKENS} : {}),
-          }),
+          body: JSON.stringify({message: prompt}),
           signal: controller.signal,
         });
 
@@ -94,9 +99,7 @@ export async function createCustomModel(
         if (!INCLUDE_SYSTEM_PROMPT && m.role === "system") return "";
         return `${m.role}: ${m.content}`;
       });
-      const prompt = [CUSTOM_SYSTEM_PROMPT, parts.filter(Boolean).join("\n")]
-        .filter(Boolean)
-        .join("\n\n");
+      const prompt = parts.filter(Boolean).join("\n");
       return fetchCustom(prompt);
     },
 
@@ -105,14 +108,8 @@ export async function createCustomModel(
         if (!INCLUDE_SYSTEM_PROMPT && m.role === "system") return "";
         return `${m.role}: ${m.content}`;
       });
-      const prompt = [
-        CUSTOM_SYSTEM_PROMPT,
-        parts.filter(Boolean).join("\n"),
-        "",
-        "Return strictly valid JSON only.",
-      ]
-        .filter(Boolean)
-        .join("\n");
+      const body = parts.filter(Boolean).join("\n");
+      const prompt = `${body}\n\nReturn strictly valid JSON only.`;
 
       const rawText = await fetchCustom(prompt);
       try {

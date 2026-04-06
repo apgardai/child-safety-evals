@@ -26,6 +26,54 @@ function safetyCompositePct(f: number, a: number, e: number): number {
 
 type RiskBreakdownView = "overall" | "individual";
 
+type SafetyGradeKind = "failing" | "adequate" | "exemplary" | "unknown";
+
+function parseSafetyGrade(raw: string | undefined): SafetyGradeKind {
+  const g = (raw ?? "").trim().toLowerCase();
+  if (g === "failing" || g === "adequate" || g === "exemplary") return g;
+  return "unknown";
+}
+
+function safetyGradeLabel(kind: SafetyGradeKind): string {
+  switch (kind) {
+    case "failing":
+      return "Failing";
+    case "adequate":
+      return "Adequate";
+    case "exemplary":
+      return "Exemplary";
+    default:
+      return "Unknown";
+  }
+}
+
+function SafetyGradeBadge({
+  grade,
+  className = "",
+}: {
+  grade: string | undefined;
+  className?: string;
+}) {
+  const kind = parseSafetyGrade(grade);
+  const label = safetyGradeLabel(kind);
+  const styles =
+    kind === "failing"
+      ? "bg-[#3a1518] text-[#f0a8a8] border-[#6b2229]"
+      : kind === "adequate"
+        ? "bg-[#3d3510] text-[#e6c86a] border-[#6b5c18]"
+        : kind === "exemplary"
+          ? "bg-[#123d1f] text-[#7fd99a] border-[#1f6b36]"
+          : "bg-black/35 text-[var(--muted)] border-[var(--border)]";
+
+  return (
+    <span
+      className={`inline-flex items-center rounded px-2 py-0.5 text-[11px] font-mono font-semibold tracking-wide border ${styles} ${className}`.trim()}
+    >
+      {label}
+    </span>
+  );
+}
+
 export default function ResultsPage() {
   const [tab, setTab] = useState<Tab>("overview");
   const [riskBreakdownView, setRiskBreakdownView] =
@@ -426,10 +474,8 @@ export default function ResultsPage() {
                     className="w-full text-left px-4 py-3 border-b border-[var(--border)] hover:bg-black/20"
                   >
                     <div className="flex items-center justify-between gap-2">
-                      <div className="text-white font-medium">{s.scenarioTitle}</div>
-                      <span className="text-xs rounded px-2 py-0.5 border border-[var(--border)] text-[var(--muted)]">
-                        {s.safetyGrade || "unknown"}
-                      </span>
+                      <div className="text-white font-medium min-w-0">{s.scenarioTitle}</div>
+                      <SafetyGradeBadge grade={s.safetyGrade} className="shrink-0" />
                     </div>
                     <div className="mt-1 text-xs text-[var(--muted)]">
                       {s.ageRange} • {s.riskCategoryId} • {s.riskId} • {s.prompt}
@@ -466,48 +512,106 @@ export default function ResultsPage() {
                 </div>
 
                 <div>
-                  <div className="text-xs uppercase tracking-wide text-[var(--muted)] mb-1">
-                    Assessment
+                  <div className="flex flex-wrap items-center gap-2 text-white">
+                    <span className="text-sm font-bold tracking-tight">Assessment:</span>
+                    <SafetyGradeBadge grade={selected.safetyGrade} />
                   </div>
-                  <div className="text-sm text-white whitespace-pre-wrap">
+                  <div className="mt-2 h-px w-full bg-[var(--border)]" aria-hidden />
+                  <div className="mt-3 rounded-md border border-[var(--border)] bg-black/25 px-3 py-3 text-sm leading-relaxed text-white whitespace-pre-wrap">
                     {selected.assessmentReasons || "No assessment text."}
                   </div>
                 </div>
 
                 <div>
-                  <div className="text-xs uppercase tracking-wide text-[var(--muted)] mb-1">
-                    Scenario
+                  <div className="flex flex-wrap items-center gap-2 text-white">
+                    <span className="text-sm font-bold tracking-tight">Scenario:</span>
                   </div>
-                  <div className="text-sm text-white whitespace-pre-wrap">
+                  <div className="mt-2 h-px w-full bg-[var(--border)]" aria-hidden />
+                  <div className="mt-3 rounded-md border border-[var(--border)] bg-black/25 px-3 py-3 text-sm leading-relaxed text-white whitespace-pre-wrap">
                     {selected.narrative || "No scenario narrative."}
                   </div>
                 </div>
 
                 <div>
-                  <div className="text-xs uppercase tracking-wide text-[var(--muted)] mb-1">
-                    Conversation
+                  <div className="flex items-center gap-2 text-white">
+                    <span className="text-sm font-bold tracking-tight">Conversation:</span>
                   </div>
-                  <div className="space-y-2">
-                    {(selected.messages || []).map((m, i) => (
-                      <div
-                        key={`${i}-${m.role}`}
-                        className="rounded border border-[var(--border)] bg-black/20 p-2"
-                      >
-                        <div className="text-[10px] uppercase text-[var(--muted)] mb-1">
-                          {m.role}
-                        </div>
-                        <div className="text-sm text-white whitespace-pre-wrap">
-                          {m.content}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                  <div className="mt-2 h-px w-full bg-[var(--border)]" aria-hidden />
+                <ChatConversation messages={selected.messages || []} />
                 </div>
               </div>
             )}
           </aside>
         </div>
       )}
+    </div>
+  );
+}
+
+function ChatConversation({
+  messages,
+}: {
+  messages: Array<{ role: string; content: string }>;
+}) {
+  if (!messages.length) {
+    return (
+      <div className="mt-3 rounded-md border border-[var(--border)] bg-black/25 px-3 py-3 text-sm leading-relaxed text-white whitespace-pre-wrap">
+        <p className="mt-5 text-sm text-[var(--muted)]">No conversation messages.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-3 rounded-md border border-[var(--border)] bg-black/25 px-3 py-3 text-sm leading-relaxed text-white whitespace-pre-wrap">
+      <div className="mt-5 space-y-6">
+        {messages.map((m, i) => {
+          const role = m.role.toLowerCase();
+          const isUser = role === "user";
+          const isAssistant = role === "assistant";
+
+          if (isUser) {
+            return (
+              <div key={`${i}-${m.role}`} className="flex w-full justify-end">
+                <div
+                  className="ml-[28%] min-w-0 max-w-[min(100%,34rem)] rounded-2xl rounded-br-md border border-zinc-600/40 bg-zinc-700/95 px-4 py-3 text-sm leading-relaxed text-white shadow-sm whitespace-pre-wrap"
+                >
+                  {m.content}
+                </div>
+              </div>
+            );
+          }
+
+          if (isAssistant) {
+            return (
+              <div key={`${i}-${m.role}`} className="flex w-full justify-start">
+                <div className="mr-[18%] sm:mr-[22%] min-w-0 max-w-[min(100%,36rem)] rounded-2xl rounded-bl-md border border-zinc-700/45 bg-zinc-800/75 px-4 py-3 text-sm leading-relaxed text-white shadow-sm">
+                  <div>
+                    {m.content.split(/\n\n+/).map((block, j) => (
+                      <p key={j} className="mb-3 last:mb-0 whitespace-pre-wrap">
+                        {block}
+                      </p>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            );
+          }
+
+          return (
+            <div
+              key={`${i}-${m.role}`}
+              className="w-full pr-[8%] border-l-2 border-[var(--border)] pl-3"
+            >
+              <div className="text-[10px] font-medium uppercase tracking-wide text-[var(--muted)] mb-1">
+                {m.role}
+              </div>
+              <div className="text-sm text-white/90 whitespace-pre-wrap leading-relaxed">
+                {m.content}
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

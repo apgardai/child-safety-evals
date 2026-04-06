@@ -1,9 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const PROMPTS = ["default", "child"];
+
+/** Slug for HTTP custom backend (see benchmark runCommand custom-* routing) */
+const CUSTOM_MODEL_SLUG = "custom-my-model";
 
 /** Unique result filename: ISO timestamp + random suffix for collision safety */
 function makeResultFilename(): string {
@@ -20,6 +23,7 @@ function ModelField({
   required,
   placeholder,
   dropdownOnly,
+  optionLabels,
 }: {
   label: string;
   value: string;
@@ -28,6 +32,8 @@ function ModelField({
   required?: boolean;
   placeholder?: string;
   dropdownOnly?: boolean;
+  /** Optional display labels for select options (value → label) */
+  optionLabels?: Record<string, string>;
 }) {
   return (
     <div>
@@ -52,7 +58,7 @@ function ModelField({
           <option value="">— Model List —</option>
           {modelList.map((m) => (
             <option key={m} value={m}>
-              {m}
+              {optionLabels?.[m] ?? m}
             </option>
           ))}
         </select>
@@ -131,11 +137,6 @@ export default function Home() {
   const [modelList, setModelList] = useState<string[]>([]);
   const [flowPhase, setFlowPhase] = useState<FlowPhase>("idle");
   const [lastResultFile, setLastResultFile] = useState<string | null>(null);
-  const [autoRunSeed, setAutoRunSeed] = useState<{
-    apiKey: string;
-    customApiKey?: string;
-    targetModel: string;
-  } | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
@@ -145,77 +146,11 @@ export default function Home() {
       .catch(() => setModelList([]));
   }, []);
 
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const shouldAutoRun = params.get("autorun") === "1";
-    const targetModel = params.get("targetModel")?.trim() || "";
-    if (!shouldAutoRun || !targetModel) return;
-    const raw = sessionStorage.getItem("kora_custom_run_payload") ?? "";
-    sessionStorage.removeItem("kora_custom_run_payload");
-    if (!raw) return;
-    try {
-      const parsed = JSON.parse(raw) as {
-        aiGatewayApiKey?: string;
-        customApiKey?: string;
-      };
-      const apiKey = parsed.aiGatewayApiKey?.trim() ?? "";
-      if (!apiKey) return;
-      setAutoRunSeed({
-        apiKey,
-        customApiKey: parsed.customApiKey?.trim() || undefined,
-        targetModel,
-      });
-    } catch {
-      return;
-    }
-  }, []);
-
-  const runBuild = useCallback(async () => {
-    abortRef.current = new AbortController();
-    setRunning(true);
-    setOutput("Building benchmark...\n\n");
-
-    try {
-      const res = await fetch("/api/build", {
-        method: "POST",
-        signal: abortRef.current.signal,
-      });
-
-      if (!res.ok) {
-        setOutput((prev) => prev + `Build request failed: ${res.status}`);
-        return;
-      }
-
-      const reader = res.body?.getReader();
-      const decoder = new TextDecoder();
-      if (!reader) {
-        setOutput((prev) => prev + "No response body");
-        return;
-      }
-
-      let text = "Building benchmark...\n\n";
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        text += decoder.decode(value, { stream: true });
-        setOutput(text);
-      }
-    } catch (e) {
-      if ((e as Error).name === "AbortError") {
-        setOutput((prev) => prev + "\n\n[Stopped by user]");
-      } else {
-        setOutput((prev) => prev + `\n\nError: ${(e as Error).message}`);
-      }
-    } finally {
-      setRunning(false);
-      abortRef.current = null;
-    }
-  }, []);
-
   const runBenchmark = useCallback(
     async (payload: {
       apiKey: string;
       customApiKey?: string;
+      customApiEndpoint?: string;
       targetModel: string;
       judgeModel?: string;
       userModel?: string;
@@ -238,6 +173,7 @@ export default function Home() {
             command: "run",
             apiKey: payload.apiKey,
             customApiKey: payload.customApiKey,
+            customApiEndpoint: payload.customApiEndpoint,
             targetModel: payload.targetModel,
             judgeModel: payload.judgeModel,
             userModel: payload.userModel,
@@ -254,7 +190,7 @@ export default function Home() {
           const data = err as { error?: string; code?: string };
           const msg =
             data.code === "CLI_NOT_BUILT"
-              ? `${data.error}\n\nUse the "Build benchmark" button first.`
+              ? `${data.error}\n\nFrom the benchmark directory, run: yarn install && yarn tsbuild`
               : `Error ${res.status}: ${data.error ?? res.statusText}`;
           setOutput(msg);
           setFlowPhase("idle");
@@ -305,7 +241,8 @@ export default function Home() {
             KORA Child Safety Evaluations
           </h1>
           <p className="text-[var(--muted)] mt-1">
-            Build benchmark, then run evaluations using pre-generated seeds and scenarios.
+            Run evaluations using pre-generated seeds and scenarios in{" "}
+            <code className="text-white/90">benchmark/data/</code>.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -321,14 +258,6 @@ export default function Home() {
           >
             Results
           </Link>
-          <button
-            type="button"
-            onClick={runBuild}
-            disabled={running}
-            className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--border)] disabled:opacity-50"
-          >
-            Build benchmark
-          </button>
         </div>
       </header>
 
@@ -338,7 +267,6 @@ export default function Home() {
         modelList={modelList}
         flowPhase={flowPhase}
         lastResultFile={lastResultFile}
-        autoRunSeed={autoRunSeed}
       />
 
       <div className="mt-8 rounded-xl border border-[var(--border)] bg-[var(--surface)] overflow-hidden">
@@ -368,11 +296,11 @@ function PipelineForm({
   modelList,
   flowPhase,
   lastResultFile,
-  autoRunSeed,
 }: {
   onRun: (payload: {
     apiKey: string;
     customApiKey?: string;
+    customApiEndpoint?: string;
     targetModel: string;
     judgeModel?: string;
     userModel?: string;
@@ -382,14 +310,31 @@ function PipelineForm({
   modelList: string[];
   flowPhase: FlowPhase;
   lastResultFile: string | null;
-  autoRunSeed: { apiKey: string; customApiKey?: string; targetModel: string } | null;
 }) {
   const [apiKey, setApiKey] = useState("");
   const [targetModel, setTargetModel] = useState("gpt-4o");
   const [judgeModel, setJudgeModel] = useState("gpt-5.2:high:limited");
   const [userModel, setUserModel] = useState("deepseek-v3.2");
   const [prompts, setPrompts] = useState<string[]>(["default"]);
-  const autoRunDoneRef = useRef(false);
+  const [customApiEndpoint, setCustomApiEndpoint] = useState("");
+  const [customApiKey, setCustomApiKey] = useState("");
+
+  const targetModelOptions = useMemo(() => {
+    const list = [...modelList];
+    if (!list.includes(CUSTOM_MODEL_SLUG)) {
+      list.unshift(CUSTOM_MODEL_SLUG);
+    }
+    return list;
+  }, [modelList]);
+
+  const targetOptionLabels = useMemo(
+    () => ({
+      [CUSTOM_MODEL_SLUG]: "Custom target model",
+    }),
+    []
+  );
+
+  const isCustomTarget = targetModel === CUSTOM_MODEL_SLUG;
 
   const togglePrompt = (p: string) => {
     setPrompts((prev) =>
@@ -401,7 +346,12 @@ function PipelineForm({
     e.preventDefault();
     onRun({
       apiKey: apiKey.trim(),
-      customApiKey: autoRunSeed?.customApiKey,
+      ...(isCustomTarget
+        ? {
+            customApiKey: customApiKey.trim(),
+            customApiEndpoint: customApiEndpoint.trim(),
+          }
+        : {}),
       targetModel: targetModel.trim(),
       judgeModel: judgeModel || undefined,
       userModel: userModel || undefined,
@@ -409,25 +359,18 @@ function PipelineForm({
     });
   };
 
+  const canSubmit =
+    apiKey.trim() &&
+    targetModel.trim() &&
+    (!isCustomTarget ||
+      (customApiEndpoint.trim().length > 0 && customApiKey.trim().length > 0));
+
   const downloadHref =
     lastResultFile != null
-      ? `/api/results/download?file=${encodeURIComponent(lastResultFile)}`
+      ? `/api/results/download?file=${encodeURIComponent(
+          lastResultFile.replace(/\.json$/i, ".zip")
+        )}`
       : null;
-
-  useEffect(() => {
-    if (!autoRunSeed || autoRunDoneRef.current) return;
-    autoRunDoneRef.current = true;
-    setApiKey(autoRunSeed.apiKey);
-    setTargetModel(autoRunSeed.targetModel);
-    onRun({
-      apiKey: autoRunSeed.apiKey,
-      customApiKey: autoRunSeed.customApiKey,
-      targetModel: autoRunSeed.targetModel,
-      judgeModel: judgeModel || undefined,
-      userModel: userModel || undefined,
-      prompts: prompts.length ? prompts : undefined,
-    });
-  }, [autoRunSeed, judgeModel, onRun, prompts, userModel]);
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -497,11 +440,45 @@ function PipelineForm({
                 label="Target model"
                 value={targetModel}
                 onChange={setTargetModel}
-                modelList={modelList}
+                modelList={targetModelOptions}
+                optionLabels={targetOptionLabels}
                 required
                 placeholder="gpt-4o"
                 dropdownOnly
               />
+              {isCustomTarget && (
+                <div className="space-y-3 rounded-lg border border-[var(--border)] bg-black/25 p-3">
+                  <p className="text-xs text-[var(--muted)] leading-relaxed">
+                    Custom calls use <code className="text-white">CUSTOM_API_KEY</code> and{" "}
+                    <code className="text-white">CUSTOM_MODEL_API_ENDPOINT</code> for this run only (not saved).
+                  </p>
+                  <div>
+                    <label className="block text-sm font-medium text-[var(--muted)] mb-1">
+                      Custom API endpoint <span className="text-[var(--error)]">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={customApiEndpoint}
+                      onChange={(e) => setCustomApiEndpoint(e.target.value)}
+                      placeholder="https://example.com/v1/chat"
+                      className="w-full rounded-lg border border-[var(--border)] bg-black/30 px-3 py-2 text-sm text-white placeholder-[var(--muted)] focus:border-[var(--accent)] focus:outline-none"
+                      autoComplete="off"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-[var(--muted)] mb-1">
+                      Custom model API key <span className="text-[var(--error)]">*</span>
+                    </label>
+                    <input
+                      type="password"
+                      value={customApiKey}
+                      onChange={(e) => setCustomApiKey(e.target.value)}
+                      placeholder="Passed as CUSTOM_API_KEY"
+                      className="w-full rounded-lg border border-[var(--border)] bg-black/30 px-3 py-2 text-sm text-white placeholder-[var(--muted)] focus:border-[var(--accent)] focus:outline-none"
+                    />
+                  </div>
+                </div>
+              )}
               <ModelField
                 label="Judge model"
                 value={judgeModel}
@@ -541,7 +518,7 @@ function PipelineForm({
         <div className="mt-4 flex flex-wrap items-center gap-3">
           <button
             type="submit"
-            disabled={disabled || !apiKey.trim() || !targetModel.trim()}
+            disabled={disabled || !canSubmit}
             className="rounded-lg bg-[var(--accent)] px-6 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
           >
             Run benchmark
@@ -552,7 +529,7 @@ function PipelineForm({
               download
               className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--border)]"
             >
-              Download last result
+              Download last result (.zip)
             </a>
           )}
         </div>
