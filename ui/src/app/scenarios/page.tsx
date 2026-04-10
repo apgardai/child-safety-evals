@@ -2,30 +2,15 @@
 
 import Link from "next/link";
 import {
-  useCallback,
   useEffect,
   useMemo,
   useState,
-  type ChangeEvent,
+  type ReactNode,
 } from "react";
 import {
-  buildViewerDataFromResultsZip,
   type Scenario,
   type ViewerData,
 } from "@/lib/viewerDataFromZip";
-
-type Tab = "overview" | "scenarios";
-
-/** KORA-style: failing=0, adequate=1, exemplary=2 pts; max = tests * 2 */
-function safetyCompositePct(f: number, a: number, e: number): number {
-  const total = f + a + e;
-  if (total === 0) return 0;
-  const points = f * 0 + a * 1 + e * 2;
-  return (points / (total * 2)) * 100;
-}
-
-type RiskBreakdownView = "overall" | "individual";
-
 type SafetyGradeKind = "failing" | "adequate" | "exemplary" | "unknown";
 
 function parseSafetyGrade(raw: string | undefined): SafetyGradeKind {
@@ -74,17 +59,128 @@ function SafetyGradeBadge({
   );
 }
 
-export default function ResultsPage() {
-  const [tab, setTab] = useState<Tab>("overview");
-  const [riskBreakdownView, setRiskBreakdownView] =
-    useState<RiskBreakdownView>("overall");
+function formatAgeRangeLabel(ageRange: string | undefined): string {
+  const raw = (ageRange ?? "").trim();
+  if (!raw) return "—";
+  const m = /^(\d+)to(\d+)$/i.exec(raw.replace(/\s/g, ""));
+  if (m) return `Age ${m[1]} to ${m[2]}`;
+  return raw;
+}
+
+function formatPromptVariantLabel(prompt: string | undefined): string {
+  const p = (prompt ?? "").trim().toLowerCase();
+  if (p === "child") return "Child-aware";
+  if (p === "default") return "Assistant";
+  if (!p) return "—";
+  return p.charAt(0).toUpperCase() + p.slice(1);
+}
+
+function inferModelMaker(slug: string | undefined): string {
+  const s = (slug ?? "").trim().toLowerCase();
+  if (!s) return "—";
+  if (s.startsWith("custom-")) return "Custom";
+  if (s.includes("claude")) return "Anthropic";
+  if (s.includes("gpt") || s.includes("openai") || /^o\d/i.test(s)) return "OpenAI";
+  if (s.includes("gemini") || s.includes("google")) return "Google";
+  if (s.includes("deepseek")) return "DeepSeek";
+  if (s.includes("llama") || s.includes("meta-")) return "Meta";
+  if (s.includes("grok")) return "xAI";
+  if (s.includes("mistral") || s.includes("ministral")) return "Mistral";
+  if (s.includes("glm")) return "Z.ai";
+  if (s.includes("kimi")) return "Moonshot";
+  return "Unknown provider";
+}
+
+function formatTargetModelLabel(slug: string | undefined): string {
+  const s = (slug ?? "").trim();
+  if (!s) return "—";
+  return s
+    .split(/[:]+/)
+    .map((segment) =>
+      segment
+        .split(/[-_\s.]+/)
+        .filter(Boolean)
+        .map((part) => {
+          const lower = part.toLowerCase();
+          if (lower === "gpt") return "GPT";
+          if (lower === "api") return "API";
+          if (/^v?\d+(\.\d+)*[a-z]?$/i.test(part)) return part.toUpperCase();
+          return lower.charAt(0).toUpperCase() + lower.slice(1);
+        })
+        .join(" ")
+    )
+    .join(" · ");
+}
+
+function AiMark() {
+  return (
+    <span
+      className="inline-flex h-5 min-w-[1.25rem] shrink-0 items-center justify-center rounded border border-white/15 bg-white/[0.07] px-1 text-[9px] font-bold tracking-tight text-white/90"
+      aria-hidden
+    >
+      AI
+    </span>
+  );
+}
+
+function ScenarioDetailMeta({
+  scenario,
+  targetModelSlug,
+}: {
+  scenario: Scenario;
+  targetModelSlug: string | undefined;
+}) {
+  const riskCategory =
+    scenario.riskCategoryName?.trim() ||
+    scenario.riskCategoryId?.trim() ||
+    "—";
+  const riskLabel =
+    scenario.riskName?.trim() || scenario.riskId?.trim() || "—";
+  const maker = inferModelMaker(targetModelSlug);
+  const modelLabel = formatTargetModelLabel(targetModelSlug);
+
+  const fields: { label: string; value: ReactNode }[] = [
+    { label: "Risk category", value: riskCategory },
+    { label: "Model maker", value: maker },
+    { label: "Age range", value: formatAgeRangeLabel(scenario.ageRange) },
+    { label: "Risk", value: riskLabel },
+    {
+      label: "Model",
+      value: modelLabel,
+    },
+    { label: "Prompt", value: formatPromptVariantLabel(scenario.prompt) },
+  ];
+
+  return (
+    <div className="grid grid-cols-3 gap-x-3 gap-y-5 sm:gap-x-5">
+      {fields.map((f) => (
+        <div key={f.label} className="min-w-0">
+          <div className="text-xs text-[var(--muted)]">{f.label}</div>
+          <div className="mt-1 min-w-0">
+            {f.label === "Model maker" && maker !== "—" ? (
+              <div className="flex items-center gap-2">
+                <AiMark />
+                <span className="text-sm font-semibold text-white break-words">
+                  {f.value}
+                </span>
+              </div>
+            ) : (
+              <span className="text-sm font-semibold text-white break-words">
+                {f.value}
+              </span>
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export default function ScenariosPage() {
   const [serverData, setServerData] = useState<ViewerData | null>(null);
   const [serverError, setServerError] = useState<string | null>(null);
   const [serverLoading, setServerLoading] = useState(true);
-  const [uploadData, setUploadData] = useState<ViewerData | null>(null);
-  const [uploadFileName, setUploadFileName] = useState<string | null>(null);
-  const [uploadError, setUploadError] = useState<string | null>(null);
-  const [uploadBusy, setUploadBusy] = useState(false);
+  const [selectedZipFile, setSelectedZipFile] = useState<string | null>(null);
   const [selected, setSelected] = useState<Scenario | null>(null);
 
   const [ageRange, setAgeRange] = useState("all");
@@ -93,42 +189,23 @@ export default function ResultsPage() {
   const [grade, setGrade] = useState("all");
   const [query, setQuery] = useState("");
 
-  const data = uploadData ?? serverData;
+  const data = serverData;
   const blockingError =
-    !data && (uploadError ?? serverError);
-  const loading = uploadBusy || (serverLoading && !uploadData);
+    !data && serverError;
+  const loading = !data && serverLoading;
 
-  const clearUpload = useCallback(() => {
-    setUploadData(null);
-    setUploadFileName(null);
-    setUploadError(null);
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const file = params.get("file")?.trim();
+    setSelectedZipFile(file || null);
   }, []);
-
-  const onUploadZip = useCallback(
-    async (e: ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (!file) return;
-      setUploadBusy(true);
-      setUploadError(null);
-      try {
-        const buf = await file.arrayBuffer();
-        const viewer = await buildViewerDataFromResultsZip(buf);
-        setUploadData(viewer);
-        setUploadFileName(file.name);
-      } catch (err) {
-        setUploadError((err as Error).message);
-        setUploadFileName(null);
-      } finally {
-        setUploadBusy(false);
-        e.target.value = "";
-      }
-    },
-    []
-  );
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/results/viewer-data")
+    const q = selectedZipFile
+      ? `?file=${encodeURIComponent(selectedZipFile)}`
+      : "";
+    fetch(`/api/scenarios/viewer-data${q}`)
       .then(async (r) => {
         if (!r.ok) {
           const j = await r.json().catch(() => ({}));
@@ -148,47 +225,9 @@ export default function ResultsPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [selectedZipFile]);
 
   const scenarios = useMemo(() => data?.scenarios ?? [], [data]);
-  const scores = useMemo(() => data?.summary?.scores ?? [], [data]);
-
-  const riskItems = useMemo(
-    () =>
-      scores.map((s) => {
-        const as = s.sums?.as ?? [0, 0, 0];
-        const failing = as[0] ?? 0;
-        const adequate = as[1] ?? 0;
-        const exemplary = as[2] ?? 0;
-        return {
-          key: `${s.riskCategoryId}:${s.riskId}`,
-          category: s.riskCategoryId,
-          risk: s.riskId,
-          failing,
-          adequate,
-          exemplary,
-          pct: safetyCompositePct(failing, adequate, exemplary),
-        };
-      }),
-    [scores]
-  );
-
-  const overallRiskStats = useMemo(() => {
-    let f = 0;
-    let a = 0;
-    let e = 0;
-    for (const r of riskItems) {
-      f += r.failing;
-      a += r.adequate;
-      e += r.exemplary;
-    }
-    return {
-      failing: f,
-      adequate: a,
-      exemplary: e,
-      pct: safetyCompositePct(f, a, e),
-    };
-  }, [riskItems]);
 
   const ageRanges = useMemo(
     () => Array.from(new Set(scenarios.map((s) => s.ageRange).filter(Boolean))),
@@ -224,32 +263,14 @@ export default function ResultsPage() {
     <div className="min-h-screen p-6 md:p-10 max-w-7xl mx-auto">
       <header className="mb-6 flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-white">Results</h1>
+          <h1 className="text-2xl font-bold text-white">Scenarios</h1>
           <p className="text-sm text-[var(--muted)]">
-            Loads viewer data from the server, or upload a benchmark{" "}
-            <code className="text-white/90">.zip</code> to preview locally.
+            Loads the latest <span className="text-white/90">results zip file</span> from the benchmark data directory{" "}
+            Upload a different{" "} 
+            <span className="text-white/90">results zip file</span> in the homepage to update the scenarios.
           </p>
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2">
-          <label className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--border)] cursor-pointer">
-            {uploadBusy ? "Reading…" : "Upload .zip"}
-            <input
-              type="file"
-              accept=".zip,application/zip"
-              className="sr-only"
-              disabled={uploadBusy}
-              onChange={onUploadZip}
-            />
-          </label>
-          {uploadFileName && (
-            <button
-              type="button"
-              onClick={clearUpload}
-              className="rounded-lg border border-[var(--border)] bg-black/30 px-3 py-2 text-xs text-[var(--muted)] hover:bg-black/40 hover:text-white"
-            >
-              Use server data
-            </button>
-          )}
           <Link
             href="/"
             className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--border)]"
@@ -259,39 +280,16 @@ export default function ResultsPage() {
         </div>
       </header>
 
-      {uploadFileName && (
+      {selectedZipFile && (
         <div className="mb-4 rounded-lg border border-[var(--accent)]/30 bg-[var(--accent)]/10 px-3 py-2 text-sm text-white">
-          Viewing uploaded file:{" "}
-          <span className="font-medium text-[var(--accent)]">{uploadFileName}</span>
+          Viewing selected archive:{" "}
+          <span className="font-medium text-[var(--accent)]">{selectedZipFile}</span>
         </div>
       )}
-
-      <div className="mb-5 flex items-center gap-2">
-        <button
-          type="button"
-          onClick={() => setTab("overview")}
-          className={`rounded-lg px-4 py-2 text-sm font-medium ${tab === "overview" ? "bg-[var(--accent)] text-white" : "bg-[var(--surface)] text-[var(--muted)] border border-[var(--border)]"}`}
-        >
-          Overview
-        </button>
-        <button
-          type="button"
-          onClick={() => setTab("scenarios")}
-          className={`rounded-lg px-4 py-2 text-sm font-medium ${tab === "scenarios" ? "bg-[var(--accent)] text-white" : "bg-[var(--surface)] text-[var(--muted)] border border-[var(--border)]"}`}
-        >
-          Scenarios
-        </button>
-      </div>
 
       {blockingError && (
         <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4 text-[var(--error)] mb-4">
           {blockingError}
-        </div>
-      )}
-
-      {uploadError && data && (
-        <div className="rounded-lg border border-[var(--warning)]/40 bg-[var(--warning)]/10 p-3 text-sm text-[var(--warning)] mb-4">
-          Upload failed: {uploadError}
         </div>
       )}
 
@@ -303,105 +301,15 @@ export default function ResultsPage() {
 
       {!loading && !data && !blockingError && (
         <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4 text-[var(--muted)] space-y-2">
-          <p>No viewer data yet. Run the benchmark pipeline from the home page, or upload a results .zip.</p>
+          <p>
+            No results archive found under <code className="text-white/90">benchmark/data/results-*.zip</code>{" "}
+            and no <code className="text-white/90">viewer-data.json</code>. Run a benchmark from the home page, or
+            upload a results <code className="text-white/90">.zip</code>.
+          </p>
         </div>
       )}
 
-      {data && tab === "overview" && (
-        <div className="space-y-5">
-          <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
-            <div className="grid grid-cols-2 md:grid-cols-6 gap-3 text-sm">
-              <InfoCard label="Target" value={data.summary?.target || "-"} />
-              <InfoCard label="Judge" value={data.summary?.judge || "-"} />
-              <InfoCard label="User" value={data.summary?.user || "-"} />
-              <InfoCard
-                label="Prompts"
-                value={(data.summary?.prompts || []).join(", ") || "-"}
-              />
-              <InfoCard label="Risk groups" value={String(scores.length)} />
-              <InfoCard label="Scenarios" value={String(scenarios.length)} />
-            </div>
-          </section>
-
-          <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
-            <h2 className="text-lg font-semibold text-white mb-1">Risk breakdown</h2>
-            <p className="text-xs text-[var(--muted)] mb-4">
-              Score is the share of maximum possible points (failing=0, adequate=1, exemplary=2 per test).{" "}
-              <span className="text-white/80">
-                Click the highlighted bar to switch between overall and per-risk views.
-              </span>
-            </p>
-
-            {riskBreakdownView === "overall" ? (
-              <button
-                type="button"
-                onClick={() => setRiskBreakdownView("individual")}
-                className="w-full rounded-xl border border-[var(--accent)]/40 bg-black/25 p-4 text-left transition hover:bg-black/35 focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50"
-              >
-                <div className="flex items-end justify-between gap-3 mb-2">
-                  <div>
-                    <div className="text-xs uppercase tracking-wide text-[var(--muted)]">
-                      Overall safety score
-                    </div>
-                    <div className="text-4xl font-bold text-white tabular-nums">
-                      {overallRiskStats.pct.toFixed(0)}%
-                    </div>
-                  </div>
-                  <span className="text-xs text-[var(--accent)] shrink-0">
-                    Show per-risk →
-                  </span>
-                </div>
-                <ScorePercentBar pct={overallRiskStats.pct} />
-                <div className="mt-3 flex flex-wrap gap-3 text-[11px] text-[var(--muted)]">
-                  <span className="text-[var(--error)]">Failing {overallRiskStats.failing}</span>
-                  <span className="text-[var(--warning)]">Adequate {overallRiskStats.adequate}</span>
-                  <span className="text-[var(--success)]">Exemplary {overallRiskStats.exemplary}</span>
-                </div>
-              </button>
-            ) : (
-              <div className="space-y-4">
-                <button
-                  type="button"
-                  onClick={() => setRiskBreakdownView("overall")}
-                  className="w-full rounded-lg border border-[var(--border)] bg-black/20 px-3 py-2 text-left text-sm text-[var(--muted)] hover:bg-black/30 focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/40"
-                >
-                  ← Back to overall ({overallRiskStats.pct.toFixed(0)}%)
-                </button>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {riskItems.map((r) => (
-                    <div
-                      key={r.key}
-                      className="rounded-lg border border-[var(--border)] bg-black/20 p-3"
-                    >
-                      <div className="flex items-start justify-between gap-2 mb-1">
-                        <div className="min-w-0">
-                          <div className="text-sm font-semibold text-white truncate">
-                            {r.risk}
-                          </div>
-                          <div className="text-[11px] text-[var(--muted)] truncate">
-                            {r.category}
-                          </div>
-                        </div>
-                        <div className="text-lg font-bold text-white tabular-nums shrink-0">
-                          {r.pct.toFixed(0)}%
-                        </div>
-                      </div>
-                      <ScorePercentBar pct={r.pct} />
-                      <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-[var(--muted)]">
-                        <span className="text-[var(--error)]">F {r.failing}</span>
-                        <span className="text-[var(--warning)]">A {r.adequate}</span>
-                        <span className="text-[var(--success)]">E {r.exemplary}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </section>
-        </div>
-      )}
-
-      {data && tab === "scenarios" && (
+      {data && (
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-4">
           <div className="space-y-4">
             <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
@@ -506,10 +414,10 @@ export default function ResultsPage() {
                   </button>
                 </div>
 
-                <div className="text-xs text-[var(--muted)]">
-                  {selected.riskCategoryId} / {selected.riskId} • {selected.ageRange} •{" "}
-                  {selected.prompt}
-                </div>
+                <ScenarioDetailMeta
+                  scenario={selected}
+                  targetModelSlug={data.summary?.target}
+                />
 
                 <div>
                   <div className="flex flex-wrap items-center gap-2 text-white">
@@ -612,32 +520,6 @@ function ChatConversation({
           );
         })}
       </div>
-    </div>
-  );
-}
-
-function InfoCard({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded border border-[var(--border)] bg-black/20 p-3">
-      <div className="text-[10px] uppercase tracking-wide text-[var(--muted)]">
-        {label}
-      </div>
-      <div className="text-sm text-white mt-1 break-all">{value}</div>
-    </div>
-  );
-}
-
-function ScorePercentBar({ pct }: { pct: number }) {
-  const w = Math.max(0, Math.min(100, pct));
-  return (
-    <div
-      className="h-3 w-full rounded-full bg-[var(--border)]/60 overflow-hidden"
-      aria-hidden
-    >
-      <div
-        className="h-full rounded-full bg-gradient-to-r from-[var(--error)] via-[var(--warning)] to-[var(--success)] transition-[width] duration-300"
-        style={{ width: `${w}%` }}
-      />
     </div>
   );
 }

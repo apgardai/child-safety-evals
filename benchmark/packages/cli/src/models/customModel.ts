@@ -12,7 +12,7 @@ function getApiEndpoint(): string {
   const url = process.env[ENDPOINT_ENV_VAR]?.trim();
   if (!url) {
     throw new Error(
-      `Missing ${ENDPOINT_ENV_VAR}. Set it in .env or pass it from the benchmark UI when running a custom model.`
+      `Missing ${ENDPOINT_ENV_VAR}. Pass it from the benchmark UI when running a custom model.`
     );
   }
   return url;

@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ResultsOverview } from "@/components/ResultsOverview";
+import type { ViewerData } from "@/lib/viewerDataFromZip";
 
 const PROMPTS = ["default", "child"];
 
@@ -137,6 +139,10 @@ export default function Home() {
   const [modelList, setModelList] = useState<string[]>([]);
   const [flowPhase, setFlowPhase] = useState<FlowPhase>("idle");
   const [lastResultFile, setLastResultFile] = useState<string | null>(null);
+  const [overviewData, setOverviewData] = useState<ViewerData | null>(null);
+  const [selectedZipFile, setSelectedZipFile] = useState<string | null>(null);
+  const [uploadBusy, setUploadBusy] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
@@ -145,6 +151,49 @@ export default function Home() {
       .then((data: { models?: string[] }) => setModelList(data.models ?? []))
       .catch(() => setModelList([]));
   }, []);
+
+  const refreshOverviewFromDisk = useCallback(async (file?: string) => {
+    try {
+      const q = file ? `?file=${encodeURIComponent(file)}` : "";
+      const vr = await fetch(`/api/scenarios/viewer-data${q}`);
+      if (vr.ok) {
+        const j = (await vr.json()) as ViewerData;
+        setOverviewData(j);
+      }
+    } catch {
+      /* benchmark/data may have no zip yet */
+    }
+  }, []);
+
+  useEffect(() => {
+    void refreshOverviewFromDisk();
+  }, [refreshOverviewFromDisk]);
+
+  const uploadZip = useCallback(async (file: File) => {
+    setUploadBusy(true);
+    setUploadError(null);
+    try {
+      const form = new FormData();
+      form.set("file", file);
+      const res = await fetch("/api/scenarios/upload", {
+        method: "POST",
+        body: form,
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error((j as { error?: string }).error || `Upload failed (${res.status})`);
+      }
+      const j = (await res.json()) as { file?: string };
+      const saved = j.file?.trim();
+      if (!saved) throw new Error("Upload succeeded but no filename was returned");
+      setSelectedZipFile(saved);
+      await refreshOverviewFromDisk(saved);
+    } catch (e) {
+      setUploadError((e as Error).message);
+    } finally {
+      setUploadBusy(false);
+    }
+  }, [refreshOverviewFromDisk]);
 
   const runBenchmark = useCallback(
     async (payload: {
@@ -180,7 +229,6 @@ export default function Home() {
             input: "data/scenarios.jsonl",
             output: outputPath,
             prompts: payload.prompts,
-            syncViewer: true,
           }),
           signal: abortRef.current.signal,
         });
@@ -214,6 +262,7 @@ export default function Home() {
         }
         setLastResultFile(resultBasename);
         setFlowPhase("complete");
+        await refreshOverviewFromDisk(selectedZipFile ?? undefined);
       } catch (e) {
         if ((e as Error).name === "AbortError") {
           setOutput((prev) => prev + "\n\n[Stopped by user]");
@@ -226,7 +275,7 @@ export default function Home() {
         abortRef.current = null;
       }
     },
-    []
+    [refreshOverviewFromDisk, selectedZipFile]
   );
 
   const stop = useCallback(() => {
@@ -234,15 +283,15 @@ export default function Home() {
   }, []);
 
   return (
-    <div className="min-h-screen p-6 md:p-10 max-w-5xl mx-auto">
+    <div className="min-h-screen p-6 md:p-10 max-w-7xl mx-auto">
       <header className="mb-10 flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-white tracking-tight">
             KORA Child Safety Evaluations
           </h1>
           <p className="text-[var(--muted)] mt-1">
-            Run evaluations using pre-generated seeds and scenarios in{" "}
-            <code className="text-white/90">benchmark/data/</code>.
+            Run evaluations using pre-generated seeds and scenarios in the{" "}
+            <span className="text-white/90">benchmark data</span> directory.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -253,10 +302,14 @@ export default function Home() {
             Models
           </Link>
           <Link
-            href="/results"
+            href={
+              selectedZipFile
+                ? `/scenarios?file=${encodeURIComponent(selectedZipFile)}`
+                : "/scenarios"
+            }
             className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--border)]"
           >
-            Results
+            Scenarios
           </Link>
         </div>
       </header>
@@ -268,6 +321,27 @@ export default function Home() {
         flowPhase={flowPhase}
         lastResultFile={lastResultFile}
       />
+
+      {overviewData && (
+        <div className="mt-10 rounded-xl border border-[var(--border)] bg-[var(--surface)]/80 p-5 md:p-6">
+          <ResultsOverview
+            data={overviewData}
+            scenariosHref={
+              selectedZipFile
+                ? `/scenarios?file=${encodeURIComponent(selectedZipFile)}`
+                : "/scenarios"
+            }
+            onUploadZip={uploadZip}
+            uploadBusy={uploadBusy}
+            uploadLabel={selectedZipFile ?? "Latest results archive from benchmark data directory"}
+          />
+          {uploadError && (
+            <div className="mt-3 rounded-lg border border-[var(--warning)]/40 bg-[var(--warning)]/10 p-3 text-sm text-[var(--warning)]">
+              Upload failed: {uploadError}
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="mt-8 rounded-xl border border-[var(--border)] bg-[var(--surface)] overflow-hidden">
         <div className="flex items-center justify-between px-4 py-2 border-b border-[var(--border)] bg-black/30">
@@ -367,7 +441,7 @@ function PipelineForm({
 
   const downloadHref =
     lastResultFile != null
-      ? `/api/results/download?file=${encodeURIComponent(
+      ? `/api/scenarios/download?file=${encodeURIComponent(
           lastResultFile.replace(/\.json$/i, ".zip")
         )}`
       : null;
@@ -377,7 +451,7 @@ function PipelineForm({
       <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5">
         <h2 className="text-lg font-semibold text-white mb-1">Pipeline</h2>
         <p className="text-sm text-[var(--muted)] mb-4">
-          Steps 1–2 use the existing files in <code className="text-white">benchmark/data/</code>. Step 3 saves the results as <code className="text-white">data/results-&lt;timestamp&gt;-&lt;id&gt;.json</code>.
+          Steps 1–2 use the existing files in the <span className="text-white">benchmark data</span> directory. Step 3 saves the results as <span className="text-white">results-&lt;timestamp&gt;-&lt;id&gt;.json</span>.
         </p>
 
         <PipelineStepper phase={flowPhase === "complete" ? "complete" : flowPhase === "running" ? "running" : "idle"} />
@@ -404,11 +478,11 @@ function PipelineForm({
             <h3 className="text-sm font-semibold text-white mb-2">Step 1: Generate seeds</h3>
             <p className="text-xs text-[var(--muted)] leading-relaxed">
               Pre-generated scenario seeds are read from{" "}
-              <code className="text-white">data/scenarioSeeds.jsonl</code>.
+              <span className="text-white">scenarioSeeds.jsonl</span>.
             </p>
             <p className="text-xs text-[var(--muted)] leading-relaxed">
               This step was generated by the default model{" "}
-              <code className="text-white">gpt-5.2:high</code>.
+              <span className="text-white">gpt-5.2:high</span>.
             </p>
           </div>
 
@@ -420,12 +494,12 @@ function PipelineForm({
             <h3 className="text-sm font-semibold text-white mb-2">Step 2: Expand scenarios</h3>
             <p className="text-xs text-[var(--muted)] leading-relaxed">
               Pre-expanded scenarios are read from{" "}
-              <code className="text-white">data/scenarios.jsonl</code> (input for the benchmark run).
+              <span className="text-white">scenarios.jsonl</span> (input for the benchmark run).
             </p>
             <p className="text-xs text-[var(--muted)] leading-relaxed">
               This step was generated by the default scenario expander model{" "}
-              <code className="text-white">gpt-4o</code> and the defualt user model{" "}
-              <code className="text-white">deepseek-v3.2</code>.
+              <span className="text-white">gpt-4o</span> and the defualt user model{" "}
+              <span className="text-white">deepseek-v3.2</span>.
             </p>
           </div>
 
