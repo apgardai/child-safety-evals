@@ -1,6 +1,8 @@
 import { existsSync, readFileSync } from "node:fs";
 import * as path from "node:path";
-import { NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
+
+import { requireApiAuth } from "@/lib/auth-server";
 import * as fs from "node:fs/promises";
 
 function getBenchmarkPath(): string {
@@ -62,7 +64,10 @@ async function writeRegistry(modelsPath: string, registry: ModelRegistry): Promi
   await fs.rename(tmp, modelsPath);
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const auth = await requireApiAuth(request);
+  if (!auth.ok) return auth.response;
+
   const benchmarkPath = getBenchmarkPath();
   const modelsPath = path.join(benchmarkPath, "models.json");
 
@@ -85,7 +90,10 @@ export async function GET() {
   }
 }
 
-export async function PUT(request: Request) {
+export async function PUT(request: NextRequest) {
+  const auth = await requireApiAuth(request);
+  if (!auth.ok) return auth.response;
+
   const benchmarkPath = getBenchmarkPath();
   const modelsPath = path.join(benchmarkPath, "models.json");
 
@@ -113,12 +121,14 @@ export async function PUT(request: Request) {
   return NextResponse.json({ ok: true, models: Object.keys(registry).sort() });
 }
 
-export async function POST(request: Request) {
-  // Alias for PUT (create/update)
+export async function POST(request: NextRequest) {
   return PUT(request);
 }
 
-export async function DELETE(request: Request) {
+export async function DELETE(request: NextRequest) {
+  const auth = await requireApiAuth(request);
+  if (!auth.ok) return auth.response;
+
   const benchmarkPath = getBenchmarkPath();
   const modelsPath = path.join(benchmarkPath, "models.json");
 

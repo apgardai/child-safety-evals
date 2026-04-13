@@ -1,7 +1,7 @@
 import {ModelRequest, ModelResponse} from "@korabench/core";
 import {describe, expect, it, vi} from "vitest";
 import {TestContext} from "../benchmark.js";
-import {kora} from "../kora.js";
+import {childSafetyBench} from "../childSafetyBench.js";
 import {ScenarioPrompt} from "../model/scenarioKey.js";
 import {createScenario} from "./fixtures.js";
 
@@ -54,16 +54,16 @@ function createTestContext(): TestContext {
 // Tests.
 //
 
-describe("kora.runTest", () => {
+describe("childSafetyBench.runTest", () => {
   const scenario = createScenario();
-  const keys = kora.mapScenarioToKeys(scenario, ScenarioPrompt.list);
+  const keys = childSafetyBench.mapScenarioToKeys(scenario, ScenarioPrompt.list);
   const defaultKey = keys.find(k => k.endsWith(":default"))!;
   const childKey = keys.find(k => k.endsWith(":child"))!;
 
   it("produces a 3-turn conversation with 6 messages", async () => {
     const context = createTestContext();
 
-    const result = await kora.runTest(context, scenario, defaultKey);
+    const result = await childSafetyBench.runTest(context, scenario, defaultKey);
 
     expect(result.messages).toHaveLength(6);
     for (let i = 0; i < 6; i++) {
@@ -74,7 +74,7 @@ describe("kora.runTest", () => {
   it("uses scenario.firstUserMessage for the first turn", async () => {
     const context = createTestContext();
 
-    const result = await kora.runTest(context, scenario, defaultKey);
+    const result = await childSafetyBench.runTest(context, scenario, defaultKey);
 
     expect(result.messages[0]!.content).toBe(scenario.firstUserMessage);
   });
@@ -82,7 +82,7 @@ describe("kora.runTest", () => {
   it("calls getUserResponse for subsequent turns (2 times)", async () => {
     const context = createTestContext();
 
-    await kora.runTest(context, scenario, defaultKey);
+    await childSafetyBench.runTest(context, scenario, defaultKey);
 
     expect(context.getUserResponse).toHaveBeenCalledTimes(2);
   });
@@ -90,7 +90,7 @@ describe("kora.runTest", () => {
   it("calls getAssistantResponse 3 times (once per turn)", async () => {
     const context = createTestContext();
 
-    await kora.runTest(context, scenario, defaultKey);
+    await childSafetyBench.runTest(context, scenario, defaultKey);
 
     expect(context.getAssistantResponse).toHaveBeenCalledTimes(3);
   });
@@ -98,7 +98,7 @@ describe("kora.runTest", () => {
   it("returns correct shape with scenario, prompt, messages, assessment, behaviorAssessment", async () => {
     const context = createTestContext();
 
-    const result = await kora.runTest(context, scenario, defaultKey);
+    const result = await childSafetyBench.runTest(context, scenario, defaultKey);
 
     expect(result).toHaveProperty("scenario");
     expect(result).toHaveProperty("prompt");
@@ -111,7 +111,7 @@ describe("kora.runTest", () => {
   it("prompt matches key — default key yields 'default' prompt", async () => {
     const context = createTestContext();
 
-    const result = await kora.runTest(context, scenario, defaultKey);
+    const result = await childSafetyBench.runTest(context, scenario, defaultKey);
 
     expect(result.prompt).toBe("default");
   });
@@ -119,7 +119,7 @@ describe("kora.runTest", () => {
   it("prompt matches key — child key yields 'child' prompt", async () => {
     const context = createTestContext();
 
-    const result = await kora.runTest(context, scenario, childKey);
+    const result = await childSafetyBench.runTest(context, scenario, childKey);
 
     expect(result.prompt).toBe("child");
   });
@@ -127,7 +127,7 @@ describe("kora.runTest", () => {
   it("calls getJudgeResponse twice (safety + behavior assessment)", async () => {
     const context = createTestContext();
 
-    await kora.runTest(context, scenario, defaultKey);
+    await childSafetyBench.runTest(context, scenario, defaultKey);
 
     expect(context.getJudgeResponse).toHaveBeenCalledTimes(2);
   });

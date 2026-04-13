@@ -1,6 +1,6 @@
-# KORA Child Safety Evals UI
+# Child Safety Evals UI
 
-Next.js UI for running the KORA benchmark pipeline (generate seeds, expand scenarios, run evaluations).
+Next.js UI for running the child safety benchmark pipeline (generate seeds, expand scenarios, run evaluations).
 
 ## Prerequisites
 

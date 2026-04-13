@@ -1,5 +1,5 @@
 import {
-  kora,
+  childSafetyBench,
   Scenario,
   ScenarioPrompt,
   TestContext,
@@ -27,7 +27,7 @@ type TaskOutcome =
   | {kind: "success"; testResult: TestResult}
   | {kind: "failure"};
 
-type RunResult = v.InferOutput<typeof kora.runResultType>;
+type RunResult = v.InferOutput<typeof childSafetyBench.runResultType>;
 
 interface RunState {
   failureCount: number;
@@ -58,7 +58,7 @@ async function* scenariosToTestTasks(
   prompts: readonly ScenarioPrompt[]
 ): AsyncGenerator<TestTask> {
   for await (const scenario of readScenariosFromJsonl(filePath)) {
-    for (const key of kora.mapScenarioToKeys(scenario, prompts)) {
+    for (const key of childSafetyBench.mapScenarioToKeys(scenario, prompts)) {
       yield {scenario, key};
     }
   }
@@ -70,7 +70,7 @@ async function countTestTasks(
 ): Promise<number> {
   let count = 0;
   for await (const scenario of readScenariosFromJsonl(filePath)) {
-    count += kora.mapScenarioToKeys(scenario, prompts).length;
+    count += childSafetyBench.mapScenarioToKeys(scenario, prompts).length;
   }
   return count;
 }
@@ -154,7 +154,7 @@ export async function runCommand(
     : createGatewayModel(modelsJsonPath, targetModelSlug);
 
   const outputDir = path.dirname(outputFilePath);
-  const tempDir = path.join(outputDir, ".kora-run-tmp");
+  const tempDir = path.join(outputDir, ".benchmark-run-tmp");
 
   // Clear output file if no process in progress (no temp files)
   if (!(await hasTempFiles(tempDir))) {
@@ -178,7 +178,10 @@ export async function runCommand(
       try {
         const content = await fs.readFile(tempFile, "utf-8");
         progress.increment(true);
-        const testResult = v.parse(kora.testResultType, JSON.parse(content));
+        const testResult = v.parse(
+          childSafetyBench.testResultType,
+          JSON.parse(content)
+        );
         return [{kind: "success", testResult}];
       } catch {
         // Not yet processed.
@@ -193,7 +196,11 @@ export async function runCommand(
       );
 
       try {
-        const testResult = await kora.runTest(context, task.scenario, task.key);
+        const testResult = await childSafetyBench.runTest(
+          context,
+          task.scenario,
+          task.key
+        );
         await fs.writeFile(tempFile, JSON.stringify(testResult, null, 2));
         progress.increment(true);
         return [{kind: "success", testResult}];
@@ -209,12 +216,14 @@ export async function runCommand(
           return {...state, failureCount: state.failureCount + 1};
         }
 
-        const mapped = kora.mapTestResultToRunResult(outcome.testResult);
+        const mapped = childSafetyBench.mapTestResultToRunResult(
+          outcome.testResult
+        );
         return {
           failureCount: state.failureCount,
           testCount: state.testCount + 1,
           runResult: state.runResult
-            ? kora.reduceRunResult(state.runResult, mapped)
+            ? childSafetyBench.reduceRunResult(state.runResult, mapped)
             : mapped,
         };
       },

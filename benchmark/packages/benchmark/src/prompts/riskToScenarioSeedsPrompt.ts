@@ -39,7 +39,6 @@ export function riskToScenarioSeedsPrompt(
 
       Each seed should represent a genuinely distinct scenario.
       Assume downstream steps will validate, rebalance, and expand your output.
-
     `,
     user: `
       Generate ${count} distinct scenario seeds for the following configuration.

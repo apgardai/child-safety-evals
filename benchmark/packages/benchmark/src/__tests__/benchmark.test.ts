@@ -1,5 +1,5 @@
 import {describe, expect, it} from "vitest";
-import {kora} from "../kora.js";
+import {childSafetyBench} from "../childSafetyBench.js";
 import {AgeRange} from "../model/ageRange.js";
 import {RunResult} from "../model/runResult.js";
 import {ScenarioPrompt} from "../model/scenarioKey.js";
@@ -136,7 +136,7 @@ describe("benchmark.mapTestResultToRunResult", () => {
   it("maps a test result with adequate grade to run result scores", () => {
     const testResult = createTestResult({grade: "adequate"});
 
-    const runResult = kora.mapTestResultToRunResult(testResult);
+    const runResult = childSafetyBench.mapTestResultToRunResult(testResult);
 
     expect(runResult.scores).toHaveLength(1);
     expect(runResult.scores[0]).toMatchObject({
@@ -153,7 +153,7 @@ describe("benchmark.mapTestResultToRunResult", () => {
   it("maps a test result with failing grade to run result scores", () => {
     const testResult = createTestResult({grade: "failing"});
 
-    const runResult = kora.mapTestResultToRunResult(testResult);
+    const runResult = childSafetyBench.mapTestResultToRunResult(testResult);
 
     expect(runResult.scores[0]?.sums).toMatchObject({
       al: 1,
@@ -164,7 +164,7 @@ describe("benchmark.mapTestResultToRunResult", () => {
   it("maps a test result with exemplary grade to run result scores", () => {
     const testResult = createTestResult({grade: "exemplary"});
 
-    const runResult = kora.mapTestResultToRunResult(testResult);
+    const runResult = childSafetyBench.mapTestResultToRunResult(testResult);
 
     expect(runResult.scores[0]?.sums).toMatchObject({
       al: 1,
@@ -179,7 +179,7 @@ describe("benchmark.mapTestResultToRunResult", () => {
       ageRange: "13to17",
     });
 
-    const runResult = kora.mapTestResultToRunResult(testResult);
+    const runResult = childSafetyBench.mapTestResultToRunResult(testResult);
 
     expect(runResult.scores[0]).toMatchObject({
       riskCategoryId: "custom-category",
@@ -210,7 +210,7 @@ describe("benchmark.reduceRunResult", () => {
       },
     ]);
 
-    const reduced = kora.reduceRunResult(result1, result2);
+    const reduced = childSafetyBench.reduceRunResult(result1, result2);
 
     expect(reduced.scores).toHaveLength(2);
     expect(reduced.scores).toContainEqual(
@@ -249,7 +249,7 @@ describe("benchmark.reduceRunResult", () => {
       },
     ]);
 
-    const reduced = kora.reduceRunResult(result1, result2);
+    const reduced = childSafetyBench.reduceRunResult(result1, result2);
 
     expect(reduced.scores).toHaveLength(1);
     expect(reduced.scores[0]).toMatchObject({
@@ -290,7 +290,7 @@ describe("benchmark.reduceRunResult", () => {
       },
     ]);
 
-    const reduced = kora.reduceRunResult(result1, result2);
+    const reduced = childSafetyBench.reduceRunResult(result1, result2);
 
     expect(reduced.scores).toHaveLength(2);
 
@@ -319,7 +319,7 @@ describe("benchmark.reduceRunResult", () => {
       },
     ]);
 
-    const reduced = kora.reduceRunResult(result1, result2);
+    const reduced = childSafetyBench.reduceRunResult(result1, result2);
 
     expect(reduced.scores).toHaveLength(1);
   });
@@ -353,8 +353,8 @@ describe("benchmark.reduceRunResult", () => {
       },
     ]);
 
-    const leftAssoc = kora.reduceRunResult(kora.reduceRunResult(a, b), c);
-    const rightAssoc = kora.reduceRunResult(a, kora.reduceRunResult(b, c));
+    const leftAssoc = childSafetyBench.reduceRunResult(childSafetyBench.reduceRunResult(a, b), c);
+    const rightAssoc = childSafetyBench.reduceRunResult(a, childSafetyBench.reduceRunResult(b, c));
 
     expect(leftAssoc.scores[0]?.sums).toEqual(rightAssoc.scores[0]?.sums);
   });

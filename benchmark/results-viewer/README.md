@@ -1,6 +1,6 @@
 # Benchmark Results Viewer
 
-Static, no-auth results explorer for KORA benchmark outputs.
+Static, no-auth results explorer for child safety benchmark outputs.
 
 ## What it shows
 
@@ -21,7 +21,7 @@ From `child-safety-evals/benchmark`:
 node ./results-viewer/build-viewer-data.mjs
 ```
 
-This reads from **archived results** (stable, not overwritten by KORA runs):
+This reads from **archived results** (stable, not overwritten by benchmark runs):
 
 - `results-viewer/archived-results/results.json`
 - `results-viewer/archived-results/testResults/*.json`
@@ -33,7 +33,7 @@ and writes:
 
 ## Archive new runs
 
-After running `yarn kora run`, archive the fresh output before the next run overwrites `data/`:
+After running `yarn cs-bench run`, archive the fresh output before the next run overwrites `data/`:
 
 ```bash
 yarn results-viewer:archive

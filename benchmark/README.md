@@ -1,10 +1,10 @@
-# KORA Benchmark
+# Child Safety Benchmark
 
 The first public benchmark for AI child safety. Learn more at [korabench.ai](https://korabench.ai).
 
 ## Overview
 
-KORA measures the safety of AI models interacting with children across 8 risk categories, 25 individual risks, 3 age groups (7–9, 10–12, 13–17), and 10 child motivations. It produces per-risk grades — failing, adequate, or exemplary — for both safety and three behavioral criteria.
+This benchmark measures the safety of AI models interacting with children across 8 risk categories, 25 individual risks, 3 age groups (7–9, 10–12, 13–17), and 10 child motivations. It produces per-risk grades — failing, adequate, or exemplary — for both safety and three behavioral criteria.
 
 The benchmark uses a 3-stage pipeline: **seed generation** creates short scenario outlines from the risk taxonomy, **scenario expansion** turns each seed into a detailed test scenario with validation, and **test runs** execute multi-turn conversations and judge the results.
 
@@ -28,13 +28,13 @@ yarn && yarn tsbuild
 Run the benchmark with pre-built scenarios:
 
 ```bash
-yarn kora run <target-model>
+yarn cs-bench run <target-model>
 ```
 
 For example, to evaluate `gpt-4o`:
 
 ```bash
-yarn kora run gpt-4o
+yarn cs-bench run gpt-4o
 ```
 
 ## Pipeline stages
@@ -44,7 +44,7 @@ yarn kora run gpt-4o
 Generates a set of scenario seeds from the risk taxonomy.
 
 ```bash
-yarn kora generate-seeds [model]
+yarn cs-bench generate-seeds [model]
 ```
 
 | Argument / Option | Description |
@@ -58,7 +58,7 @@ yarn kora generate-seeds [model]
 Transforms seeds into fully fleshed-out scenarios with validation.
 
 ```bash
-yarn kora expand-scenarios [model] [user-model]
+yarn cs-bench expand-scenarios [model] [user-model]
 ```
 
 | Argument / Option | Description |
@@ -73,7 +73,7 @@ yarn kora expand-scenarios [model] [user-model]
 Runs the benchmark against the target model.
 
 ```bash
-yarn kora run <target-model> [judge-model] [user-model]
+yarn cs-bench run <target-model> [judge-model] [user-model]
 ```
 
 | Argument / Option | Description |
@@ -156,7 +156,7 @@ A new `Model` instance is created per scenario, so you can use the scenario data
 Then use the slug on the command line like any other model:
 
 ```bash
-yarn kora run custom-my-model
+yarn cs-bench run custom-my-model
 ```
 
 ## Evaluating a different model
@@ -178,7 +178,7 @@ The benchmark covers 8 risk categories with 25 individual risks:
 | `online_safety` | Online Safety |
 | `developmental_risk` | Developmental Risk |
 
-See the full taxonomy: [KORA Risk Taxonomy](https://korabench.notion.site/KORA-Risk-Taxonomy-2fb5eb9ec0c98050b330d4f37c57d5b0).
+See the full taxonomy on the [project site](https://korabench.ai).
 
 In addition to safety, each conversation is assessed on three behavioral criteria:
 
@@ -258,7 +258,7 @@ packages/
       __tests__/                     Test suites
       benchmark.ts                   Core benchmark interface
       generateUserMessage.ts         User message generation
-      kora.ts                        KORA benchmark implementation
+      childSafetyBench.ts            Core benchmark implementation
   cli/src/                           CLI package
     commands/                        CLI command implementations
     __tests__/                       CLI test suites

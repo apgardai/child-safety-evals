@@ -40,7 +40,7 @@ import {seedToScenarioPrompt} from "./prompts/seedToScenarioPrompt.js";
 
 const conversationLength = 3;
 
-export const kora = Benchmark.new({
+export const childSafetyBench = Benchmark.new({
   scenarioSeedType: ScenarioSeed.io,
   scenarioType: Scenario.io,
   testResultType: TestResult.io,

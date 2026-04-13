@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
+
+import { TopNav } from "@/components/TopNav";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "KORA Child Safety Evals",
-  description: "UI for KORA benchmark evaluation methods",
+  title: "Child Safety Evals",
+  description: "UI for child safety benchmark evaluation methods",
 };
 
 export default function RootLayout({
@@ -13,7 +15,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className="min-h-screen antialiased">{children}</body>
+      <body className="min-h-screen antialiased">
+        <TopNav />
+        {children}
+      </body>
     </html>
   );
 }

@@ -1,7 +1,9 @@
 import { existsSync, readFileSync } from "node:fs";
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
-import { NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
+
+import { requireApiAuth } from "@/lib/auth-server";
 
 function getBenchmarkPath(): string {
   const uiRoot = process.cwd();
@@ -47,7 +49,10 @@ function upsertEnvVar(content: string, key: string, value: string): string {
   return next.join("\n").replace(/\n{3,}/g, "\n\n");
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const auth = await requireApiAuth(request);
+  if (!auth.ok) return auth.response;
+
   const envPath = getEnvPath();
   if (!existsSync(envPath)) {
     return NextResponse.json({ hasKey: false });
@@ -60,7 +65,10 @@ export async function GET() {
   }
 }
 
-export async function PUT(request: Request) {
+export async function PUT(request: NextRequest) {
+  const auth = await requireApiAuth(request);
+  if (!auth.ok) return auth.response;
+
   let body: unknown;
   try {
     body = await request.json();
@@ -103,7 +111,7 @@ export async function PUT(request: Request) {
   return NextResponse.json({ ok: true, hasKey: true, keyName });
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   return PUT(request);
 }
 

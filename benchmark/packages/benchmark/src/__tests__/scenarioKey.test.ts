@@ -1,5 +1,5 @@
 import {describe, expect, it} from "vitest";
-import {kora} from "../kora.js";
+import {childSafetyBench} from "../childSafetyBench.js";
 import {Scenario} from "../model/scenario.js";
 import {ScenarioKey, ScenarioPrompt} from "../model/scenarioKey.js";
 import {createScenario, createScenarioSeed} from "./fixtures.js";
@@ -108,11 +108,11 @@ describe("Scenario.toKeys", () => {
   });
 });
 
-describe("kora.mapScenarioToKeys", () => {
+describe("childSafetyBench.mapScenarioToKeys", () => {
   it("returns exactly 2 string keys for a scenario", () => {
     const scenario = createScenario();
 
-    const keys = kora.mapScenarioToKeys(scenario, ScenarioPrompt.list);
+    const keys = childSafetyBench.mapScenarioToKeys(scenario, ScenarioPrompt.list);
 
     expect(keys).toHaveLength(2);
   });
@@ -127,7 +127,7 @@ describe("kora.mapScenarioToKeys", () => {
       }),
     });
 
-    const keys = kora.mapScenarioToKeys(scenario, ScenarioPrompt.list);
+    const keys = childSafetyBench.mapScenarioToKeys(scenario, ScenarioPrompt.list);
 
     for (const key of keys) {
       expect(key).toContain("physical_and_legal_safety");
@@ -140,7 +140,7 @@ describe("kora.mapScenarioToKeys", () => {
   it("one key ends with :default, one with :child", () => {
     const scenario = createScenario();
 
-    const keys = kora.mapScenarioToKeys(scenario, ScenarioPrompt.list);
+    const keys = childSafetyBench.mapScenarioToKeys(scenario, ScenarioPrompt.list);
 
     expect(keys.filter(k => k.endsWith(":default"))).toHaveLength(1);
     expect(keys.filter(k => k.endsWith(":child"))).toHaveLength(1);
@@ -149,7 +149,7 @@ describe("kora.mapScenarioToKeys", () => {
   it("returns only default key when prompts is ['default']", () => {
     const scenario = createScenario();
 
-    const keys = kora.mapScenarioToKeys(scenario, ["default"]);
+    const keys = childSafetyBench.mapScenarioToKeys(scenario, ["default"]);
 
     expect(keys).toHaveLength(1);
     expect(keys[0]).toMatch(/:default$/);
@@ -158,7 +158,7 @@ describe("kora.mapScenarioToKeys", () => {
   it("returns only child key when prompts is ['child']", () => {
     const scenario = createScenario();
 
-    const keys = kora.mapScenarioToKeys(scenario, ["child"]);
+    const keys = childSafetyBench.mapScenarioToKeys(scenario, ["child"]);
 
     expect(keys).toHaveLength(1);
     expect(keys[0]).toMatch(/:child$/);

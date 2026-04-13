@@ -156,7 +156,7 @@ function parseSummaryFromUnknown(obj: unknown): NonNullable<ViewerData["summary"
 }
 
 /**
- * Parses a KORA benchmark results .zip (summary JSON at root + testResults/*.json).
+ * Parses a benchmark results .zip (summary JSON at root + testResults/*.json).
  */
 export async function buildViewerDataFromResultsZip(
   buffer: ArrayBuffer,

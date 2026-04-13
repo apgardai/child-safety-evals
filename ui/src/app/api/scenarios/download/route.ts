@@ -3,6 +3,8 @@ import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { NextRequest, NextResponse } from "next/server";
 
+import { requireApiAuth } from "@/lib/auth-server";
+
 function getBenchmarkPath(): string {
   const uiRoot = process.cwd();
   return path.resolve(uiRoot, "..", "benchmark");
@@ -15,6 +17,9 @@ function isAllowedBasename(name: string): boolean {
 }
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
+  const auth = await requireApiAuth(request);
+  if (!auth.ok) return auth.response;
+
   const file = request.nextUrl.searchParams.get("file");
   if (!file || !isAllowedBasename(file)) {
     return NextResponse.json({ error: "Invalid file parameter" }, { status: 400 });

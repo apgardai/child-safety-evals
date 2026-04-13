@@ -1,6 +1,6 @@
 import {
   ExpandScenarioContext,
-  kora,
+  childSafetyBench,
   Scenario,
   ScenarioSeed,
   ScenarioValidationError,
@@ -70,7 +70,7 @@ export async function expandScenariosCommand(
   };
 
   const outputDir = path.dirname(outputFilePath);
-  const tempDir = path.join(outputDir, ".kora-expand-tmp");
+  const tempDir = path.join(outputDir, ".benchmark-expand-tmp");
 
   // Clear output file if no process in progress (no temp files)
   if (!(await hasTempFiles(tempDir))) {
@@ -101,7 +101,10 @@ export async function expandScenariosCommand(
         }
 
         try {
-          const scenarios = await kora.expandScenario(context, seed);
+          const scenarios = await childSafetyBench.expandScenario(
+            context,
+            seed
+          );
           await fs.writeFile(tempFile, JSON.stringify(scenarios, null, 2));
           progress.increment(true);
         } catch (error) {

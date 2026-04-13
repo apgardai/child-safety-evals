@@ -150,15 +150,15 @@ export default function ModelsPage() {
           <p className="text-[var(--muted)] mt-1">
             Manage <code className="text-white">models.json</code> registry entries for gateway models.
             To run a custom model, use{" "}
-            <Link href="/" className="text-[var(--accent)] hover:underline">
-              the home pipeline
+            <Link href="/benchmark" className="text-[var(--accent)] hover:underline">
+              the benchmark pipeline
             </Link>{" "}
             and choose the custom target model.
           </p>
         </div>
         <div className="flex items-center gap-2">
           <Link
-            href="/"
+            href="/benchmark"
             className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--border)]"
           >
             Back

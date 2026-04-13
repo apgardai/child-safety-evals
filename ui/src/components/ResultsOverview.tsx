@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import type { ViewerData } from "@/lib/viewerDataFromZip";
 
-/** KORA-style: failing=0, adequate=1, exemplary=2 pts; max = tests * 2 */
+/** Graded scoring: failing=0, adequate=1, exemplary=2 pts; max = tests * 2 */
 function safetyCompositePct(f: number, a: number, e: number): number {
   const total = f + a + e;
   if (total === 0) return 0;
@@ -46,6 +46,7 @@ export function ResultsOverview({
   uploadBusy = false,
   onUploadZip,
   uploadLabel,
+  showScenariosCta = true,
 }: {
   data: ViewerData;
   /** Link to scenarios tab for this dataset */
@@ -53,6 +54,8 @@ export function ResultsOverview({
   uploadBusy?: boolean;
   uploadLabel?: string;
   onUploadZip?: (file: File) => void;
+  /** When false, hides the “View scenarios” button (e.g. explorer is on the same page). */
+  showScenariosCta?: boolean;
 }) {
   const [riskBreakdownView, setRiskBreakdownView] =
     useState<RiskBreakdownView>("overall");
@@ -118,12 +121,14 @@ export function ResultsOverview({
               />
             </label>
           )}
-          <Link
-            href={scenariosHref}
-            className="rounded-lg bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white hover:opacity-90"
-          >
-            View scenarios
-          </Link>
+          {showScenariosCta ? (
+            <Link
+              href={scenariosHref}
+              className="rounded-lg bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white hover:opacity-90"
+            >
+              View scenarios
+            </Link>
+          ) : null}
         </div>
       </div>
       {uploadLabel && (

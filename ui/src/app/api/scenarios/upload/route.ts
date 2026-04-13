@@ -3,11 +3,16 @@ import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { NextRequest, NextResponse } from "next/server";
 
+import { requireApiAuth } from "@/lib/auth-server";
+
 function getBenchmarkPath(): string {
   return path.resolve(process.cwd(), "..", "benchmark");
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
+  const auth = await requireApiAuth(request);
+  if (!auth.ok) return auth.response;
+
   const form = await request.formData().catch(() => null);
   if (!form) {
     return NextResponse.json({ error: "Invalid form data" }, { status: 400 });

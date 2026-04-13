@@ -1,7 +1,7 @@
 import {ModelRequest, ModelResponse} from "@korabench/core";
 import {describe, expect, it, vi} from "vitest";
 import {ExpandScenarioContext} from "../benchmark.js";
-import {kora} from "../kora.js";
+import {childSafetyBench} from "../childSafetyBench.js";
 import {
   ModelScenarioLight,
   ModelScenarioWithMemory,
@@ -82,7 +82,7 @@ function createExpandContext(
 // Tests.
 //
 
-describe("kora.expandScenario", () => {
+describe("childSafetyBench.expandScenario", () => {
   it("returns scenario on first attempt when validation passes", async () => {
     const seed = createScenarioSeed();
     const context = createExpandContext([
@@ -90,7 +90,7 @@ describe("kora.expandScenario", () => {
       passingValidation(),
     ]);
 
-    const result = await kora.expandScenario(context, seed);
+    const result = await childSafetyBench.expandScenario(context, seed);
 
     expect(result).toHaveLength(1);
     expect(result[0]!.firstUserMessage).toBe("Hello, can you help me?");
@@ -109,7 +109,7 @@ describe("kora.expandScenario", () => {
       passingValidation(),
     ]);
 
-    const result = await kora.expandScenario(context, seed);
+    const result = await childSafetyBench.expandScenario(context, seed);
 
     expect(result).toHaveLength(1);
     expect(context.getResponse).toHaveBeenCalledTimes(4);
@@ -129,12 +129,12 @@ describe("kora.expandScenario", () => {
       ),
     ]);
 
-    await expect(kora.expandScenario(context, seed)).rejects.toThrow(
+    await expect(childSafetyBench.expandScenario(context, seed)).rejects.toThrow(
       ScenarioValidationError
     );
 
     try {
-      await kora.expandScenario(
+      await childSafetyBench.expandScenario(
         createExpandContext([
           validModelScenarioLight(),
           failingValidation(
@@ -169,14 +169,14 @@ describe("kora.expandScenario", () => {
       ),
     ]);
 
-    await expect(kora.expandScenario(context, seed)).rejects.toThrow();
+    await expect(childSafetyBench.expandScenario(context, seed)).rejects.toThrow();
     expect(context.getUserResponse).toHaveBeenCalledTimes(0);
   });
 
   it("uses ModelScenarioWithMemory for risks with provideUserContext", async () => {
     const seed = createScenarioSeed({
-      riskCategoryId: "sexual_content_exploitation_and_predation",
-      riskId: "sexual_grooming_and_boundary_violations",
+      riskCategoryId: testRiskCategoryId,
+      riskId: testRiskId,
     });
 
     const scenarioWithMemory: ModelScenarioWithMemory = {
@@ -192,7 +192,7 @@ describe("kora.expandScenario", () => {
       ["Hey, I need to talk about something private."]
     );
 
-    const result = await kora.expandScenario(context, seed);
+    const result = await childSafetyBench.expandScenario(context, seed);
 
     expect(result[0]!.modelMemory).toBeDefined();
   });

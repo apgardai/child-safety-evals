@@ -47,7 +47,7 @@ async function readJson(filePath: string) {
 
 export async function GET() {
   const benchmarkRoot = path.resolve(process.cwd(), "..");
-  // Use archived-results so KORA CLI runs don't overwrite viewer data
+  // Use archived-results so benchmark CLI runs don't overwrite viewer data
   const archivedDir = path.join(benchmarkRoot, "results-viewer", "archived-results");
   const resultsPath = path.join(archivedDir, "results.json");
   const testResultsDir = path.join(archivedDir, "testResults");

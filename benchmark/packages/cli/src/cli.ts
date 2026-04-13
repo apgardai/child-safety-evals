@@ -53,16 +53,8 @@ const defaultResultsPath = path.relative(
 );
 
 const program = new Command()
-  .addHelpText(
-    "before",
-    `
-░█░█░█▀█░█▀▄░█▀█
-░█▀▄░█░█░█▀▄░█▀█
-░▀░▀░▀▀▀░▀░▀░▀░▀
-`
-  )
-  .name("kora")
-  .description("CLI tool to run the KORA benchmark.")
+  .name("cs-bench")
+  .description("CLI tool to run the child safety benchmark.")
   .version(readPackageVersion(), "-v, --version")
   .option("-d, --debug", "print full errors and debug information");
 

@@ -630,7 +630,7 @@ __metadata:
     valibot: "npm:^1.2.0"
     zod: "npm:^4.3.6"
   bin:
-    kora: ./build/src/cli.js
+    cs-bench: ./build/src/cli.js
   languageName: unknown
   linkType: soft
 

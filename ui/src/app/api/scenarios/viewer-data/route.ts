@@ -1,14 +1,15 @@
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import * as path from "node:path";
-import { NextRequest } from "next/server";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+
+import { requireApiAuth } from "@/lib/auth-server";
 import { buildViewerDataFromResultsZip } from "@/lib/viewerDataFromZip";
 
 function getBenchmarkPath(): string {
   return path.resolve(process.cwd(), "..", "benchmark");
 }
 
-/** Latest `data/results-*.zip` by modification time (KORA run output). */
+/** Latest `data/results-*.zip` by modification time (CLI run output). */
 function findLatestResultsZipPath(dataDir: string): string | null {
   if (!existsSync(dataDir)) return null;
   let best: string | null = null;
@@ -53,6 +54,9 @@ function isAllowedBasename(name: string): boolean {
 }
 
 export async function GET(request: NextRequest) {
+  const auth = await requireApiAuth(request);
+  if (!auth.ok) return auth.response;
+
   const benchmarkPath = getBenchmarkPath();
   const dataDir = path.join(benchmarkPath, "data");
   const reqFile = request.nextUrl.searchParams.get("file");

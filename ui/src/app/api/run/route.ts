@@ -3,6 +3,8 @@ import { spawn } from "node:child_process";
 import * as path from "node:path";
 import { NextRequest, NextResponse } from "next/server";
 
+import { requireApiAuth } from "@/lib/auth-server";
+
 function parseEnvFile(envPath: string): Record<string, string> {
   if (!existsSync(envPath)) return {};
   const raw = readFileSync(envPath, "utf-8");
@@ -96,6 +98,9 @@ function buildArgs(body: RunRequestBody): string[] {
 }
 
 export async function POST(request: NextRequest) {
+  const auth = await requireApiAuth(request);
+  if (!auth.ok) return auth.response;
+
   let body: RunRequestBody;
   try {
     body = (await request.json()) as RunRequestBody;
@@ -216,7 +221,10 @@ export async function POST(request: NextRequest) {
   });
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const auth = await requireApiAuth(request);
+  if (!auth.ok) return auth.response;
+
   return NextResponse.json({
     usage: "POST with JSON body: { command, ...options }",
     commands: {

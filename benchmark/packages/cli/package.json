@@ -2,17 +2,17 @@
   "name": "@korabench/cli",
   "version": "1.0.0",
   "license": "Apache-2.0",
-  "description": "CLI tool for running the KORA benchmark.",
+  "description": "CLI tool for running the child safety benchmark.",
   "type": "module",
   "scripts": {
     "tsbuild": "tsc --build",
     "test": "vitest run",
     "test:watch": "vitest",
-    "kora": "node ./build/src/cli.js",
-    "kora:env": "node --env-file=.env ./build/src/cli.js"
+    "cs-bench": "node ./build/src/cli.js",
+    "cs-bench:env": "node --env-file=.env ./build/src/cli.js"
   },
   "bin": {
-    "kora": "./build/src/cli.js"
+    "cs-bench": "./build/src/cli.js"
   },
   "dependencies": {
     "@korabench/benchmark": "workspace:*",

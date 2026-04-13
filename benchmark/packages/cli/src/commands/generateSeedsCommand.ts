@@ -1,7 +1,7 @@
 import {
   GenerateSeedsContext,
   GenerateSeedsOptions,
-  kora,
+  childSafetyBench,
 } from "@korabench/benchmark";
 import {Script} from "@korabench/core";
 import * as fs from "node:fs/promises";
@@ -29,7 +29,7 @@ export async function generateSeeds(
   await fs.mkdir(path.dirname(outputFilePath), {recursive: true});
   await fs.writeFile(outputFilePath, ""); // Clear file before starting
 
-  const generator = kora.generateScenarioSeeds(context, options);
+  const generator = childSafetyBench.generateScenarioSeeds(context, options);
   const first = await generator.next();
   if (first.done) {
     console.log("\nNo seeds to generate.");

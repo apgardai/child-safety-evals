@@ -1,0 +1,14 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: cse
+      POSTGRES_PASSWORD: cse
+      POSTGRES_DB: child_safety_evals
+    ports:
+      - "5433:5432"
+    volumes:
+      - cse_pgdata:/var/lib/postgresql/data
+
+volumes:
+  cse_pgdata:
