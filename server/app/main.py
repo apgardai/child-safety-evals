@@ -50,6 +50,9 @@ def _ensure_backwards_compatible_schema() -> None:
                 "ALTER TABLE IF EXISTS cse_evaluation_scenarios DROP COLUMN IF EXISTS scenario_summary"
             )
         )
+        conn.execute(
+            text("ALTER TABLE IF EXISTS cse_assessments DROP COLUMN IF EXISTS summary")
+        )
         # Ensure run -> conversations uses ON DELETE CASCADE, so deleting runs removes
         # child conversations (and their messages) at DB level.
         conn.execute(
@@ -94,7 +97,7 @@ async def lifespan(_: FastAPI):
     yield
 
 
-app = FastAPI(title="Child Safety Evals API", lifespan=lifespan)
+app = FastAPI(title="Child Safety AI Evaluation API", lifespan=lifespan)
 
 # Intended for server-to-server calls from the Next.js app only (not exposed to browsers).
 

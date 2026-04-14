@@ -40,7 +40,6 @@ class Assessment(Base):
     prompt_variant = Column(String, nullable=True, index=True)
     safety_grade = Column(String, nullable=True, index=True)
     assessment_reasons = Column(Text, nullable=True)
-    summary = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(
         DateTime(timezone=True),

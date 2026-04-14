@@ -26,6 +26,7 @@ class EvaluationRunSummaryOut(BaseModel):
     user_model: str | None
     prompts: list[str] | None = None
     num_scores: int = 0
+    overall_score_pct: float | None = None
 
 
 class EvaluationRunDetailOut(BaseModel):

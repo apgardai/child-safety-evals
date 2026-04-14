@@ -10,6 +10,7 @@ type EvaluationRunRow = {
   target_model: string | null;
   judge_model: string | null;
   user_model: string | null;
+  overall_score_pct?: number | null;
 };
 
 export default function BenchmarkRunsPage() {
@@ -78,19 +79,20 @@ export default function BenchmarkRunsPage() {
                 <th className="px-4 py-3 font-medium">Target</th>
                 <th className="px-4 py-3 font-medium">User</th>
                 <th className="px-4 py-3 font-medium">Judge</th>
+                <th className="px-4 py-3 font-medium text-right">Overall Score</th>
                 <th className="px-4 py-3 font-medium">Created At</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td className="px-4 py-4 text-[var(--muted)]" colSpan={5}>
+                  <td className="px-4 py-4 text-[var(--muted)]" colSpan={6}>
                     Loading runs...
                   </td>
                 </tr>
               ) : rows.length === 0 ? (
                 <tr>
-                  <td className="px-4 py-4 text-[var(--muted)]" colSpan={5}>
+                  <td className="px-4 py-4 text-[var(--muted)]" colSpan={6}>
                     No runs found.
                   </td>
                 </tr>
@@ -113,6 +115,11 @@ export default function BenchmarkRunsPage() {
                     <td className="px-4 py-3">{r.target_model || "-"}</td>
                     <td className="px-4 py-3">{r.user_model || "-"}</td>
                     <td className="px-4 py-3">{r.judge_model || "-"}</td>
+                    <td className="px-4 py-3 text-right tabular-nums">
+                      {typeof r.overall_score_pct === "number"
+                        ? `${Math.round(r.overall_score_pct)}%`
+                        : "-"}
+                    </td>
                     <td className="px-4 py-3 text-[var(--muted)]">
                       {new Date(r.created_at).toLocaleString()}
                     </td>

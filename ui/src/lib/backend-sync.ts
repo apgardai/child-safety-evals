@@ -43,6 +43,7 @@ export type EvaluationRunSummary = {
   user_model: string | null;
   prompts?: string[] | null;
   num_scores: number;
+  overall_score_pct?: number | null;
 };
 
 export type BackendSyncFailureCode =

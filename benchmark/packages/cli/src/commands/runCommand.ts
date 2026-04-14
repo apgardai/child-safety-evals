@@ -8,6 +8,8 @@ import {
 import {Hash, Script} from "@korabench/core";
 import archiver from "archiver";
 import {createWriteStream} from "node:fs";
+import {PassThrough} from "node:stream";
+import {finished} from "node:stream/promises";
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import * as readline from "node:readline";
@@ -96,6 +98,26 @@ async function archiveResults(
   await done;
 }
 
+/** Same layout as {@link archiveResults} (testResults/ + root summary JSON), without writing a file. */
+async function archiveResultsToBuffer(
+  sourceDir: string,
+  rootResultJson: string,
+  rootResultBasename: string
+): Promise<Buffer> {
+  const chunks: Buffer[] = [];
+  const output = new PassThrough();
+  output.on("data", (c: Buffer) => chunks.push(c));
+  const archive = archiver("zip", {zlib: {level: 9}});
+  const done = finished(output);
+  archive.pipe(output);
+  archive.directory(sourceDir, "testResults");
+  archive.append(rootResultJson, {name: rootResultBasename});
+  await archive.finalize();
+  output.end();
+  await done;
+  return Buffer.concat(chunks);
+}
+
 async function hasTempFiles(tempDir: string): Promise<boolean> {
   try {
     const files = await fs.readdir(tempDir);
@@ -133,6 +155,10 @@ async function buildContext(
   };
 }
 
+/** Markers consumed by child-safety-evals UI `/api/run` when using `--pipe-results`. */
+const CSE_ZIP_B64_START = "\n__CSE_RESULTS_ZIP_B64_START__\n";
+const CSE_ZIP_B64_END = "\n__CSE_RESULTS_ZIP_B64_END__\n";
+
 export async function runCommand(
   _program: Program,
   modelsJsonPath: string,
@@ -141,7 +167,8 @@ export async function runCommand(
   userModelSlug: string,
   scenariosFilePath: string,
   outputFilePath: string,
-  prompts: readonly ScenarioPrompt[]
+  prompts: readonly ScenarioPrompt[],
+  pipeResults = false
 ) {
   console.log(
     `Running benchmark: target=${targetModelSlug}, judge=${judgeModelSlug}, user=${userModelSlug}`
@@ -157,11 +184,15 @@ export async function runCommand(
   const tempDir = path.join(outputDir, ".benchmark-run-tmp");
 
   // Clear output file if no process in progress (no temp files)
-  if (!(await hasTempFiles(tempDir))) {
+  if (
+    !pipeResults &&
+    !(await hasTempFiles(tempDir))
+  ) {
     await fs.mkdir(outputDir, {recursive: true});
     await fs.writeFile(outputFilePath, "");
   }
 
+  await fs.mkdir(outputDir, {recursive: true});
   await fs.mkdir(tempDir, {recursive: true});
 
   const totalTests = await countTestTasks(scenariosFilePath, prompts);
@@ -250,17 +281,22 @@ export async function runCommand(
     ...(runResult ?? {}),
   };
 
-  await fs.mkdir(outputDir, {recursive: true});
-  await fs.writeFile(outputFilePath, JSON.stringify(result, null, 2));
+  const rootJson = JSON.stringify(result, null, 2);
+  const rootBasename = path.basename(outputFilePath);
 
-  // Archive results before cleaning up.
-  const ext = path.extname(outputFilePath);
-  const zipFilePath =
-    (ext ? outputFilePath.slice(0, -ext.length) : outputFilePath) + ".zip";
-  await archiveResults(tempDir, [outputFilePath], zipFilePath);
+  if (pipeResults) {
+    const zipBuf = await archiveResultsToBuffer(tempDir, rootJson, rootBasename);
+    const b64 = zipBuf.toString("base64");
+    process.stdout.write(`${CSE_ZIP_B64_START}${b64}${CSE_ZIP_B64_END}`);
+  } else {
+    await fs.writeFile(outputFilePath, rootJson);
+    const ext = path.extname(outputFilePath);
+    const zipFilePath =
+      (ext ? outputFilePath.slice(0, -ext.length) : outputFilePath) + ".zip";
+    await archiveResults(tempDir, [outputFilePath], zipFilePath);
+    console.log(`\nCompleted ${testCount} tests → ${outputFilePath}`);
+    console.log(`Test results archived → ${zipFilePath}`);
+  }
 
   await fs.rm(tempDir, {recursive: true, force: true});
-
-  console.log(`\nCompleted ${testCount} tests → ${outputFilePath}`);
-  console.log(`Test results archived → ${zipFilePath}`);
 }

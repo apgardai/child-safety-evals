@@ -1,3 +1,4 @@
+from collections import defaultdict
 from typing import Any
 from uuid import UUID
 
@@ -17,6 +18,96 @@ def _num_scores(payload: dict[str, Any]) -> int:
     if isinstance(scores, list):
         return len(scores)
     return 0
+
+
+def normalize_safety_outcome(value: str | None) -> str | None:
+    """Map viewer / judge output to failing | adequate | exemplary (or None if unknown)."""
+    if not value or not isinstance(value, str):
+        return None
+    s = value.strip().lower()
+    if s in ("failing", "adequate", "exemplary"):
+        return s
+    return None
+
+
+def aggregate_safety_scores_from_scenarios(rows: list[Any]) -> list[dict[str, Any]]:
+    """
+    Build results.json-style `scores` rows from per-scenario safety grades stored on scenarios
+    (and/or linked assessments). Used when persisting a run without a populated scores array.
+    """
+    # key -> [failing, adequate, exemplary] counts
+    buckets: dict[tuple[str, str, str, str], list[int]] = defaultdict(lambda: [0, 0, 0])
+
+    for s in rows:
+        rc = s.risk_category if isinstance(getattr(s, "risk_category", None), str) else ""
+        sr = s.sub_risk if isinstance(getattr(s, "sub_risk", None), str) else ""
+        ar = s.age_range if isinstance(getattr(s, "age_range", None), str) else ""
+        pv = s.prompt_variant if isinstance(getattr(s, "prompt_variant", None), str) else ""
+        key = (rc, sr, ar, pv)
+
+        grade_raw = getattr(s, "safety_grade", None)
+        if not grade_raw and getattr(s, "assessment", None):
+            grade_raw = getattr(s.assessment, "safety_grade", None)
+        outcome = normalize_safety_outcome(grade_raw if isinstance(grade_raw, str) else None)
+        if outcome == "failing":
+            buckets[key][0] += 1
+        elif outcome == "adequate":
+            buckets[key][1] += 1
+        elif outcome == "exemplary":
+            buckets[key][2] += 1
+
+    out: list[dict[str, Any]] = []
+    for (rc, sr, ar, pv), (f, a, e) in buckets.items():
+        total = f + a + e
+        if total == 0:
+            continue
+        out.append(
+            {
+                "riskCategoryId": rc or "unknown",
+                "riskId": sr or "unknown",
+                "ageRange": ar or None,
+                "prompt": pv or None,
+                "sums": {
+                    "al": total,
+                    "as": [f, a, e],
+                },
+            }
+        )
+    return out
+
+
+def _overall_score_pct(payload: dict[str, Any]) -> float | None:
+    scores = payload.get("scores")
+    if not isinstance(scores, list) or not scores:
+        return None
+
+    failing = 0
+    adequate = 0
+    exemplary = 0
+    for row in scores:
+        if not isinstance(row, dict):
+            continue
+        sums = row.get("sums")
+        if not isinstance(sums, dict):
+            continue
+        as_counts = sums.get("as")
+        if not isinstance(as_counts, list) or len(as_counts) < 3:
+            continue
+        f = as_counts[0]
+        a = as_counts[1]
+        e = as_counts[2]
+        if isinstance(f, int):
+            failing += f
+        if isinstance(a, int):
+            adequate += a
+        if isinstance(e, int):
+            exemplary += e
+
+    total = failing + adequate + exemplary
+    if total <= 0:
+        return None
+    points = adequate + (2 * exemplary)
+    return (points / (total * 2)) * 100.0
 
 
 def create_evaluation_run(
@@ -72,7 +163,6 @@ def create_evaluation_run(
         if user_model_entry:
             user_persona_model_id = user_model_entry.id
 
-    assessments_by_tuple: dict[tuple[str, str, str], Assessment] = {}
     has_viewer_scenarios = isinstance(viewer_data, dict) and isinstance(
         viewer_data.get("scenarios"), list
     )
@@ -86,24 +176,14 @@ def create_evaluation_run(
             prompt_variant = row.get("prompt") if isinstance(row.get("prompt"), str) else None
             scenario_title = row.get("scenarioTitle") if isinstance(row.get("scenarioTitle"), str) else None
             narrative = row.get("narrative") if isinstance(row.get("narrative"), str) else None
-            safety_grade = row.get("safetyGrade") if isinstance(row.get("safetyGrade"), str) else None
+            safety_grade_raw = row.get("safetyGrade") if isinstance(row.get("safetyGrade"), str) else None
+            outcome = normalize_safety_outcome(safety_grade_raw)
             assessment_reasons = (
                 row.get("assessmentReasons")
                 if isinstance(row.get("assessmentReasons"), str)
                 else None
             )
             external_id = row.get("id") if isinstance(row.get("id"), str) else None
-            key = (
-                risk_category or "",
-                sub_risk or "",
-                (age_range or "") + "|" + (prompt_variant or ""),
-            )
-            assessment = assessments_by_tuple.get(key)
-            if assessment:
-                if safety_grade and not assessment.safety_grade:
-                    assessment.safety_grade = safety_grade
-                if assessment_reasons and not assessment.assessment_reasons:
-                    assessment.assessment_reasons = assessment_reasons
 
             conv = Conversation(
                 evaluation_run_id=run.id,
@@ -133,17 +213,29 @@ def create_evaluation_run(
                     )
                     turn += 1
 
+            assessment = Assessment(
+                evaluation_run_id=run.id,
+                conversation_id=conv.id,
+                status="completed",
+                age_range=age_range,
+                prompt_variant=prompt_variant,
+                safety_grade=outcome,
+                assessment_reasons=assessment_reasons,
+            )
+            db.add(assessment)
+            db.flush()
+
             db.add(
                 EvaluationScenario(
                     evaluation_run_id=run.id,
-                    assessment_id=assessment.id if assessment else None,
+                    assessment_id=assessment.id,
                     conversation_id=conv.id,
                     user_persona_model_id=user_persona_model_id,
                     scenario_external_id=external_id,
                     scenario_title=scenario_title,
                     prompt_variant=prompt_variant,
                     age_range=age_range,
-                    safety_grade=safety_grade,
+                    safety_grade=outcome,
                     assessment_reasons=assessment_reasons,
                     narrative=(
                         narrative
@@ -154,6 +246,20 @@ def create_evaluation_run(
                     risk_category=risk_category,
                 )
             )
+
+        # Ensure results_json carries aggregate scores for overview APIs when CLI omitted them.
+        existing_scores = results.get("scores")
+        if not isinstance(existing_scores, list) or len(existing_scores) == 0:
+            fresh_scenarios = (
+                db.query(EvaluationScenario)
+                .filter(EvaluationScenario.evaluation_run_id == run.id)
+                .all()
+            )
+            aggregated = aggregate_safety_scores_from_scenarios(fresh_scenarios)
+            if aggregated:
+                results = {**results, "scores": aggregated}
+                run.results_json = results
+                db.add(run)
     else:
         scores = results.get("scores")
         if isinstance(scores, list):
@@ -168,21 +274,12 @@ def create_evaluation_run(
                     else None
                 )
                 sub_risk = row.get("riskId") if isinstance(row.get("riskId"), str) else None
-                sums = row.get("sums")
-                summary = None
-                if isinstance(sums, dict):
-                    summary = (
-                        f"Risk category={risk_category or 'unknown'}, "
-                        f"sub risk={sub_risk or 'unknown'}, "
-                        f"totals={sums}"
-                    )
 
                 assessment = Assessment(
                     evaluation_run_id=run.id,
                     status="completed",
                     age_range=age_range,
                     prompt_variant=prompt_variant,
-                    summary=summary,
                 )
                 db.add(assessment)
                 db.flush()
@@ -266,4 +363,5 @@ def summarize_run(run: EvaluationRun) -> dict[str, Any]:
         "user_model": run.user_model,
         "prompts": prompts,
         "num_scores": _num_scores(payload),
+        "overall_score_pct": _overall_score_pct(payload),
     }

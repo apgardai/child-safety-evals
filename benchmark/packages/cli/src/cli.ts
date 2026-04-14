@@ -127,6 +127,11 @@ program
   )
   .option("-o, --output <path>", "output results JSON file", defaultResultsPath)
   .option(
+    "--pipe-results",
+    "emit final results archive as base64 on stdout (no results .json / .zip on disk)",
+    false
+  )
+  .option(
     "--prompts <prompts>",
     "comma-separated prompts to test (default, child)",
     ScenarioPrompt.list[0]
@@ -140,7 +145,8 @@ program
       userModel,
       opts.input,
       opts.output,
-      opts.prompts.split(",").map(p => v.parse(ScenarioPrompt.io, p.trim()))
+      opts.prompts.split(",").map(p => v.parse(ScenarioPrompt.io, p.trim())),
+      Boolean(opts.pipeResults)
     )
   );
 

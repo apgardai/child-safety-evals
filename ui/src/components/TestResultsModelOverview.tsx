@@ -36,6 +36,9 @@ export function TestResultsModelOverview({ data }: { data: ViewerData }) {
         Test results
       </p>
       <h1 className="text-2xl font-bold text-white tracking-tight md:text-3xl">{title}</h1>
+      {subtitle ? (
+        <p className="mt-1 text-sm text-[var(--muted)]">{subtitle}</p>
+      ) : null}
 
       {profile ? (
         <div className="mt-6 border-t border-[var(--border)] pt-6 space-y-5">

@@ -157,6 +157,48 @@ function isSummaryPayload(obj: unknown): boolean {
   return Array.isArray(o.scores);
 }
 
+/**
+ * Reads the benchmark root `results.json` object from an in-memory zip (same layout as CLI archive).
+ */
+export async function extractResultsDocumentFromZipBuffer(
+  buffer: ArrayBuffer
+): Promise<Record<string, unknown> | null> {
+  const zip = await JSZip.loadAsync(buffer);
+  const paths: string[] = [];
+  zip.forEach((relativePath, file) => {
+    if (!file.dir) paths.push(relativePath);
+  });
+  const rootJsonPaths = paths.filter((p) => {
+    const parts = p.split("/");
+    return parts.length === 1 && p.endsWith(".json");
+  });
+  for (const name of rootJsonPaths) {
+    const z = zip.file(name);
+    if (!z) continue;
+    try {
+      const parsed: unknown = JSON.parse(await z.async("string"));
+      if (isSummaryPayload(parsed) && parsed && typeof parsed === "object") {
+        return parsed as Record<string, unknown>;
+      }
+    } catch {
+      continue;
+    }
+  }
+  for (const name of rootJsonPaths) {
+    const z = zip.file(name);
+    if (!z) continue;
+    try {
+      const parsed: unknown = JSON.parse(await z.async("string"));
+      if (parsed && typeof parsed === "object") {
+        return parsed as Record<string, unknown>;
+      }
+    } catch {
+      continue;
+    }
+  }
+  return null;
+}
+
 function parseSummaryFromUnknown(obj: unknown): NonNullable<ViewerData["summary"]> {
   if (!obj || typeof obj !== "object") {
     return { target: "", judge: "", user: "", prompts: [], scores: [] };

@@ -58,14 +58,14 @@ export function TopNav() {
     setUserEmail(null);
     router.refresh();
     if (requiresAuthPathname(pathname)) {
-      router.push(`/login?next=${encodeURIComponent(pathname)}`);
+      router.push(`/sign-in?next=${encodeURIComponent(pathname)}`);
     }
   }
 
   const loginHref =
-    pathname && pathname !== "/login"
-      ? `/login?next=${encodeURIComponent(pathname)}`
-      : "/login";
+    pathname && pathname !== "/sign-in"
+      ? `/sign-in?next=${encodeURIComponent(pathname)}`
+      : "/sign-in";
 
   const navTabs = userEmail
     ? [
@@ -82,7 +82,7 @@ export function TopNav() {
           href="/"
           className="shrink-0 text-sm font-semibold text-white md:text-base tracking-tight hover:text-[var(--accent)]"
         >
-          Child Safety Evals
+          Child Safety AI Evaluations
         </Link>
 
         <nav

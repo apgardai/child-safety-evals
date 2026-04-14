@@ -260,9 +260,17 @@ function ChatConversation({
 export function ViewerDataExplorer({
   data,
   selectedRisk,
+  selectedRiskCategoryId,
+  urlRiskCategory,
+  onSubRiskSelectNavigateToCategory,
 }: {
   data: ViewerData;
   selectedRisk?: { riskCategoryId: string; riskId: string } | null;
+  selectedRiskCategoryId?: string | null;
+  /** URL `[risk_category]` segment (`"all"` or category id); enables syncing the path when the risk dropdown implies another category. */
+  urlRiskCategory?: string;
+  /** Sync URL `[risk_category]`: concrete category id, or `"all"` for `/scenarios/all`. */
+  onSubRiskSelectNavigateToCategory?: (riskCategoryId: string | "all") => void;
 }) {
   const [selected, setSelected] = useState<Scenario | null>(null);
   const [ageRange, setAgeRange] = useState("all");
@@ -277,7 +285,23 @@ export function ViewerDataExplorer({
     setSelected(null);
   }, [selectedRisk]);
 
+  useEffect(() => {
+    if (!selectedRiskCategoryId) return;
+    setSelected(null);
+  }, [selectedRiskCategoryId]);
+
   const scenarios = useMemo(() => data.scenarios ?? [], [data]);
+
+  /** URL category changed (e.g. after navigation); clear sub-risk if it does not exist under this category. */
+  useEffect(() => {
+    if (risk === "all") return;
+    const cat = selectedRiskCategoryId ?? null;
+    if (!cat) return;
+    const ok = scenarios.some(
+      (s) => s.riskId === risk && s.riskCategoryId === cat
+    );
+    if (!ok) setRisk("all");
+  }, [selectedRiskCategoryId, scenarios, risk]);
 
   const ageRanges = useMemo(
     () => Array.from(new Set(scenarios.map((s) => s.ageRange).filter(Boolean))),
@@ -309,9 +333,16 @@ export function ViewerDataExplorer({
   const filtered = useMemo(
     () =>
       scenarios.filter((s) => {
+        const activeCategoryFilter = selectedRiskCategoryId ?? selectedRisk?.riskCategoryId;
         if (ageRange !== "all" && s.ageRange !== ageRange) return false;
         if (risk !== "all" && s.riskId !== risk) return false;
-        if (selectedRisk && s.riskCategoryId !== selectedRisk.riskCategoryId) return false;
+        if (
+          activeCategoryFilter &&
+          activeCategoryFilter !== "all" &&
+          s.riskCategoryId !== activeCategoryFilter
+        ) {
+          return false;
+        }
         if (prompt !== "all" && s.prompt !== prompt) return false;
         if (grade !== "all" && s.safetyGrade !== grade) return false;
         if (query.trim()) {
@@ -332,8 +363,28 @@ export function ViewerDataExplorer({
         }
         return true;
       }),
-    [scenarios, ageRange, risk, selectedRisk, prompt, grade, query]
+    [scenarios, ageRange, risk, selectedRisk, selectedRiskCategoryId, prompt, grade, query]
   );
+
+  function handleRiskSelectChange(nextRisk: string) {
+    setRisk(nextRisk);
+    setSelected(null);
+    if (!onSubRiskSelectNavigateToCategory || urlRiskCategory === undefined) {
+      return;
+    }
+    if (nextRisk === "all") {
+      if (urlRiskCategory !== "all") {
+        onSubRiskSelectNavigateToCategory("all");
+      }
+      return;
+    }
+    const sample = scenarios.find((s) => s.riskId === nextRisk);
+    const cat = sample?.riskCategoryId?.trim();
+    if (!cat) return;
+    if (urlRiskCategory === "all" || urlRiskCategory !== cat) {
+      onSubRiskSelectNavigateToCategory(cat);
+    }
+  }
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-4">
@@ -354,7 +405,7 @@ export function ViewerDataExplorer({
             </select>
             <select
               value={risk}
-              onChange={(e) => setRisk(e.target.value)}
+              onChange={(e) => handleRiskSelectChange(e.target.value)}
               className="rounded-lg border border-[var(--border)] bg-black/30 px-3 py-2 text-white"
             >
               <option value="all">All Risks</option>
@@ -439,7 +490,7 @@ export function ViewerDataExplorer({
                       }}
                       tabIndex={0}
                       role="button"
-                      aria-selected={isSelected}
+                      aria-pressed={isSelected}
                       className={`cursor-pointer transition-colors hover:bg-black/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--accent)]/50 ${
                         isSelected ? "bg-black/25" : ""
                       }`}

@@ -4,7 +4,7 @@ import { TopNav } from "@/components/TopNav";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Child Safety Evals",
+  title: "Child Safety AI Evaluations",
   description: "UI for child safety benchmark evaluation methods",
 };
 

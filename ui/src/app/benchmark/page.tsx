@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ResultsOverview } from "@/components/ResultsOverview";
-import { SignOutButton } from "@/components/SignOutButton";
 import type { ViewerData } from "@/lib/viewerDataFromZip";
 
 const PROMPTS = ["default", "child"];
@@ -135,7 +134,7 @@ export default function Home() {
   const [customModelList, setCustomModelList] = useState<string[]>([]);
   const [flowPhase, setFlowPhase] = useState<FlowPhase>("idle");
   const [overviewData, setOverviewData] = useState<ViewerData | null>(null);
-  const [selectedZipFile, setSelectedZipFile] = useState<string | null>(null);
+  const [latestEvaluationRunId, setLatestEvaluationRunId] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
@@ -180,6 +179,7 @@ export default function Home() {
       setRunning(true);
       setFlowPhase("running");
       setOverviewData(null);
+      setLatestEvaluationRunId(null);
       setOutput("Running evaluation...\n\n");
 
       try {
@@ -228,8 +228,21 @@ export default function Home() {
           text += decoder.decode(value, { stream: true });
           setOutput(text);
         }
-        setFlowPhase("complete");
-        await refreshOverviewFromDisk(selectedZipFile ?? undefined);
+        const benchmarkHadTestFailures =
+          /\bTest failed for key\b/m.test(text) ||
+          /\d+\s+tests?\s+failed\b/i.test(text);
+        if (benchmarkHadTestFailures) {
+          setOverviewData(null);
+          setLatestEvaluationRunId(null);
+          setFlowPhase("idle");
+        } else {
+          const idMatch = text.match(/Saved evaluation run to database \(id:\s*([^)]+)\)/);
+          if (idMatch?.[1]) {
+            setLatestEvaluationRunId(idMatch[1].trim());
+          }
+          setFlowPhase("complete");
+          await refreshOverviewFromDisk();
+        }
       } catch (e) {
         if ((e as Error).name === "AbortError") {
           setOutput((prev) => prev + "\n\n[Stopped by user]");
@@ -242,7 +255,7 @@ export default function Home() {
         abortRef.current = null;
       }
     },
-    [refreshOverviewFromDisk, selectedZipFile]
+    [refreshOverviewFromDisk]
   );
 
   const stop = useCallback(() => {
@@ -254,7 +267,7 @@ export default function Home() {
       <header className="mb-10 flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-white tracking-tight">
-            Child Safety Evaluations
+            Child Safety Benchmark
           </h1>
           <p className="text-[var(--muted)] mt-1">
             Run evaluations using pre-generated seeds and scenarios.
@@ -296,7 +309,11 @@ export default function Home() {
           <div className="flex items-center gap-2">
             {flowPhase === "complete" && (
               <Link
-                href="/benchmark/runs"
+                href={
+                  latestEvaluationRunId
+                    ? `/benchmark/runs/${encodeURIComponent(latestEvaluationRunId)}`
+                    : "/benchmark/runs"
+                }
                 className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-1 text-sm font-medium text-white hover:bg-[var(--border)]"
               >
                 View Results
@@ -323,7 +340,7 @@ export default function Home() {
           <ResultsOverview
             data={overviewData}
             scenariosHref="/benchmark/runs"
-            uploadLabel={selectedZipFile ?? "Latest evaluation results"}
+            uploadLabel="Latest evaluation results"
           />
         </div>
       )}
@@ -363,7 +380,7 @@ function PipelineForm({
       list.unshift(ADD_CUSTOM_TARGET_OPTION);
     }
     return list;
-  }, [customModelList, modelList, shouldShowSyntheticCustomTarget]);
+  }, [modelList, shouldShowSyntheticCustomTarget]);
 
   const nonCustomModelOptions = useMemo(
     () => modelList.filter((m) => !customModelList.includes(m)),

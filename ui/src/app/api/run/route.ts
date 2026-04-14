@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { spawn } from "node:child_process";
 import * as os from "node:os";
 import * as path from "node:path";
@@ -11,7 +11,14 @@ import {
   persistEvaluationRunToBackend,
   upsertModelInBackend,
 } from "@/lib/backend-sync";
-import { buildViewerDataFromResultsZip } from "@/lib/viewerDataFromZip";
+import {
+  buildViewerDataFromResultsZip,
+  extractResultsDocumentFromZipBuffer,
+} from "@/lib/viewerDataFromZip";
+import {
+  createPipeResultsZipStdoutFilter,
+  extractZipBase64FromStdout,
+} from "@/lib/pipeResultsStdout";
 
 function parseEnvFile(envPath: string): Record<string, string> {
   if (!existsSync(envPath)) return {};
@@ -98,6 +105,7 @@ function buildArgs(body: RunRequestBody): string[] {
       ];
       if (body.input) args.push("-i", body.input);
       if (body.output) args.push("-o", body.output);
+      args.push("--pipe-results");
       if (body.prompts?.length)
         args.push("--prompts", body.prompts.join(","));
       return ["run", ...args];
@@ -263,6 +271,10 @@ export async function POST(request: NextRequest) {
         controller.close();
       };
 
+      let runStdoutRaw = "";
+      const pipeZipFilter =
+        body.command === "run" ? createPipeResultsZipStdoutFilter() : null;
+
       const nodeArgs = useInMemoryEnv
         ? [cliPath, ...args]
         : ["--env-file=" + envPath, cliPath, ...args];
@@ -289,7 +301,13 @@ export async function POST(request: NextRequest) {
       });
 
       child.stdout?.on("data", (chunk: Buffer) => {
-        send(chunk.toString());
+        const t = chunk.toString();
+        if (body.command === "run" && pipeZipFilter) {
+          runStdoutRaw += t;
+          send(pipeZipFilter(t));
+        } else {
+          send(t);
+        }
       });
       child.stderr?.on("data", (chunk: Buffer) => {
         send(chunk.toString());
@@ -306,30 +324,31 @@ export async function POST(request: NextRequest) {
             if (signal) send(`\nProcess killed: ${signal}\n`);
             else if (code != null && code !== 0) send(`\nExit code: ${code}\n`);
             else if (body.command === "run") {
-              const absPath = runOutputAbsPath;
-              if (!absPath) {
-                closeOnce();
-                return;
-              }
-              if (existsSync(absPath)) {
-                const raw = readFileSync(absPath, "utf-8");
-                const json = JSON.parse(raw) as Record<string, unknown>;
-                const ext = path.extname(absPath);
-                const zipPath = (ext ? absPath.slice(0, -ext.length) : absPath) + ".zip";
+              const b64 = extractZipBase64FromStdout(runStdoutRaw);
+              if (!b64) {
+                send(
+                  `\nNote: no results archive was emitted (rebuild CLI from ../benchmark with yarn tsbuild, or the run ended before completion).\n`
+                );
+              } else {
+                const zipBytes = new Uint8Array(Buffer.from(b64, "base64"));
+                const zipBuffer = zipBytes.buffer.slice(
+                  zipBytes.byteOffset,
+                  zipBytes.byteOffset + zipBytes.byteLength
+                );
+                const json =
+                  (await extractResultsDocumentFromZipBuffer(zipBuffer)) ??
+                  ({} as Record<string, unknown>);
                 let viewerData: Record<string, unknown> | undefined;
-                if (existsSync(zipPath)) {
-                  try {
-                    const zipRaw = readFileSync(zipPath);
-                    viewerData = (await buildViewerDataFromResultsZip(
-                      new Uint8Array(zipRaw).buffer
-                    )) as Record<string, unknown>;
-                  } catch (zipErr) {
-                    send(
-                      `\nNote: results zip could not be parsed for scenario/message ingestion (${
-                        zipErr instanceof Error ? zipErr.message : "unknown error"
-                      }).\n`
-                    );
-                  }
+                try {
+                  viewerData = (await buildViewerDataFromResultsZip(
+                    zipBuffer
+                  )) as Record<string, unknown>;
+                } catch (zipErr) {
+                  send(
+                    `\nNote: piped results could not be parsed for scenario/message ingestion (${
+                      zipErr instanceof Error ? zipErr.message : "unknown error"
+                    }).\n`
+                  );
                 }
                 const { id } = await persistEvaluationRunToBackend({
                   email: sessionEmail,
@@ -337,12 +356,6 @@ export async function POST(request: NextRequest) {
                   viewerData,
                 });
                 send(`\nSaved evaluation run to database (id: ${id}).\n`);
-                try {
-                  rmSync(absPath, { force: true });
-                  rmSync(zipPath, { force: true });
-                } catch {
-                  /* best effort cleanup */
-                }
               }
             }
           } catch (e) {

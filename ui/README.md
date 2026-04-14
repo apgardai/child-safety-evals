@@ -1,4 +1,4 @@
-# Child Safety Evals UI
+# Child Safety AI Evaluations UI
 
 Next.js UI for running the child safety benchmark pipeline (generate seeds, expand scenarios, run evaluations).
 

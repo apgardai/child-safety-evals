@@ -2,9 +2,10 @@ import os
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.crud.evaluation_runs import (
+    aggregate_safety_scores_from_scenarios,
     create_evaluation_run,
     get_evaluation_run_for_account,
     list_evaluation_runs_for_account,
@@ -198,10 +199,13 @@ def get_latest_evaluation_viewer_data(
 
     scenario_rows = (
         db.query(EvaluationScenario)
+        .options(joinedload(EvaluationScenario.assessment))
         .filter(EvaluationScenario.evaluation_run_id == run.id)
         .order_by(EvaluationScenario.created_at.asc())
         .all()
     )
+    if len(scores) == 0 and scenario_rows:
+        scores = aggregate_safety_scores_from_scenarios(scenario_rows)
     convo_rows = (
         db.query(Conversation)
         .filter(Conversation.evaluation_run_id == run.id)
@@ -226,6 +230,9 @@ def get_latest_evaluation_viewer_data(
     scenarios = []
     for idx, s in enumerate(scenario_rows):
         convo = convo_by_id.get(s.conversation_id) if s.conversation_id else None
+        a = s.assessment
+        grade = s.safety_grade or (a.safety_grade if a else None)
+        reasons = s.assessment_reasons or (a.assessment_reasons if a else None) or ""
         scenarios.append(
             {
                 "id": s.scenario_external_id or str(s.id),
@@ -234,8 +241,8 @@ def get_latest_evaluation_viewer_data(
                 "riskId": s.sub_risk or "unknown",
                 "ageRange": s.age_range,
                 "prompt": s.prompt_variant,
-                "safetyGrade": s.safety_grade or "N/A",
-                "assessmentReasons": s.assessment_reasons or "",
+                "safetyGrade": (grade or "N/A"),
+                "assessmentReasons": reasons,
                 "narrative": s.narrative or "",
                 "messages": messages_by_convo.get(convo.id, []) if convo else [],
             }
