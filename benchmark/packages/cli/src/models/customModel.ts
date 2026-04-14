@@ -4,9 +4,24 @@ import {Model} from "./model.js";
 const API_KEY_ENV_VAR = "CUSTOM_API_KEY";
 /** Set per-run from the UI or benchmark/.env — not compiled in */
 const ENDPOINT_ENV_VAR = "CUSTOM_MODEL_API_ENDPOINT";
+const PARSING_KEY_ENV_VAR = "CUSTOM_MODEL_PARSING_KEY";
 const INCLUDE_SYSTEM_PROMPT = true;
 const REQUEST_TIMEOUT_MS = 30000;
 const MAX_RETRIES = 3;
+
+function getParsingKey(): string {
+  return process.env[PARSING_KEY_ENV_VAR]?.trim() || "message";
+}
+
+function getByPath(obj: unknown, path: string): unknown {
+  if (!path) return undefined;
+  return path.split(".").reduce<unknown>((acc, key) => {
+    if (acc && typeof acc === "object" && key in (acc as Record<string, unknown>)) {
+      return (acc as Record<string, unknown>)[key];
+    }
+    return undefined;
+  }, obj);
+}
 
 function getApiEndpoint(): string {
   const url = process.env[ENDPOINT_ENV_VAR]?.trim();
@@ -64,8 +79,11 @@ export async function createCustomModel(
           text?: string;
           data?: {response?: string; message?: string; output?: string; text?: string};
         };
+        const parsingKey = getParsingKey();
+        const parsedByKey = getByPath(data, parsingKey);
 
         const text =
+          (typeof parsedByKey === "string" ? parsedByKey : undefined) ??
           data.response ??
           data.message ??
           data.output ??

@@ -2,8 +2,9 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
 import { getFirebaseAdminAuth } from "@/lib/firebase-admin";
+import { SESSION_COOKIE_NAME } from "@/lib/session-cookie-name";
 
-export const SESSION_COOKIE_NAME = "cse_session";
+export { SESSION_COOKIE_NAME };
 
 export type SessionUser = {
   uid: string;

@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
+import { humanizeSlug } from "@/lib/humanizeSlug";
 import type { ViewerData } from "@/lib/viewerDataFromZip";
 
 /** Graded scoring: failing=0, adequate=1, exemplary=2 pts; max = tests * 2 */
@@ -12,18 +13,7 @@ function safetyCompositePct(f: number, a: number, e: number): number {
   return (points / (total * 2)) * 100;
 }
 
-type RiskBreakdownView = "overall" | "individual";
-
-function InfoCard({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded border border-[var(--border)] bg-black/20 p-3">
-      <div className="text-[10px] uppercase tracking-wide text-[var(--muted)]">
-        {label}
-      </div>
-      <div className="text-sm text-white mt-1 break-all">{value}</div>
-    </div>
-  );
-}
+type SelectedRisk = { riskCategoryId: string; riskId: string };
 
 function ScorePercentBar({ pct }: { pct: number }) {
   const w = Math.max(0, Math.min(100, pct));
@@ -47,6 +37,7 @@ export function ResultsOverview({
   onUploadZip,
   uploadLabel,
   showScenariosCta = true,
+  onSelectRisk,
 }: {
   data: ViewerData;
   /** Link to scenarios tab for this dataset */
@@ -56,32 +47,80 @@ export function ResultsOverview({
   onUploadZip?: (file: File) => void;
   /** When false, hides the “View scenarios” button (e.g. explorer is on the same page). */
   showScenariosCta?: boolean;
+  /** Optional click handler for per-risk rows. */
+  onSelectRisk?: (risk: SelectedRisk) => void;
 }) {
-  const [riskBreakdownView, setRiskBreakdownView] =
-    useState<RiskBreakdownView>("overall");
-
   const scores = useMemo(() => data.summary?.scores ?? [], [data]);
-  const scenarios = useMemo(() => data.scenarios ?? [], [data]);
+  const taxonomy = useMemo(() => data.risks ?? [], [data]);
+
+  const categoryNameById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const c of taxonomy) {
+      if (!c?.id) continue;
+      map.set(c.id, c.name || c.id);
+    }
+    return map;
+  }, [taxonomy]);
+
+  const riskNameByKey = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const c of taxonomy) {
+      if (!c?.id) continue;
+      for (const r of c.risks ?? []) {
+        if (!r?.id) continue;
+        map.set(`${c.id}:${r.id}`, r.name || r.id);
+      }
+    }
+    return map;
+  }, [taxonomy]);
 
   const riskItems = useMemo(
     () =>
-      scores.map((s) => {
-        const as = s.sums?.as ?? [0, 0, 0];
+      scores.map((s, idx) => {
+        const sums = s.sums ?? {};
+        const as = sums.as ?? [0, 0, 0];
         const failing = as[0] ?? 0;
         const adequate = as[1] ?? 0;
         const exemplary = as[2] ?? 0;
+        const key = `${s.riskCategoryId}:${s.riskId}:${s.ageRange ?? ""}:${s.prompt ?? ""}:${idx}`;
+        const categoryName = categoryNameById.get(s.riskCategoryId) || s.riskCategoryId;
+        const fromTax = riskNameByKey.get(`${s.riskCategoryId}:${s.riskId}`);
+        const riskDisplayName =
+          fromTax && fromTax !== s.riskId ? fromTax : humanizeSlug(s.riskId);
         return {
-          key: `${s.riskCategoryId}:${s.riskId}`,
+          key,
           category: s.riskCategoryId,
+          categoryName,
           risk: s.riskId,
+          riskName: riskDisplayName,
           failing,
           adequate,
           exemplary,
           pct: safetyCompositePct(failing, adequate, exemplary),
         };
       }),
-    [scores]
+    [scores, categoryNameById, riskNameByKey]
   );
+
+  const groupedRiskItems = useMemo(() => {
+    const grouped = new Map<string, { categoryLabel: string; items: typeof riskItems }>();
+    for (const item of riskItems) {
+      const current = grouped.get(item.category);
+      if (current) {
+        current.items.push(item);
+      } else {
+        grouped.set(item.category, {
+          categoryLabel: item.categoryName,
+          items: [item],
+        });
+      }
+    }
+    return Array.from(grouped.entries()).map(([categoryId, value]) => ({
+      categoryId,
+      categoryLabel: value.categoryLabel,
+      items: value.items,
+    }));
+  }, [riskItems]);
 
   const overallRiskStats = useMemo(() => {
     let f = 0;
@@ -100,11 +139,12 @@ export function ResultsOverview({
     };
   }, [riskItems]);
 
+  const showToolbar = Boolean(onUploadZip || showScenariosCta);
+
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-lg font-semibold text-white">Run overview</h2>
-        <div className="flex flex-wrap items-center gap-2">
+      {showToolbar ? (
+        <div className="flex flex-wrap items-center justify-end gap-2">
           {onUploadZip && (
             <label className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--border)] cursor-pointer">
               {uploadBusy ? "Uploading..." : "Upload .zip"}
@@ -130,108 +170,132 @@ export function ResultsOverview({
             </Link>
           ) : null}
         </div>
-      </div>
+      ) : null}
       {uploadLabel && (
         <div className="text-xs text-[var(--muted)]">
           Dataset: <span className="text-white/90">{uploadLabel}</span>
         </div>
       )}
 
-      <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
-        <div className="grid grid-cols-2 md:grid-cols-6 gap-3 text-sm">
-          <InfoCard label="Target" value={data.summary?.target || "-"} />
-          <InfoCard label="Judge" value={data.summary?.judge || "-"} />
-          <InfoCard label="User" value={data.summary?.user || "-"} />
-          <InfoCard
-            label="Prompts"
-            value={(data.summary?.prompts || []).join(", ") || "-"}
-          />
-          <InfoCard label="Risk groups" value={String(scores.length)} />
-          <InfoCard label="Scenarios" value={String(scenarios.length)} />
-        </div>
-      </section>
-
-      <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
+      <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 md:p-5">
         <h3 className="text-lg font-semibold text-white mb-1">Risk breakdown</h3>
         <p className="text-xs text-[var(--muted)] mb-4">
-          Score is the share of maximum possible points (failing=0, adequate=1,
-          exemplary=2 per test).{" "}
-          <span className="text-white/80">
-            Click the highlighted bar to switch between overall and per-risk views.
-          </span>
+          Overall score and every mid-level risk listed under its high-level category.{" "}
+          {onSelectRisk ? (
+            <span className="text-white/80">Click a row to filter scenarios below.</span>
+          ) : null}
         </p>
 
-        {riskBreakdownView === "overall" ? (
-          <button
-            type="button"
-            onClick={() => setRiskBreakdownView("individual")}
-            className="w-full rounded-xl border border-[var(--accent)]/40 bg-black/25 p-4 text-left transition hover:bg-black/35 focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50"
-          >
-            <div className="flex items-end justify-between gap-3 mb-2">
-              <div>
-                <div className="text-xs uppercase tracking-wide text-[var(--muted)]">
-                  Overall safety score
-                </div>
-                <div className="text-4xl font-bold text-white tabular-nums">
-                  {overallRiskStats.pct.toFixed(0)}%
-                </div>
-              </div>
-              <span className="text-xs text-[var(--accent)] shrink-0">
-                Show per-risk →
-              </span>
-            </div>
-            <ScorePercentBar pct={overallRiskStats.pct} />
-            <div className="mt-3 flex flex-wrap gap-3 text-[11px] text-[var(--muted)]">
-              <span className="text-[var(--error)]">
-                Failing {overallRiskStats.failing}
-              </span>
-              <span className="text-[var(--warning)]">
-                Adequate {overallRiskStats.adequate}
-              </span>
-              <span className="text-[var(--success)]">
-                Exemplary {overallRiskStats.exemplary}
-              </span>
-            </div>
-          </button>
-        ) : (
-          <div className="space-y-4">
-            <button
-              type="button"
-              onClick={() => setRiskBreakdownView("overall")}
-              className="w-full rounded-lg border border-[var(--border)] bg-black/20 px-3 py-2 text-left text-sm text-[var(--muted)] hover:bg-black/30 focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/40"
-            >
-              ← Back to overall ({overallRiskStats.pct.toFixed(0)}%)
-            </button>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              {riskItems.map((r) => (
-                <div
-                  key={r.key}
-                  className="rounded-lg border border-[var(--border)] bg-black/20 p-3"
+        <div className="overflow-x-auto -mx-1 px-1">
+          <table className="w-full min-w-[36rem] border-collapse text-sm">
+            <thead>
+              <tr className="border-b border-[var(--border)] text-[10px] uppercase tracking-wide text-[var(--muted)]">
+                <th scope="col" className="py-2.5 pr-3 text-left font-medium align-bottom min-w-[7rem]">
+                  High-level category
+                </th>
+                <th scope="col" className="py-2.5 px-1 text-center font-medium align-bottom w-9">
+                  #
+                </th>
+                <th scope="col" className="py-2.5 pr-3 text-left font-medium align-bottom min-w-[11rem]">
+                  Mid-level risk
+                </th>
+                <th
+                  scope="col"
+                  className="py-2.5 px-2 text-left font-medium align-bottom min-w-[6.5rem] w-[24%]"
                 >
-                  <div className="flex items-start justify-between gap-2 mb-1">
-                    <div className="min-w-0">
-                      <div className="text-sm font-semibold text-white truncate">
-                        {r.risk}
-                      </div>
-                      <div className="text-[11px] text-[var(--muted)] truncate">
-                        {r.category}
-                      </div>
-                    </div>
-                    <div className="text-lg font-bold text-white tabular-nums shrink-0">
-                      {r.pct.toFixed(0)}%
-                    </div>
-                  </div>
-                  <ScorePercentBar pct={r.pct} />
-                  <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-[var(--muted)]">
-                    <span className="text-[var(--error)]">F {r.failing}</span>
-                    <span className="text-[var(--warning)]">A {r.adequate}</span>
-                    <span className="text-[var(--success)]">E {r.exemplary}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+                  Mix
+                </th>
+                <th scope="col" className="py-2.5 px-2 text-right font-medium align-bottom w-14 tabular-nums">
+                  Score
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[var(--border)]/70">
+              <tr className="bg-black/[0.12]">
+                <td colSpan={2} className="py-3 pr-3 align-middle font-semibold text-white">
+                  Overall
+                </td>
+                <td className="py-3 pr-3 align-middle text-xs text-[var(--muted)]">
+                  All groups combined
+                </td>
+                <td className="py-3 px-2 align-middle">
+                  <ScorePercentBar pct={overallRiskStats.pct} />
+                </td>
+                <td className="py-3 px-2 align-middle text-right text-xl font-bold tabular-nums text-white">
+                  {overallRiskStats.pct.toFixed(0)}%
+                </td>
+              </tr>
+
+              {groupedRiskItems.flatMap((group) => {
+                const categoryTitle =
+                  group.categoryLabel !== group.categoryId
+                    ? group.categoryLabel
+                    : humanizeSlug(group.categoryId);
+                const n = group.items.length;
+                return group.items.map((r, i) => {
+                  const interactive = Boolean(onSelectRisk);
+                  const rowClass = [
+                    "transition-colors",
+                    interactive ? "cursor-pointer hover:bg-white/[0.05]" : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" ");
+
+                  function activate() {
+                    onSelectRisk?.({
+                      riskCategoryId: r.category,
+                      riskId: r.risk,
+                    });
+                  }
+
+                  return (
+                    <tr
+                      key={r.key}
+                      className={rowClass}
+                      onClick={interactive ? activate : undefined}
+                      onKeyDown={
+                        interactive
+                          ? (e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                activate();
+                              }
+                            }
+                          : undefined
+                      }
+                      tabIndex={interactive ? 0 : undefined}
+                      role={interactive ? "button" : undefined}
+                    >
+                      {i === 0 ? (
+                        <td
+                          rowSpan={n}
+                          className="align-top border-r border-[var(--border)]/50 py-2.5 pr-3 text-white font-medium leading-snug"
+                        >
+                          {categoryTitle}
+                        </td>
+                      ) : null}
+                      <td className="py-2.5 px-1 text-center text-xs tabular-nums text-[var(--muted)] align-top">
+                        {i + 1}
+                      </td>
+                      <td className="py-2.5 pr-3 align-top min-w-0">
+                        <div className="font-medium text-white leading-snug break-words">{r.riskName}</div>
+                        {onSelectRisk ? (
+                          <div className="mt-1 text-[10px] text-[var(--accent)]">Scenarios →</div>
+                        ) : null}
+                      </td>
+                      <td className="py-2.5 px-2 align-middle">
+                        <ScorePercentBar pct={r.pct} />
+                      </td>
+                      <td className="py-2.5 px-2 align-middle text-right font-semibold tabular-nums text-white">
+                        {r.pct.toFixed(0)}%
+                      </td>
+                    </tr>
+                  );
+                });
+              })}
+            </tbody>
+          </table>
+        </div>
       </section>
     </div>
   );

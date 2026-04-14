@@ -2,10 +2,13 @@ import fs from "node:fs";
 import path from "node:path";
 
 const rootDir = path.resolve(process.cwd());
-// Use archived-results so benchmark CLI runs don't overwrite viewer data
-const archivedDir = path.join(rootDir, "results-viewer", "archived-results");
+const viewerRoot = path.join(rootDir, "results-viewer");
+// Aggregate scores: stable archived run summary (not overwritten by CLI)
+const archivedDir = path.join(viewerRoot, "archived-results");
 const resultsPath = path.join(archivedDir, "results.json");
-const testResultsDir = path.join(archivedDir, "testResults");
+// Per-scenario JSON: prefer results-viewer/testResults; fall back to archived copy
+const testResultsDirTop = path.join(viewerRoot, "testResults");
+const testResultsDirArchived = path.join(archivedDir, "testResults");
 const risksPath = path.join(rootDir, "packages", "benchmark", "data", "risks.json");
 const outDir = path.join(rootDir, "results-viewer", "data");
 const outPath = path.join(outDir, "viewer-data.json");
@@ -77,11 +80,18 @@ function normalizeScenarioRecord(record, fileName, categoryById, riskByKey) {
   };
 }
 
+function pickTestResultsDir() {
+  const top = listJsonFiles(testResultsDirTop);
+  if (top.length > 0) return testResultsDirTop;
+  return testResultsDirArchived;
+}
+
 function main() {
   const results = safeReadJson(resultsPath) || {};
   const risks = safeReadJson(risksPath) || [];
   const { categoryById, riskByKey } = buildRiskMaps(risks);
 
+  const testResultsDir = pickTestResultsDir();
   const testResultFiles = listJsonFiles(testResultsDir);
   const scenarios = testResultFiles
     .map((filePath) => {
@@ -112,8 +122,10 @@ function main() {
   fs.mkdirSync(outDir, { recursive: true });
   fs.writeFileSync(outPath, JSON.stringify(output, null, 2));
   console.log(
-    `Wrote ${scenarios.length} scenarios to ${path.relative(rootDir, outPath)}`
+    `Scenarios from ${path.relative(rootDir, testResultsDir)} (${scenarios.length} files)`
   );
+  console.log(`Summary from ${path.relative(rootDir, resultsPath)}`);
+  console.log(`Wrote ${path.relative(rootDir, outPath)}`);
 }
 
 main();

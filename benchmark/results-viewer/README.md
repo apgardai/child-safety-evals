@@ -21,11 +21,14 @@ From `child-safety-evals/benchmark`:
 node ./results-viewer/build-viewer-data.mjs
 ```
 
-This reads from **archived results** (stable, not overwritten by benchmark runs):
+This reads:
 
-- `results-viewer/archived-results/results.json`
-- `results-viewer/archived-results/testResults/*.json`
-- `packages/benchmark/data/risks.json`
+- **Overall run summary** (stable, not overwritten by benchmark runs):  
+  `results-viewer/archived-results/results.json`  
+  (`target`, `judge`, `user`, `prompts`, and grouped `scores` — see benchmark `README.md` *Interpreting results*.)
+- **Per-scenario test JSON**: `results-viewer/testResults/*.json`  
+  If that directory is empty, falls back to `results-viewer/archived-results/testResults/*.json`.
+- **Taxonomy labels**: `packages/benchmark/data/risks.json`
 
 and writes:
 

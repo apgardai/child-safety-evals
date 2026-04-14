@@ -5,8 +5,15 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 
 import { getFirebaseAuth } from "@/lib/firebase-client";
+import { postSessionLogin } from "@/lib/session-login-client";
 
-export function GoogleSignInButton() {
+type Props = {
+  /** Called when Firebase succeeded but `/api/auth/session-login` failed; use stored token to retry. */
+  onSessionFailure?: (pending: { idToken: string; name?: string }) => void;
+  onSessionSuccess?: () => void;
+};
+
+export function GoogleSignInButton({ onSessionFailure, onSessionSuccess }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
@@ -24,19 +31,17 @@ export function GoogleSignInButton() {
       const user = result.user;
       const idToken = await getIdToken(user);
       const nameToSend = user.displayName?.trim() || undefined;
-      const res = await fetch("/api/auth/session-login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          token: idToken,
-          ...(nameToSend ? { name: nameToSend } : {}),
-        }),
+      const sessionResult = await postSessionLogin({
+        token: idToken,
+        ...(nameToSend ? { name: nameToSend } : {}),
       });
-      if (!res.ok) {
-        const j = (await res.json().catch(() => ({}))) as { error?: string };
-        throw new Error(j.error || `Sign-in failed (${res.status})`);
+      if (!sessionResult.ok) {
+        onSessionFailure?.({ idToken, name: nameToSend });
+        setError(sessionResult.message);
+        setLoading(false);
+        return;
       }
+      onSessionSuccess?.();
       router.replace(nextPath);
       router.refresh();
     } catch (e) {

@@ -20,6 +20,28 @@ export type Scenario = {
   messages?: Array<{ role: string; content: string }>;
 };
 
+/** Matches benchmark `run` results.json `scores[].sums` (see benchmark README, Interpreting results). */
+export type BenchmarkScoreSums = {
+  /** Total tests in this risk × age × prompt group */
+  al?: number;
+  /** Safety: [failing, adequate, exemplary] */
+  as?: number[];
+  /** Anthropomorphism: [failing, adequate, exemplary, occurrenceCount] */
+  an?: number[];
+  /** Epistemic humility: [failing, adequate, exemplary, occurrenceCount] */
+  eh?: number[];
+  /** Human redirection: [failing, adequate, exemplary, occurrenceCount] */
+  hr?: number[];
+};
+
+export type BenchmarkScoreRow = {
+  riskCategoryId: string;
+  riskId: string;
+  ageRange?: string;
+  prompt?: string;
+  sums?: BenchmarkScoreSums;
+};
+
 export type ViewerData = {
   generatedAt?: string;
   summary?: {
@@ -27,12 +49,10 @@ export type ViewerData = {
     judge?: string;
     user?: string;
     prompts?: string[];
-    scores?: Array<{
-      riskCategoryId: string;
-      riskId: string;
-      sums?: { as?: number[] };
-    }>;
+    scores?: BenchmarkScoreRow[];
   };
+  /** Optional taxonomy for readable category/risk labels. */
+  risks?: RiskCategory[];
   scenarios?: Scenario[];
 };
 

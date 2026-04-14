@@ -1,37 +1,15 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
-import { SESSION_COOKIE_NAME } from "@/lib/auth-server";
-
-function isProtectedPath(pathname: string): boolean {
-  if (
-    pathname === "/benchmark" ||
-    pathname.startsWith("/benchmark/") ||
-    pathname === "/models" ||
-    pathname.startsWith("/models/") ||
-    pathname === "/scenarios" ||
-    pathname.startsWith("/scenarios/")
-  ) {
-    return true;
-  }
-  if (
-    pathname.startsWith("/api/run") ||
-    pathname.startsWith("/api/models") ||
-    pathname.startsWith("/api/scenarios") ||
-    pathname.startsWith("/api/custom-model") ||
-    pathname.startsWith("/api/env")
-  ) {
-    return true;
-  }
-  return false;
-}
+import { requiresAuthPathname } from "@/lib/auth-paths";
+import { SESSION_COOKIE_NAME } from "@/lib/session-cookie-name";
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   if (pathname.startsWith("/api/auth")) {
     return NextResponse.next();
   }
-  if (!isProtectedPath(pathname)) {
+  if (!requiresAuthPathname(pathname)) {
     return NextResponse.next();
   }
 
@@ -49,10 +27,19 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
+  // Include index routes explicitly (e.g. `/benchmark`); `/:path*` alone may not match them in some
+  // Next.js versions, which would skip middleware for those URLs.
   matcher: [
+    "/benchmark",
     "/benchmark/:path*",
+    "/models",
     "/models/:path*",
+    "/scenarios",
     "/scenarios/:path*",
+    "/leaderboard",
+    "/leaderboard/:path*",
+    "/test-results",
+    "/test-results/:path*",
     "/api/run",
     "/api/models",
     "/api/scenarios/:path*",

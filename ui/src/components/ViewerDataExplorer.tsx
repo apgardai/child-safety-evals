@@ -1,10 +1,12 @@
 "use client";
 
 import {
+  useEffect,
   useMemo,
   useState,
   type ReactNode,
 } from "react";
+import { humanizeSlug } from "@/lib/humanizeSlug";
 import type { Scenario, ViewerData } from "@/lib/viewerDataFromZip";
 
 type SafetyGradeKind = "failing" | "adequate" | "exemplary" | "unknown";
@@ -71,6 +73,19 @@ function formatPromptVariantLabel(prompt: string | undefined): string {
   return p.charAt(0).toUpperCase() + p.slice(1);
 }
 
+function scenarioRiskCell(s: Scenario): { primary: string; secondary?: string } {
+  const risk =
+    s.riskName?.trim() && s.riskName !== s.riskId
+      ? s.riskName.trim()
+      : humanizeSlug(s.riskId) || "—";
+  const cat =
+    s.riskCategoryName?.trim() && s.riskCategoryName !== s.riskCategoryId
+      ? s.riskCategoryName.trim()
+      : humanizeSlug(s.riskCategoryId);
+  if (!cat || cat === risk) return { primary: risk };
+  return { primary: risk, secondary: cat };
+}
+
 function inferModelMaker(slug: string | undefined): string {
   const s = (slug ?? "").trim().toLowerCase();
   if (!s) return "—";
@@ -128,10 +143,12 @@ function ScenarioDetailMeta({
 }) {
   const riskCategory =
     scenario.riskCategoryName?.trim() ||
-    scenario.riskCategoryId?.trim() ||
+    humanizeSlug(scenario.riskCategoryId) ||
     "—";
   const riskLabel =
-    scenario.riskName?.trim() || scenario.riskId?.trim() || "—";
+    scenario.riskName?.trim() ||
+    humanizeSlug(scenario.riskId) ||
+    "—";
   const maker = inferModelMaker(targetModelSlug);
   const modelLabel = formatTargetModelLabel(targetModelSlug);
 
@@ -240,13 +257,25 @@ function ChatConversation({
   );
 }
 
-export function ViewerDataExplorer({ data }: { data: ViewerData }) {
+export function ViewerDataExplorer({
+  data,
+  selectedRisk,
+}: {
+  data: ViewerData;
+  selectedRisk?: { riskCategoryId: string; riskId: string } | null;
+}) {
   const [selected, setSelected] = useState<Scenario | null>(null);
   const [ageRange, setAgeRange] = useState("all");
   const [risk, setRisk] = useState("all");
   const [prompt, setPrompt] = useState("all");
   const [grade, setGrade] = useState("all");
   const [query, setQuery] = useState("");
+
+  useEffect(() => {
+    if (!selectedRisk) return;
+    setRisk(selectedRisk.riskId);
+    setSelected(null);
+  }, [selectedRisk]);
 
   const scenarios = useMemo(() => data.scenarios ?? [], [data]);
 
@@ -263,21 +292,47 @@ export function ViewerDataExplorer({ data }: { data: ViewerData }) {
     [scenarios]
   );
 
+  const riskSelectLabel = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const s of scenarios) {
+      if (!s.riskId) continue;
+      if (map.has(s.riskId)) continue;
+      const name = s.riskName?.trim();
+      map.set(
+        s.riskId,
+        name && name !== s.riskId ? name : humanizeSlug(s.riskId)
+      );
+    }
+    return map;
+  }, [scenarios]);
+
   const filtered = useMemo(
     () =>
       scenarios.filter((s) => {
         if (ageRange !== "all" && s.ageRange !== ageRange) return false;
         if (risk !== "all" && s.riskId !== risk) return false;
+        if (selectedRisk && s.riskCategoryId !== selectedRisk.riskCategoryId) return false;
         if (prompt !== "all" && s.prompt !== prompt) return false;
         if (grade !== "all" && s.safetyGrade !== grade) return false;
         if (query.trim()) {
           const q = query.toLowerCase();
-          const hay = `${s.scenarioTitle}\n${s.riskCategoryId}\n${s.riskId}`.toLowerCase();
+          const hay = [
+            s.scenarioTitle,
+            s.riskCategoryId,
+            s.riskId,
+            s.riskCategoryName,
+            s.riskName,
+            humanizeSlug(s.riskCategoryId),
+            humanizeSlug(s.riskId),
+          ]
+            .filter(Boolean)
+            .join("\n")
+            .toLowerCase();
           if (!hay.includes(q)) return false;
         }
         return true;
       }),
-    [scenarios, ageRange, risk, prompt, grade, query]
+    [scenarios, ageRange, risk, selectedRisk, prompt, grade, query]
   );
 
   return (
@@ -305,7 +360,7 @@ export function ViewerDataExplorer({ data }: { data: ViewerData }) {
               <option value="all">All Risks</option>
               {risks.map((v) => (
                 <option key={v} value={v}>
-                  {v}
+                  {riskSelectLabel.get(v) ?? humanizeSlug(v)}
                 </option>
               ))}
             </select>
@@ -344,23 +399,78 @@ export function ViewerDataExplorer({ data }: { data: ViewerData }) {
           <div className="px-4 py-2 text-sm text-[var(--muted)] border-b border-[var(--border)]">
             {filtered.length} scenario(s)
           </div>
-          <div className="max-h-[70vh] overflow-auto">
-            {filtered.map((s) => (
-              <button
-                key={s.id}
-                type="button"
-                onClick={() => setSelected(s)}
-                className="w-full text-left px-4 py-3 border-b border-[var(--border)] hover:bg-black/20"
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <div className="text-white font-medium min-w-0">{s.scenarioTitle}</div>
-                  <SafetyGradeBadge grade={s.safetyGrade} className="shrink-0" />
-                </div>
-                <div className="mt-1 text-xs text-[var(--muted)]">
-                  {s.ageRange} • {s.riskCategoryId} • {s.riskId} • {s.prompt}
-                </div>
-              </button>
-            ))}
+          <div className="max-h-[70vh] overflow-x-auto overflow-y-auto">
+            <table className="w-full min-w-[52rem] border-collapse text-left text-sm">
+              <thead>
+                <tr className="border-b border-[var(--border)] bg-black/20 text-[10px] font-medium uppercase tracking-wide text-[var(--muted)]">
+                  <th scope="col" className="px-4 py-2.5 align-bottom font-medium min-w-[10rem]">
+                    Scenario
+                  </th>
+                  <th scope="col" className="px-3 py-2.5 align-bottom font-medium whitespace-nowrap w-28">
+                    Age range
+                  </th>
+                  <th scope="col" className="px-3 py-2.5 align-bottom font-medium min-w-[9rem] w-[22%]">
+                    Risk
+                  </th>
+                  <th scope="col" className="px-3 py-2.5 align-bottom font-medium whitespace-nowrap w-32">
+                    Prompt variant
+                  </th>
+                  <th scope="col" className="px-4 py-2.5 align-bottom font-medium text-right w-36">
+                    Assessment
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[var(--border)]/80">
+                {filtered.map((s, i) => {
+                  const { primary: riskPrimary, secondary: riskSecondary } = scenarioRiskCell(s);
+                  const isSelected = selected === s;
+                  function activate() {
+                    setSelected(s);
+                  }
+                  return (
+                    <tr
+                      key={`${s.id}-${i}`}
+                      onClick={activate}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          activate();
+                        }
+                      }}
+                      tabIndex={0}
+                      role="button"
+                      aria-selected={isSelected}
+                      className={`cursor-pointer transition-colors hover:bg-black/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--accent)]/50 ${
+                        isSelected ? "bg-black/25" : ""
+                      }`}
+                    >
+                      <td className="px-4 py-2.5 align-top text-white font-medium min-w-0 max-w-[28rem]">
+                        <div className="break-words leading-snug">{s.scenarioTitle}</div>
+                      </td>
+                      <td className="px-3 py-2.5 align-top text-[var(--muted)] tabular-nums whitespace-nowrap">
+                        {formatAgeRangeLabel(s.ageRange)}
+                      </td>
+                      <td className="px-3 py-2.5 align-top min-w-0">
+                        <div className="text-white font-medium break-words leading-snug">
+                          {riskPrimary}
+                        </div>
+                        {riskSecondary ? (
+                          <div className="mt-0.5 text-[11px] text-[var(--muted)] break-words leading-snug">
+                            {riskSecondary}
+                          </div>
+                        ) : null}
+                      </td>
+                      <td className="px-3 py-2.5 align-top text-white/90 whitespace-nowrap">
+                        {formatPromptVariantLabel(s.prompt)}
+                      </td>
+                      <td className="px-4 py-2.5 align-top text-right">
+                        <SafetyGradeBadge grade={s.safetyGrade} className="shrink-0" />
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         </section>
       </div>

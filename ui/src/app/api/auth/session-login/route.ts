@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { SESSION_COOKIE_NAME } from "@/lib/auth-server";
+import { BackendSyncError, syncUserToBackend } from "@/lib/backend-sync";
 import { getFirebaseAdminAuth } from "@/lib/firebase-admin";
-import { syncUserToBackend } from "@/lib/backend-sync";
 
 function parseAllowedEmails(): Set<string> | null {
   const raw = process.env.ALLOWED_EMAILS?.trim();
@@ -63,8 +63,27 @@ export async function POST(request: NextRequest) {
       name: displayName,
     });
   } catch (e) {
+    if (e instanceof BackendSyncError) {
+      if (e.code === "CONFIG_ERROR") {
+        return NextResponse.json(
+          { error: e.message, code: e.code },
+          { status: 503 }
+        );
+      }
+      if (e.code === "BACKEND_UNREACHABLE") {
+        return NextResponse.json(
+          {
+            error:
+              "Cannot reach the account API. Start the child-safety-evals server (default http://127.0.0.1:8100) and align INTERNAL_API_URL and INTERNAL_API_SECRET with the server env.",
+            code: e.code,
+          },
+          { status: 502 }
+        );
+      }
+      return NextResponse.json({ error: e.message, code: e.code }, { status: 502 });
+    }
     const msg = e instanceof Error ? e.message : "User sync failed";
-    return NextResponse.json({ error: msg }, { status: 502 });
+    return NextResponse.json({ error: msg, code: "SYNC_FAILED" }, { status: 502 });
   }
 
   const expiresInMs = 1000 * 60 * 60 * 24 * 5;

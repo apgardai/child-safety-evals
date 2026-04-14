@@ -30,3 +30,8 @@ class AccountOut(BaseModel):
 class MeResponse(BaseModel):
     user: UserOut
     account: AccountOut
+
+
+class AccountGatewayKeyUpsert(BaseModel):
+    email: EmailStr
+    api_key: str = Field(min_length=1)

@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.models.account import Account
 from app.models.user import User
+from app.services.secrets import decrypt_api_key, encrypt_api_key
 
 
 def get_user_by_email(db: Session, email: str) -> User | None:
@@ -52,3 +53,40 @@ def sync_user_from_firebase(
 
 def get_user_by_id(db: Session, user_id: UUID) -> User | None:
     return db.query(User).filter(User.id == user_id).first()
+
+
+def set_account_ai_gateway_api_key(
+    db: Session,
+    *,
+    account_id: UUID,
+    api_key: str,
+) -> Account:
+    account = db.query(Account).filter(Account.id == account_id).first()
+    if not account:
+        raise ValueError("Account not found")
+    account.ai_gateway_api_key = encrypt_api_key(api_key.strip())
+    db.commit()
+    db.refresh(account)
+    return account
+
+
+def has_account_ai_gateway_api_key(
+    db: Session,
+    *,
+    account_id: UUID,
+) -> bool:
+    account = db.query(Account).filter(Account.id == account_id).first()
+    if not account:
+        return False
+    return bool(account.ai_gateway_api_key)
+
+
+def get_account_ai_gateway_api_key(
+    db: Session,
+    *,
+    account_id: UUID,
+) -> str | None:
+    account = db.query(Account).filter(Account.id == account_id).first()
+    if not account or not account.ai_gateway_api_key:
+        return None
+    return decrypt_api_key(account.ai_gateway_api_key)

@@ -10,13 +10,7 @@ const PROMPTS = ["default", "child"];
 
 /** Slug for HTTP custom backend (see benchmark runCommand custom-* routing) */
 const CUSTOM_MODEL_SLUG = "custom-my-model";
-
-/** Unique result filename: ISO timestamp + random suffix for collision safety */
-function makeResultFilename(): string {
-  const ts = new Date().toISOString().replace(/[:.]/g, "-");
-  const rand = Math.random().toString(36).slice(2, 8);
-  return `results-${ts}-${rand}.json`;
-}
+const ADD_CUSTOM_TARGET_OPTION = "__add_custom_target_model__";
 
 function ModelField({
   label,
@@ -84,8 +78,8 @@ type FlowPhase = "idle" | "running" | "complete";
 
 function PipelineStepper({ phase }: { phase: FlowPhase }) {
   const steps = [
-    { n: 1, title: "Generate seeds", desc: "scenarioSeeds.jsonl" },
-    { n: 2, title: "Expand scenarios", desc: "scenarios.jsonl" },
+    { n: 1, title: "Generate seeds", desc: "" },
+    { n: 2, title: "Expand scenarios", desc: "" },
     { n: 3, title: "Run benchmark", desc: "Evaluate target model" },
   ];
 
@@ -138,19 +132,24 @@ export default function Home() {
   const [output, setOutput] = useState("");
   const [running, setRunning] = useState(false);
   const [modelList, setModelList] = useState<string[]>([]);
+  const [customModelList, setCustomModelList] = useState<string[]>([]);
   const [flowPhase, setFlowPhase] = useState<FlowPhase>("idle");
-  const [lastResultFile, setLastResultFile] = useState<string | null>(null);
   const [overviewData, setOverviewData] = useState<ViewerData | null>(null);
   const [selectedZipFile, setSelectedZipFile] = useState<string | null>(null);
-  const [uploadBusy, setUploadBusy] = useState(false);
-  const [uploadError, setUploadError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     fetch("/api/models")
       .then((r) => r.json())
-      .then((data: { models?: string[] }) => setModelList(data.models ?? []))
-      .catch(() => setModelList([]));
+      .then((data: { models?: string[]; customModels?: string[] }) => {
+        console.log(data.models);
+        setModelList(data.models ?? []);
+        setCustomModelList(data.customModels ?? []);
+      })
+      .catch(() => {
+        setModelList([]);
+        setCustomModelList([]);
+      });
   }, []);
 
   const refreshOverviewFromDisk = useCallback(async (file?: string) => {
@@ -166,54 +165,22 @@ export default function Home() {
     }
   }, []);
 
-  useEffect(() => {
-    void refreshOverviewFromDisk();
-  }, [refreshOverviewFromDisk]);
-
-  const uploadZip = useCallback(async (file: File) => {
-    setUploadBusy(true);
-    setUploadError(null);
-    try {
-      const form = new FormData();
-      form.set("file", file);
-      const res = await fetch("/api/scenarios/upload", {
-        method: "POST",
-        body: form,
-      });
-      if (!res.ok) {
-        const j = await res.json().catch(() => ({}));
-        throw new Error((j as { error?: string }).error || `Upload failed (${res.status})`);
-      }
-      const j = (await res.json()) as { file?: string };
-      const saved = j.file?.trim();
-      if (!saved) throw new Error("Upload succeeded but no filename was returned");
-      setSelectedZipFile(saved);
-      await refreshOverviewFromDisk(saved);
-    } catch (e) {
-      setUploadError((e as Error).message);
-    } finally {
-      setUploadBusy(false);
-    }
-  }, [refreshOverviewFromDisk]);
-
   const runBenchmark = useCallback(
     async (payload: {
       apiKey: string;
       customApiKey?: string;
       customApiEndpoint?: string;
+      customParsingKey?: string;
       targetModel: string;
       judgeModel?: string;
       userModel?: string;
       prompts?: string[];
     }) => {
-      const resultBasename = makeResultFilename();
-      const outputPath = `data/${resultBasename}`;
-
       abortRef.current = new AbortController();
       setRunning(true);
       setFlowPhase("running");
-      setLastResultFile(null);
-      setOutput(`Writing results to ${outputPath}\n\n`);
+      setOverviewData(null);
+      setOutput("Running evaluation...\n\n");
 
       try {
         const res = await fetch("/api/run", {
@@ -224,11 +191,11 @@ export default function Home() {
             apiKey: payload.apiKey,
             customApiKey: payload.customApiKey,
             customApiEndpoint: payload.customApiEndpoint,
+            customParsingKey: payload.customParsingKey,
             targetModel: payload.targetModel,
             judgeModel: payload.judgeModel,
             userModel: payload.userModel,
             input: "data/scenarios.jsonl",
-            output: outputPath,
             prompts: payload.prompts,
           }),
           signal: abortRef.current.signal,
@@ -254,14 +221,13 @@ export default function Home() {
           return;
         }
 
-        let text = `Writing results to ${outputPath}\n\n`;
+        let text = "Running evaluation...\n\n";
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
           text += decoder.decode(value, { stream: true });
           setOutput(text);
         }
-        setLastResultFile(resultBasename);
         setFlowPhase("complete");
         await refreshOverviewFromDisk(selectedZipFile ?? undefined);
       } catch (e) {
@@ -291,8 +257,7 @@ export default function Home() {
             Child Safety Evaluations
           </h1>
           <p className="text-[var(--muted)] mt-1">
-            Run evaluations using pre-generated seeds and scenarios in the{" "}
-            <span className="text-white/90">benchmark data</span> directory.
+            Run evaluations using pre-generated seeds and scenarios.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -309,16 +274,11 @@ export default function Home() {
             Models
           </Link>
           <Link
-            href={
-              selectedZipFile
-                ? `/scenarios?file=${encodeURIComponent(selectedZipFile)}`
-                : "/scenarios"
-            }
+            href="/benchmark/runs"
             className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--border)]"
           >
-            Scenarios
+            Runs
           </Link>
-          <SignOutButton />
         </div>
       </header>
 
@@ -326,48 +286,47 @@ export default function Home() {
         onRun={runBenchmark}
         disabled={running}
         modelList={modelList}
+        customModelList={customModelList}
         flowPhase={flowPhase}
-        lastResultFile={lastResultFile}
       />
-
-      {overviewData && (
-        <div className="mt-10 rounded-xl border border-[var(--border)] bg-[var(--surface)]/80 p-5 md:p-6">
-          <ResultsOverview
-            data={overviewData}
-            scenariosHref={
-              selectedZipFile
-                ? `/scenarios?file=${encodeURIComponent(selectedZipFile)}`
-                : "/scenarios"
-            }
-            onUploadZip={uploadZip}
-            uploadBusy={uploadBusy}
-            uploadLabel={selectedZipFile ?? "Latest results archive from benchmark data directory"}
-          />
-          {uploadError && (
-            <div className="mt-3 rounded-lg border border-[var(--warning)]/40 bg-[var(--warning)]/10 p-3 text-sm text-[var(--warning)]">
-              Upload failed: {uploadError}
-            </div>
-          )}
-        </div>
-      )}
 
       <div className="mt-8 rounded-xl border border-[var(--border)] bg-[var(--surface)] overflow-hidden">
         <div className="flex items-center justify-between px-4 py-2 border-b border-[var(--border)] bg-black/30">
           <span className="text-sm font-medium text-[var(--muted)]">Output</span>
-          {running && (
-            <button
-              type="button"
-              onClick={stop}
-              className="text-sm px-3 py-1 rounded bg-[var(--error)]/20 text-[var(--error)] hover:bg-[var(--error)]/30"
-            >
-              Stop
-            </button>
-          )}
+          <div className="flex items-center gap-2">
+            {flowPhase === "complete" && (
+              <Link
+                href="/benchmark/runs"
+                className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-1 text-sm font-medium text-white hover:bg-[var(--border)]"
+              >
+                View Results
+              </Link>
+            )}
+            {running && (
+              <button
+                type="button"
+                onClick={stop}
+                className="text-sm px-3 py-1 rounded bg-[var(--error)]/20 text-[var(--error)] hover:bg-[var(--error)]/30"
+              >
+                Stop
+              </button>
+            )}
+          </div>
         </div>
         <pre className="p-4 text-sm text-[var(--text)] overflow-auto max-h-[400px] font-mono whitespace-pre-wrap break-words">
           {output || "Run benchmark to see output."}
         </pre>
       </div>
+
+      {overviewData && (
+        <div className="mt-10 rounded-xl border border-[var(--border)] bg-[var(--surface)]/80 p-5 md:p-6">
+          <ResultsOverview
+            data={overviewData}
+            scenariosHref="/benchmark/runs"
+            uploadLabel={selectedZipFile ?? "Latest evaluation results"}
+          />
+        </div>
+      )}
     </div>
   );
 }
@@ -376,13 +335,14 @@ function PipelineForm({
   onRun,
   disabled,
   modelList,
+  customModelList,
   flowPhase,
-  lastResultFile,
 }: {
   onRun: (payload: {
     apiKey: string;
     customApiKey?: string;
     customApiEndpoint?: string;
+    customParsingKey?: string;
     targetModel: string;
     judgeModel?: string;
     userModel?: string;
@@ -390,33 +350,66 @@ function PipelineForm({
   }) => void;
   disabled: boolean;
   modelList: string[];
+  customModelList: string[];
   flowPhase: FlowPhase;
-  lastResultFile: string | null;
 }) {
+  const shouldShowSyntheticCustomTarget =
+    customModelList.length === 0 && !modelList.includes(CUSTOM_MODEL_SLUG);
+
+  const targetModelOptions = useMemo(() => {
+    const list = [...modelList];
+    // Show one-click custom option only if no saved custom models exist yet.
+    if (shouldShowSyntheticCustomTarget) {
+      list.unshift(ADD_CUSTOM_TARGET_OPTION);
+    }
+    return list;
+  }, [customModelList, modelList, shouldShowSyntheticCustomTarget]);
+
+  const nonCustomModelOptions = useMemo(
+    () => modelList.filter((m) => !customModelList.includes(m)),
+    [customModelList, modelList]
+  );
+
   const [apiKey, setApiKey] = useState("");
+  const [hasSavedApiKey, setHasSavedApiKey] = useState(false);
+  const [savingApiKey, setSavingApiKey] = useState(false);
+  const [apiKeyStatusLoading, setApiKeyStatusLoading] = useState(true);
+  const [apiKeyMessage, setApiKeyMessage] = useState<string | null>(null);
   const [targetModel, setTargetModel] = useState("gpt-4o");
   const [judgeModel, setJudgeModel] = useState("gpt-5.2:high:limited");
   const [userModel, setUserModel] = useState("deepseek-v3.2");
   const [prompts, setPrompts] = useState<string[]>(["default"]);
   const [customApiEndpoint, setCustomApiEndpoint] = useState("");
   const [customApiKey, setCustomApiKey] = useState("");
+  const [customParsingKey, setCustomParsingKey] = useState("message");
 
-  const targetModelOptions = useMemo(() => {
-    const list = [...modelList];
-    if (!list.includes(CUSTOM_MODEL_SLUG)) {
-      list.unshift(CUSTOM_MODEL_SLUG);
-    }
-    return list;
-  }, [modelList]);
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      setApiKeyStatusLoading(true);
+      try {
+        const r = await fetch("/api/account/ai-gateway-key");
+        const j = (await r.json().catch(() => ({}))) as { has_key?: boolean };
+        if (!cancelled) setHasSavedApiKey(Boolean(j.has_key));
+      } catch {
+        if (!cancelled) setHasSavedApiKey(false);
+      } finally {
+        if (!cancelled) setApiKeyStatusLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
-  const targetOptionLabels = useMemo(
-    () => ({
-      [CUSTOM_MODEL_SLUG]: "Custom target model",
-    }),
-    []
-  );
+  const targetOptionLabels = useMemo(() => {
+    if (!shouldShowSyntheticCustomTarget) return undefined;
+    return {
+      [ADD_CUSTOM_TARGET_OPTION]: "Add custom target model",
+    };
+  }, [shouldShowSyntheticCustomTarget]);
 
-  const isCustomTarget = targetModel === CUSTOM_MODEL_SLUG;
+  const isCustomTarget = targetModel === ADD_CUSTOM_TARGET_OPTION;
 
   const togglePrompt = (p: string) => {
     setPrompts((prev) =>
@@ -432,49 +425,111 @@ function PipelineForm({
         ? {
             customApiKey: customApiKey.trim(),
             customApiEndpoint: customApiEndpoint.trim(),
+            customParsingKey: customParsingKey.trim() || "message",
           }
         : {}),
-      targetModel: targetModel.trim(),
+      targetModel: isCustomTarget ? CUSTOM_MODEL_SLUG : targetModel.trim(),
       judgeModel: judgeModel || undefined,
       userModel: userModel || undefined,
       prompts: prompts.length ? prompts : undefined,
     });
   };
 
+  const saveApiKey = useCallback(async () => {
+    const trimmed = apiKey.trim();
+    if (!trimmed) {
+      setApiKeyMessage("Enter an API key to save.");
+      return;
+    }
+    setSavingApiKey(true);
+    setApiKeyMessage(null);
+    try {
+      const r = await fetch("/api/account/ai-gateway-key", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ apiKey: trimmed }),
+      });
+      const j = (await r.json().catch(() => ({}))) as { error?: string };
+      if (!r.ok) {
+        setApiKeyMessage(j.error || "Could not save API key.");
+        return;
+      }
+      setHasSavedApiKey(true);
+      setApiKey("");
+      setApiKeyMessage("Saved encrypted API key to your account.");
+    } catch (e) {
+      setApiKeyMessage((e as Error).message);
+    } finally {
+      setSavingApiKey(false);
+    }
+  }, [apiKey]);
+
   const canSubmit =
-    apiKey.trim() &&
+    (apiKey.trim() || hasSavedApiKey) &&
     targetModel.trim() &&
     (!isCustomTarget ||
       (customApiEndpoint.trim().length > 0 && customApiKey.trim().length > 0));
-
-  const downloadHref =
-    lastResultFile != null
-      ? `/api/scenarios/download?file=${encodeURIComponent(
-          lastResultFile.replace(/\.json$/i, ".zip")
-        )}`
-      : null;
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5">
         <h2 className="text-lg font-semibold text-white mb-1">Pipeline</h2>
         <p className="text-sm text-[var(--muted)] mb-4">
-          Steps 1–2 use the existing files in the <span className="text-white">benchmark data</span> directory. Step 3 saves the results as <span className="text-white">results-&lt;timestamp&gt;-&lt;id&gt;.json</span>.
+          Helper text.
         </p>
 
         <PipelineStepper phase={flowPhase === "complete" ? "complete" : flowPhase === "running" ? "running" : "idle"} />
 
         <div className="mb-6">
-          <label className="block text-sm font-medium text-[var(--muted)] mb-1">
-            AI Gateway API Key <span className="text-[var(--error)]">*</span>
-          </label>
-          <input
-            type="password"
-            value={apiKey}
-            onChange={(e) => setApiKey(e.target.value)}
-            placeholder="Passed to AI SDK for this run only (not saved)"
-            className="w-full max-w-md rounded-lg border border-[var(--border)] bg-black/30 px-3 py-2 text-white placeholder-[var(--muted)] focus:border-[var(--accent)] focus:outline-none"
-          />
+          <div className="mb-1 flex items-center gap-2">
+            <label className="block text-sm font-medium text-[var(--muted)]">
+              AI Gateway API Key <span className="text-[var(--error)]">*</span>
+            </label>
+            {!apiKeyStatusLoading && hasSavedApiKey && (
+              <span className="rounded-full border border-[var(--success)]/50 bg-[var(--success)]/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--success)]">
+                Saved to account
+              </span>
+            )}
+          </div>
+          <div className="flex max-w-xl items-center gap-2">
+            <input
+              type="password"
+              value={apiKey}
+              onChange={(e) => setApiKey(e.target.value)}
+              placeholder={
+                hasSavedApiKey
+                  ? "Saved key exists. Enter a new key to override this run."
+                  : "Enter key for this run, or save it to account"
+              }
+              className="w-full rounded-lg border border-[var(--border)] bg-black/30 px-3 py-2 text-white placeholder-[var(--muted)] focus:border-[var(--accent)] focus:outline-none"
+            />
+            <button
+              type="button"
+              onClick={() => void saveApiKey()}
+              disabled={savingApiKey || !apiKey.trim()}
+              className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm font-medium text-white hover:bg-[var(--border)] disabled:opacity-50"
+            >
+              {savingApiKey ? "Saving..." : "Save key"}
+            </button>
+          </div>
+          <p
+            className={`mt-1 text-xs ${
+              apiKeyStatusLoading
+                ? "text-[var(--muted)]"
+                : hasSavedApiKey
+                  ? "text-[var(--success)]"
+                  : "text-[var(--muted)]"
+            }`}
+          >
+            {apiKeyStatusLoading
+              ? "Checking saved key status..."
+              : hasSavedApiKey
+                ? "A saved AI Gateway API key is available and will be used if this field is left blank."
+                : "No saved key yet."}
+          </p>
+          {apiKeyMessage && (
+            <p className="mt-1 text-xs text-[var(--muted)]">{apiKeyMessage}</p>
+          )}
         </div>
 
         <div className="grid gap-6 md:grid-cols-3">
@@ -485,12 +540,7 @@ function PipelineForm({
             </div>
             <h3 className="text-sm font-semibold text-white mb-2">Step 1: Generate seeds</h3>
             <p className="text-xs text-[var(--muted)] leading-relaxed">
-              Pre-generated scenario seeds are read from{" "}
-              <span className="text-white">scenarioSeeds.jsonl</span>.
-            </p>
-            <p className="text-xs text-[var(--muted)] leading-relaxed">
-              This step was generated by the default model{" "}
-              <span className="text-white">gpt-5.2:high</span>.
+              Scenario seeds have been pre-generated. Default model used is gpt-5.2:high.
             </p>
           </div>
 
@@ -501,13 +551,7 @@ function PipelineForm({
             </div>
             <h3 className="text-sm font-semibold text-white mb-2">Step 2: Expand scenarios</h3>
             <p className="text-xs text-[var(--muted)] leading-relaxed">
-              Pre-expanded scenarios are read from{" "}
-              <span className="text-white">scenarios.jsonl</span> (input for the benchmark run).
-            </p>
-            <p className="text-xs text-[var(--muted)] leading-relaxed">
-              This step was generated by the default scenario expander model{" "}
-              <span className="text-white">gpt-4o</span> and the defualt user model{" "}
-              <span className="text-white">deepseek-v3.2</span>.
+              Expanded scenarios have been pre-generated. Default scenario expander model used is gpt-4o.
             </p>
           </div>
 
@@ -559,13 +603,29 @@ function PipelineForm({
                       className="w-full rounded-lg border border-[var(--border)] bg-black/30 px-3 py-2 text-sm text-white placeholder-[var(--muted)] focus:border-[var(--accent)] focus:outline-none"
                     />
                   </div>
+                  <div>
+                    <label className="block text-sm font-medium text-[var(--muted)] mb-1">
+                      Parsing key
+                    </label>
+                    <input
+                      type="text"
+                      value={customParsingKey}
+                      onChange={(e) => setCustomParsingKey(e.target.value)}
+                      placeholder="message"
+                      className="w-full rounded-lg border border-[var(--border)] bg-black/30 px-3 py-2 text-sm text-white placeholder-[var(--muted)] focus:border-[var(--accent)] focus:outline-none"
+                    />
+                    <p className="mt-1 text-xs text-[var(--muted)]">
+                      Response field to read text from (supports dot paths, e.g.{" "}
+                      <code className="text-white">data.message</code>).
+                    </p>
+                  </div>
                 </div>
               )}
               <ModelField
                 label="Judge model"
                 value={judgeModel}
                 onChange={setJudgeModel}
-                modelList={modelList}
+                modelList={nonCustomModelOptions}
                 placeholder="gpt-5.2:high:limited"
                 dropdownOnly
               />
@@ -573,7 +633,7 @@ function PipelineForm({
                 label="User model"
                 value={userModel}
                 onChange={setUserModel}
-                modelList={modelList}
+                modelList={nonCustomModelOptions}
                 placeholder="deepseek-v3.2"
                 dropdownOnly
               />
@@ -605,21 +665,7 @@ function PipelineForm({
           >
             Run benchmark
           </button>
-          {downloadHref && (
-            <a
-              href={downloadHref}
-              download
-              className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--border)]"
-            >
-              Download last result (.zip)
-            </a>
-          )}
         </div>
-        {lastResultFile && (
-          <p className="mt-2 text-xs text-[var(--muted)]">
-            Saved as <code className="text-white">data/{lastResultFile}</code>
-          </p>
-        )}
       </section>
     </form>
   );

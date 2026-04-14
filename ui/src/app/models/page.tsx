@@ -119,7 +119,7 @@ export default function ModelsPage() {
   };
 
   const deleteModel = async (s: string) => {
-    if (!confirm(`Delete model "${s}" from models.json?`)) return;
+    if (!confirm(`Delete model "${s}" from the model registry?`)) return;
     setSaving(true);
     setError(null);
     try {
@@ -148,7 +148,7 @@ export default function ModelsPage() {
         <div>
           <h1 className="text-2xl font-bold text-white tracking-tight">Models</h1>
           <p className="text-[var(--muted)] mt-1">
-            Manage <code className="text-white">models.json</code> registry entries for gateway models.
+            Manage model registry entries for gateway models.
             To run a custom model, use{" "}
             <Link href="/benchmark" className="text-[var(--accent)] hover:underline">
               the benchmark pipeline
@@ -184,14 +184,7 @@ export default function ModelsPage() {
         {/* Registry list */}
         <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5">
           <div className="flex items-center justify-between gap-3 mb-4">
-            <h2 className="text-lg font-semibold text-white">models.json</h2>
-            <button
-              type="button"
-              onClick={startAdd}
-              className="rounded-lg bg-[var(--accent)] px-3 py-2 text-sm font-medium text-white hover:opacity-90"
-            >
-              Add model
-            </button>
+            <h2 className="text-lg font-semibold text-white">Model registry</h2>
           </div>
 
           {loading ? (
@@ -241,7 +234,7 @@ export default function ModelsPage() {
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-[var(--muted)] mb-1">
-                Slug (command-line name)
+                Alias
               </label>
               <input
                 type="text"

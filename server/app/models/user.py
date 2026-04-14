@@ -29,3 +29,8 @@ class User(Base):
     )
 
     account = relationship("Account", back_populates="users")
+    evaluation_runs = relationship("EvaluationRun", back_populates="created_by_user")
+    model_registry_entries = relationship(
+        "ModelRegistryEntry",
+        back_populates="created_by_user",
+    )

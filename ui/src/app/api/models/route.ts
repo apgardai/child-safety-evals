@@ -1,14 +1,11 @@
-import { existsSync, readFileSync } from "node:fs";
-import * as path from "node:path";
 import { type NextRequest, NextResponse } from "next/server";
 
 import { requireApiAuth } from "@/lib/auth-server";
-import * as fs from "node:fs/promises";
-
-function getBenchmarkPath(): string {
-  const uiRoot = process.cwd();
-  return path.resolve(uiRoot, "..", "benchmark");
-}
+import {
+  deleteModelInBackend,
+  listModelsFromBackend,
+  upsertModelInBackend,
+} from "@/lib/backend-sync";
 
 type ModelConfig = {
   model: string;
@@ -48,43 +45,33 @@ function validateConfig(config: unknown): { ok: true; value: ModelConfig } | { o
   return { ok: true, value: config as ModelConfig };
 }
 
-async function readRegistry(modelsPath: string): Promise<ModelRegistry> {
-  if (!existsSync(modelsPath)) return {};
-  const raw = readFileSync(modelsPath, "utf-8");
-  const json = JSON.parse(raw) as unknown;
-  if (!isPlainObject(json)) return {};
-  return json as ModelRegistry;
-}
-
-async function writeRegistry(modelsPath: string, registry: ModelRegistry): Promise<void> {
-  const dir = path.dirname(modelsPath);
-  await fs.mkdir(dir, { recursive: true });
-  const tmp = modelsPath + ".tmp";
-  await fs.writeFile(tmp, JSON.stringify(registry, null, 2) + "\n", "utf-8");
-  await fs.rename(tmp, modelsPath);
-}
-
 export async function GET(request: NextRequest) {
   const auth = await requireApiAuth(request);
   if (!auth.ok) return auth.response;
 
-  const benchmarkPath = getBenchmarkPath();
-  const modelsPath = path.join(benchmarkPath, "models.json");
-
-  if (!existsSync(modelsPath)) {
-    return NextResponse.json(
-      { error: "models.json not found", models: [], registry: {} },
-      { status: 200 }
-    );
-  }
-
   try {
-    const registry = await readRegistry(modelsPath);
+    const rows = await listModelsFromBackend(auth.session.email);
+    const registry: ModelRegistry = {};
+    for (const row of rows) {
+      const optional = row.optional_parameters ?? {};
+      registry[row.alias] = {
+        model: row.model_id,
+        ...(typeof optional.maxTokens === "number" ? { maxTokens: optional.maxTokens } : {}),
+        ...(typeof optional.temperature === "number" ? { temperature: optional.temperature } : {}),
+        ...(isPlainObject(optional.providerOptions)
+          ? { providerOptions: optional.providerOptions as Record<string, Record<string, unknown>> }
+          : {}),
+      };
+    }
     const models = Object.keys(registry).sort();
-    return NextResponse.json({ models, registry });
+    const customModels = rows
+      .filter((r) => r.is_custom)
+      .map((r) => r.alias)
+      .sort();
+    return NextResponse.json({ models, customModels, registry });
   } catch (e) {
     return NextResponse.json(
-      { error: (e as Error).message, models: [], registry: {} },
+      { error: (e as Error).message, models: [], customModels: [], registry: {} },
       { status: 200 }
     );
   }
@@ -93,9 +80,6 @@ export async function GET(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   const auth = await requireApiAuth(request);
   if (!auth.ok) return auth.response;
-
-  const benchmarkPath = getBenchmarkPath();
-  const modelsPath = path.join(benchmarkPath, "models.json");
 
   let body: unknown;
   try {
@@ -114,11 +98,35 @@ export async function PUT(request: NextRequest) {
   const validated = validateConfig((body as Record<string, unknown>).config);
   if (!validated.ok) return NextResponse.json({ error: validated.error }, { status: 400 });
 
-  const registry = await readRegistry(modelsPath);
-  registry[slug] = validated.value;
-  await writeRegistry(modelsPath, registry);
-
-  return NextResponse.json({ ok: true, models: Object.keys(registry).sort() });
+  const optionalParameters: Record<string, unknown> = {};
+  if (validated.value.maxTokens != null) optionalParameters.maxTokens = validated.value.maxTokens;
+  if (validated.value.temperature != null) optionalParameters.temperature = validated.value.temperature;
+  if (validated.value.providerOptions != null) optionalParameters.providerOptions = validated.value.providerOptions;
+  const isCustom = slug.startsWith("custom-");
+  const customUrl =
+    isCustom && typeof optionalParameters.customApiEndpoint === "string"
+      ? (optionalParameters.customApiEndpoint as string)
+      : null;
+  const customApiKey =
+    isCustom && typeof optionalParameters.customApiKey === "string"
+      ? (optionalParameters.customApiKey as string)
+      : null;
+  const parsingKey =
+    isCustom && typeof optionalParameters.parsingKey === "string"
+      ? (optionalParameters.parsingKey as string)
+      : null;
+  await upsertModelInBackend({
+    alias: slug,
+    model_id: validated.value.model,
+    optional_parameters: optionalParameters,
+    is_custom: isCustom,
+    custom_url: customUrl,
+    custom_api_key: customApiKey,
+    parsing_key: parsingKey,
+    created_by_email: auth.session.email,
+  });
+  const rows = await listModelsFromBackend(auth.session.email);
+  return NextResponse.json({ ok: true, models: rows.map((r) => r.alias).sort() });
 }
 
 export async function POST(request: NextRequest) {
@@ -128,9 +136,6 @@ export async function POST(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   const auth = await requireApiAuth(request);
   if (!auth.ok) return auth.response;
-
-  const benchmarkPath = getBenchmarkPath();
-  const modelsPath = path.join(benchmarkPath, "models.json");
 
   let body: unknown;
   try {
@@ -146,12 +151,7 @@ export async function DELETE(request: NextRequest) {
   const slug = body.slug.trim();
   if (!slug) return NextResponse.json({ error: "slug must be non-empty" }, { status: 400 });
 
-  const registry = await readRegistry(modelsPath);
-  if (registry[slug] == null) {
-    return NextResponse.json({ ok: true, models: Object.keys(registry).sort() });
-  }
-
-  delete registry[slug];
-  await writeRegistry(modelsPath, registry);
-  return NextResponse.json({ ok: true, models: Object.keys(registry).sort() });
+  await deleteModelInBackend(slug, auth.session.email);
+  const rows = await listModelsFromBackend(auth.session.email);
+  return NextResponse.json({ ok: true, models: rows.map((r) => r.alias).sort() });
 }
