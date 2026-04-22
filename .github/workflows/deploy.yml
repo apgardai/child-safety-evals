@@ -5,8 +5,12 @@ on:
     branches:
       - main
     paths:
+      # Monorepo (e.g. apgard): server lives under child-safety-evals/server
       - "child-safety-evals/server/**"
       - "child-safety-evals/.github/workflows/deploy.yml"
+      # Standalone child-safety-evals repo: server at repo root server/
+      - "server/**"
+      - ".github/workflows/deploy.yml"
   workflow_dispatch:
 
 env:
@@ -30,6 +34,20 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Resolve server directory (monorepo vs standalone repo)
+        run: |
+          if [ -d child-safety-evals/server ]; then
+            echo "CSE_SERVER_ROOT=child-safety-evals/server" >> "$GITHUB_ENV"
+            echo "Using monorepo path: child-safety-evals/server"
+          elif [ -d server ]; then
+            echo "CSE_SERVER_ROOT=server" >> "$GITHUB_ENV"
+            echo "Using standalone repo path: server"
+          else
+            echo "Expected child-safety-evals/server (monorepo) or server/ (standalone)."
+            ls -la
+            exit 1
+          fi
+
       - name: Docker login
         uses: docker/login-action@v3
         with:
@@ -42,7 +60,7 @@ jobs:
           IMAGE_TAG=${GITHUB_SHA}
           IMAGE_BASE="${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}"
 
-          cd child-safety-evals/server
+          cd "${CSE_SERVER_ROOT}"
           docker build -t "${IMAGE_BASE}:${IMAGE_PREFIX}-${IMAGE_TAG}" .
           docker tag "${IMAGE_BASE}:${IMAGE_PREFIX}-${IMAGE_TAG}" "${IMAGE_BASE}:${IMAGE_PREFIX}-latest"
 
@@ -64,7 +82,7 @@ jobs:
 
       - name: Sync docker-compose.yml
         run: |
-          scp $SSH_OPTS -i key.pem child-safety-evals/server/docker-compose.yml \
+          scp $SSH_OPTS -i key.pem "${CSE_SERVER_ROOT}/docker-compose.yml" \
             ${EC2_USER}@${{ secrets.CSE_EC2_HOST }}:${{ env.EC2_DEPLOY_DIR }}/
 
       - name: Create env file (local) and upload
