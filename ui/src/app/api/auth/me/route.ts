@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { getSessionFromRequest } from "@/lib/auth-server";
-import { fetchUserFromBackend } from "@/lib/backend-sync";
+import { cookieAuthFromRequest, fetchUserFromBackend } from "@/lib/backend-sync";
 
 export async function GET(request: NextRequest) {
   const session = await getSessionFromRequest(request);
@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const data = await fetchUserFromBackend(session.email);
+    const data = await fetchUserFromBackend(session.email, cookieAuthFromRequest(request));
     return NextResponse.json({
       user: data.user,
       account: data.account,

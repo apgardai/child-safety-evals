@@ -1,11 +1,14 @@
+import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
 import app.models  # noqa: F401 — register SQLAlchemy models on Base.metadata
 from app.api.internal import router as internal_router
 from app.services.database import Base, engine
+from app.services.firebase import init_firebase
 
 
 def _ensure_backwards_compatible_schema() -> None:
@@ -92,14 +95,31 @@ def _ensure_backwards_compatible_schema() -> None:
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    init_firebase()
     Base.metadata.create_all(bind=engine)
     _ensure_backwards_compatible_schema()
     yield
 
 
+def _cors_origins() -> list[str]:
+    return [
+        "https://cse.apgardai.com",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+    ]
+
+
 app = FastAPI(title="Child Safety AI Evaluation API", lifespan=lifespan)
 
-# Intended for server-to-server calls from the Next.js app only (not exposed to browsers).
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_cors_origins(),
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Internal routes: Firebase session cookie (forwarded from Next) or legacy X-Internal-Secret.
 
 app.include_router(internal_router, prefix="/internal", tags=["internal"])
 

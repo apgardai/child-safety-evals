@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { requireApiAuth } from "@/lib/auth-server";
-import { fetchLatestViewerDataFromBackend } from "@/lib/backend-sync";
+import { cookieAuthFromRequest, fetchLatestViewerDataFromBackend } from "@/lib/backend-sync";
 
 export async function GET(
   request: NextRequest,
@@ -15,7 +15,11 @@ export async function GET(
     if (!runId) {
       return NextResponse.json({ error: "Missing evaluation run id" }, { status: 400 });
     }
-    const viewer = await fetchLatestViewerDataFromBackend(auth.session.email, runId);
+    const viewer = await fetchLatestViewerDataFromBackend(
+      auth.session.email,
+      cookieAuthFromRequest(request),
+      runId
+    );
     return NextResponse.json(viewer);
   } catch (e) {
     return NextResponse.json(

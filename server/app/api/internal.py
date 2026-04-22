@@ -1,9 +1,14 @@
-import os
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Query
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
 from sqlalchemy.orm import Session, joinedload
 
+from app.api.deps import (
+    internal_secret_ok,
+    require_email_matches_session,
+    verify_session_or_secret,
+    verify_sync_user,
+)
 from app.crud.evaluation_runs import (
     aggregate_safety_scores_from_scenarios,
     create_evaluation_run,
@@ -46,22 +51,15 @@ from app.services.database import get_db
 router = APIRouter()
 
 
-def _verify_internal_secret(x_internal_secret: str | None) -> None:
-    expected = os.environ.get("INTERNAL_API_SECRET")
-    if not expected:
-        raise HTTPException(status_code=503, detail="Server misconfigured: INTERNAL_API_SECRET")
-    if not x_internal_secret or x_internal_secret != expected:
-        raise HTTPException(status_code=401, detail="Invalid internal secret")
-
-
 @router.post("/sync-user")
 def sync_user(
     body: SyncUserRequest,
+    authorization: str | None = Header(None),
     x_internal_secret: str | None = Header(None, alias="X-Internal-Secret"),
     db: Session = Depends(get_db),
 ):
-    """Called from the Next.js server after Firebase ID token verification (never from the browser)."""
-    _verify_internal_secret(x_internal_secret)
+    """Called from Next.js after Firebase ID token verification. Bearer ID token or internal secret."""
+    verify_sync_user(body.email, authorization, x_internal_secret)
     user = sync_user_from_firebase(
         db,
         email=body.email,
@@ -87,12 +85,12 @@ def sync_user(
 
 @router.get("/users/me", response_model=MeResponse)
 def get_me(
+    request: Request,
     email: str = Query(..., min_length=3),
     x_internal_secret: str | None = Header(None, alias="X-Internal-Secret"),
     db: Session = Depends(get_db),
 ):
-    _verify_internal_secret(x_internal_secret)
-    normalized = email.lower().strip()
+    normalized = require_email_matches_session(request, email, x_internal_secret)
     user = get_user_by_email(db, normalized)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -105,12 +103,13 @@ def get_me(
 
 @router.post("/evaluation-runs")
 def create_evaluation_run_endpoint(
+    request: Request,
     body: EvaluationRunCreate,
     x_internal_secret: str | None = Header(None, alias="X-Internal-Secret"),
     db: Session = Depends(get_db),
 ):
     """Persist a benchmark `results.json` document for the user's account."""
-    _verify_internal_secret(x_internal_secret)
+    _ = require_email_matches_session(request, body.email, x_internal_secret)
     user = get_user_by_email(db, body.email.lower().strip())
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -125,14 +124,15 @@ def create_evaluation_run_endpoint(
 
 @router.get("/evaluation-runs", response_model=list[EvaluationRunSummaryOut])
 def list_evaluation_runs_endpoint(
+    request: Request,
     email: str = Query(..., min_length=3),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
     x_internal_secret: str | None = Header(None, alias="X-Internal-Secret"),
     db: Session = Depends(get_db),
 ):
-    _verify_internal_secret(x_internal_secret)
-    user = get_user_by_email(db, email.lower().strip())
+    normalized = require_email_matches_session(request, email, x_internal_secret)
+    user = get_user_by_email(db, normalized)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     rows = list_evaluation_runs_for_account(
@@ -143,13 +143,14 @@ def list_evaluation_runs_endpoint(
 
 @router.get("/evaluation-runs/{run_id}", response_model=EvaluationRunDetailOut)
 def get_evaluation_run_endpoint(
+    request: Request,
     run_id: UUID,
     email: str = Query(..., min_length=3),
     x_internal_secret: str | None = Header(None, alias="X-Internal-Secret"),
     db: Session = Depends(get_db),
 ):
-    _verify_internal_secret(x_internal_secret)
-    user = get_user_by_email(db, email.lower().strip())
+    normalized = require_email_matches_session(request, email, x_internal_secret)
+    user = get_user_by_email(db, normalized)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     run = get_evaluation_run_for_account(db, run_id=run_id, account_id=user.account_id)
@@ -172,6 +173,7 @@ def get_evaluation_run_endpoint(
 
 @router.get("/evaluation-runs/latest/viewer-data")
 def get_latest_evaluation_viewer_data(
+    request: Request,
     email: str = Query(..., min_length=3),
     run_id: UUID | None = Query(None),
     x_internal_secret: str | None = Header(None, alias="X-Internal-Secret"),
@@ -180,8 +182,8 @@ def get_latest_evaluation_viewer_data(
     """
     Build ViewerData-compatible JSON from DB tables only.
     """
-    _verify_internal_secret(x_internal_secret)
-    user = get_user_by_email(db, email.lower().strip())
+    normalized = require_email_matches_session(request, email, x_internal_secret)
+    user = get_user_by_email(db, normalized)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
@@ -273,13 +275,14 @@ def health(db: Session = Depends(get_db)):
 
 @router.get("/models", response_model=list[ModelRegistryOut])
 def list_models(
+    request: Request,
     email: str | None = Query(None),
     x_internal_secret: str | None = Header(None, alias="X-Internal-Secret"),
     db: Session = Depends(get_db),
 ):
-    _verify_internal_secret(x_internal_secret)
     if email:
-        user = get_user_by_email(db, email.lower().strip())
+        normalized = require_email_matches_session(request, email, x_internal_secret)
+        user = get_user_by_email(db, normalized)
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
         rows = list_model_registry_entries(
@@ -288,8 +291,9 @@ def list_models(
             created_by_user_id=user.id,
         )
     else:
+        if not internal_secret_ok(x_internal_secret):
+            raise HTTPException(status_code=401, detail="Unauthorized")
         rows = list_model_registry_entries(db, account_id=None)
-    # Never return encrypted key material to callers.
     out = []
     for row in rows:
         obj = ModelRegistryOut.model_validate(row).model_dump()
@@ -299,11 +303,15 @@ def list_models(
 
 @router.post("/models", response_model=ModelRegistryOut)
 def upsert_model(
+    request: Request,
     body: ModelRegistryUpsert,
     x_internal_secret: str | None = Header(None, alias="X-Internal-Secret"),
     db: Session = Depends(get_db),
 ):
-    _verify_internal_secret(x_internal_secret)
+    if body.created_by_email:
+        require_email_matches_session(request, body.created_by_email, x_internal_secret)
+    else:
+        verify_session_or_secret(request, x_internal_secret)
     created_by_user = None
     if body.created_by_email:
         created_by_user = get_user_by_email(db, body.created_by_email)
@@ -312,20 +320,24 @@ def upsert_model(
 
 @router.delete("/models/{alias}")
 def delete_model(
+    request: Request,
     alias: str,
     email: str | None = Query(None),
     x_internal_secret: str | None = Header(None, alias="X-Internal-Secret"),
     db: Session = Depends(get_db),
 ):
-    _verify_internal_secret(x_internal_secret)
-    account_id = None
-    created_by_user_id = None
     if email:
-        user = get_user_by_email(db, email.lower().strip())
+        normalized = require_email_matches_session(request, email, x_internal_secret)
+        user = get_user_by_email(db, normalized)
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
         account_id = user.account_id
         created_by_user_id = user.id
+    else:
+        if not internal_secret_ok(x_internal_secret):
+            raise HTTPException(status_code=401, detail="Unauthorized")
+        account_id = None
+        created_by_user_id = None
     deleted = delete_model_registry_entry(
         db,
         alias=alias,
@@ -337,11 +349,12 @@ def delete_model(
 
 @router.put("/accounts/ai-gateway-key")
 def upsert_account_ai_gateway_key(
+    request: Request,
     body: AccountGatewayKeyUpsert,
     x_internal_secret: str | None = Header(None, alias="X-Internal-Secret"),
     db: Session = Depends(get_db),
 ):
-    _verify_internal_secret(x_internal_secret)
+    _ = require_email_matches_session(request, body.email, x_internal_secret)
     user = get_user_by_email(db, body.email.lower().strip())
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -355,12 +368,13 @@ def upsert_account_ai_gateway_key(
 
 @router.get("/accounts/ai-gateway-key/status")
 def get_account_ai_gateway_key_status(
+    request: Request,
     email: str = Query(..., min_length=3),
     x_internal_secret: str | None = Header(None, alias="X-Internal-Secret"),
     db: Session = Depends(get_db),
 ):
-    _verify_internal_secret(x_internal_secret)
-    user = get_user_by_email(db, email.lower().strip())
+    normalized = require_email_matches_session(request, email, x_internal_secret)
+    user = get_user_by_email(db, normalized)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     return {"has_key": has_account_ai_gateway_api_key(db, account_id=user.account_id)}
@@ -368,12 +382,13 @@ def get_account_ai_gateway_key_status(
 
 @router.get("/accounts/ai-gateway-key/runtime")
 def get_account_ai_gateway_key_runtime(
+    request: Request,
     email: str = Query(..., min_length=3),
     x_internal_secret: str | None = Header(None, alias="X-Internal-Secret"),
     db: Session = Depends(get_db),
 ):
-    _verify_internal_secret(x_internal_secret)
-    user = get_user_by_email(db, email.lower().strip())
+    normalized = require_email_matches_session(request, email, x_internal_secret)
+    user = get_user_by_email(db, normalized)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     api_key = get_account_ai_gateway_api_key(db, account_id=user.account_id)
@@ -384,13 +399,14 @@ def get_account_ai_gateway_key_runtime(
 
 @router.get("/models/{alias}/runtime-config")
 def get_model_runtime_config(
+    request: Request,
     alias: str,
     email: str = Query(..., min_length=3),
     x_internal_secret: str | None = Header(None, alias="X-Internal-Secret"),
     db: Session = Depends(get_db),
 ):
-    _verify_internal_secret(x_internal_secret)
-    user = get_user_by_email(db, email.lower().strip())
+    normalized = require_email_matches_session(request, email, x_internal_secret)
+    user = get_user_by_email(db, normalized)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     cfg = get_custom_runtime_config(db, alias=alias, account_id=user.account_id)

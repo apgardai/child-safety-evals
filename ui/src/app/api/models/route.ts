@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from "next/server";
 
 import { requireApiAuth } from "@/lib/auth-server";
 import {
+  cookieAuthFromRequest,
   deleteModelInBackend,
   listModelsFromBackend,
   upsertModelInBackend,
@@ -50,7 +51,7 @@ export async function GET(request: NextRequest) {
   if (!auth.ok) return auth.response;
 
   try {
-    const rows = await listModelsFromBackend(auth.session.email);
+    const rows = await listModelsFromBackend(cookieAuthFromRequest(request), auth.session.email);
     const registry: ModelRegistry = {};
     for (const row of rows) {
       const optional = row.optional_parameters ?? {};
@@ -115,17 +116,20 @@ export async function PUT(request: NextRequest) {
     isCustom && typeof optionalParameters.parsingKey === "string"
       ? (optionalParameters.parsingKey as string)
       : null;
-  await upsertModelInBackend({
-    alias: slug,
-    model_id: validated.value.model,
-    optional_parameters: optionalParameters,
-    is_custom: isCustom,
-    custom_url: customUrl,
-    custom_api_key: customApiKey,
-    parsing_key: parsingKey,
-    created_by_email: auth.session.email,
-  });
-  const rows = await listModelsFromBackend(auth.session.email);
+  await upsertModelInBackend(
+    {
+      alias: slug,
+      model_id: validated.value.model,
+      optional_parameters: optionalParameters,
+      is_custom: isCustom,
+      custom_url: customUrl,
+      custom_api_key: customApiKey,
+      parsing_key: parsingKey,
+      created_by_email: auth.session.email,
+    },
+    cookieAuthFromRequest(request)
+  );
+  const rows = await listModelsFromBackend(cookieAuthFromRequest(request), auth.session.email);
   return NextResponse.json({ ok: true, models: rows.map((r) => r.alias).sort() });
 }
 
@@ -151,7 +155,7 @@ export async function DELETE(request: NextRequest) {
   const slug = body.slug.trim();
   if (!slug) return NextResponse.json({ error: "slug must be non-empty" }, { status: 400 });
 
-  await deleteModelInBackend(slug, auth.session.email);
-  const rows = await listModelsFromBackend(auth.session.email);
+  await deleteModelInBackend(slug, cookieAuthFromRequest(request), auth.session.email);
+  const rows = await listModelsFromBackend(cookieAuthFromRequest(request), auth.session.email);
   return NextResponse.json({ ok: true, models: rows.map((r) => r.alias).sort() });
 }

@@ -1,0 +1,83 @@
+name: Deploy child-safety-evals server
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "child-safety-evals/server/**"
+      - "child-safety-evals/server/.github/workflows/deploy.yml"
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    env:
+      EC2_USER: ubuntu
+      APP_DIR: /home/ubuntu/child-safety-evals-server
+      SSH_OPTS: >-
+        -o StrictHostKeyChecking=no
+        -o ServerAliveInterval=30
+        -o ServerAliveCountMax=10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup SSH key
+        run: |
+          echo "${{ secrets.CSE_EC2_KEY }}" > key.pem
+          chmod 600 key.pem
+
+      - name: Sync server code to EC2
+        run: |
+          rsync -avz --delete \
+            --exclude ".git" \
+            --exclude "__pycache__" \
+            --exclude ".pytest_cache" \
+            --exclude ".venv" \
+            -e "ssh $SSH_OPTS -i key.pem" \
+            child-safety-evals/server/ \
+            ${EC2_USER}@${{ secrets.CSE_EC2_HOST }}:${APP_DIR}/
+
+      - name: Write runtime secrets and deploy app
+        run: |
+          ssh $SSH_OPTS -i key.pem ${EC2_USER}@${{ secrets.CSE_EC2_HOST }} << 'EOF'
+            set -e
+            APP_DIR="/home/ubuntu/child-safety-evals-server"
+            mkdir -p "${APP_DIR}"
+            cd "${APP_DIR}"
+
+            # Required and optional runtime env for app/services/* and app/api/*.
+            cat > .env << EOL
+            DATABASE_URL=${{ secrets.CSE_DATABASE_URL }}
+            CSE_SECRETS_KEY=${{ secrets.CSE_SECRETS_KEY }}
+            INTERNAL_API_SECRET=${{ secrets.CSE_INTERNAL_API_SECRET }}
+            FIREBASE_CREDS_PATH=${APP_DIR}/firebase-credentials.json
+            EOL
+
+            echo "${{ secrets.CSE_FIREBASE_CREDS_B64 }}" | base64 -d > firebase-credentials.json
+            chmod 600 firebase-credentials.json .env
+
+            python3 -m venv .venv
+            . .venv/bin/activate
+            pip install --upgrade pip
+            pip install -r requirements.txt
+
+            # Restart uvicorn process for latest code.
+            pkill -f "uvicorn app.main:app" || true
+            nohup .venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8100 > uvicorn.log 2>&1 &
+
+            sleep 3
+            curl -sf http://127.0.0.1:8100/internal/health > /dev/null
+          EOF
+
+      - name: Deployment summary
+        run: |
+          echo "Deployment completed for child-safety-evals/server on main."
+
+      - name: Required GitHub secrets
+        run: |
+          echo "Required: CSE_EC2_HOST, CSE_EC2_KEY, CSE_DATABASE_URL, CSE_SECRETS_KEY, CSE_FIREBASE_CREDS_B64"
+          echo "Optional: CSE_INTERNAL_API_SECRET"

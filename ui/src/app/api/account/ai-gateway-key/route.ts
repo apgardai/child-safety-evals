@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { requireApiAuth } from "@/lib/auth-server";
 import {
+  cookieAuthFromRequest,
   fetchAiGatewayApiKeyStatusFromBackend,
   saveAiGatewayApiKeyToBackend,
 } from "@/lib/backend-sync";
@@ -10,7 +11,10 @@ export async function GET(request: NextRequest) {
   const auth = await requireApiAuth(request);
   if (!auth.ok) return auth.response;
   try {
-    const status = await fetchAiGatewayApiKeyStatusFromBackend(auth.session.email);
+    const status = await fetchAiGatewayApiKeyStatusFromBackend(
+      auth.session.email,
+      cookieAuthFromRequest(request)
+    );
     return NextResponse.json(status);
   } catch (e) {
     return NextResponse.json(
@@ -34,7 +38,11 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({ error: "apiKey is required" }, { status: 400 });
   }
   try {
-    const out = await saveAiGatewayApiKeyToBackend(auth.session.email, apiKey);
+    const out = await saveAiGatewayApiKeyToBackend(
+      auth.session.email,
+      apiKey,
+      cookieAuthFromRequest(request)
+    );
     return NextResponse.json(out);
   } catch (e) {
     return NextResponse.json(

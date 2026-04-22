@@ -18,7 +18,7 @@ export default function TestResultsPage() {
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/public/viewer-data")
+    fetch("/benchmark/testResults/viewer-data.json")
       .then(async (r) => {
         if (!r.ok) {
           const j = await r.json().catch(() => ({}));

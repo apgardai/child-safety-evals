@@ -1,13 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { requireApiAuth } from "@/lib/auth-server";
-import { listEvaluationRunsFromBackend } from "@/lib/backend-sync";
+import { cookieAuthFromRequest, listEvaluationRunsFromBackend } from "@/lib/backend-sync";
 
 export async function GET(request: NextRequest) {
   const auth = await requireApiAuth(request);
   if (!auth.ok) return auth.response;
   try {
-    const rows = await listEvaluationRunsFromBackend(auth.session.email);
+    const rows = await listEvaluationRunsFromBackend(
+      auth.session.email,
+      cookieAuthFromRequest(request)
+    );
     return NextResponse.json({ runs: rows });
   } catch (e) {
     return NextResponse.json(

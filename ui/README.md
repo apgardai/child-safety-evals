@@ -18,6 +18,16 @@ Next.js UI for running the child safety benchmark pipeline (generate seeds, expa
    # Edit .env and set AI_GATEWAY_API_KEY
    ```
 
+## Test Results (public page)
+
+The **Test Results** tab loads static viewer data built from `benchmark/results-viewer/testResults/` (aggregated by `benchmark/results-viewer/build-viewer-data.mjs`). On `yarn dev` / `yarn build`, `scripts/sync-test-results-data.mjs` copies `benchmark/results-viewer/data/viewer-data.json` into `public/benchmark/testResults/viewer-data.json`. If the source file is missing locally, run:
+
+```bash
+cd ../benchmark && node results-viewer/build-viewer-data.mjs
+```
+
+Production builds use `prebuild` with `--strict` and require that file to exist.
+
 ## Development
 
 From this directory (`child-safety-evals/ui`):

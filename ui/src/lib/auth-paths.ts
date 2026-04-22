@@ -1,6 +1,7 @@
 /**
  * Whether a pathname requires a session cookie. Keep matcher entries in `middleware.ts`
  * in sync (every path that returns true here should be listed there).
+ * `/test-results` is public (static benchmark data under `public/benchmark/testResults/`).
  */
 export function requiresAuthPathname(pathname: string): boolean {
   if (
@@ -9,11 +10,7 @@ export function requiresAuthPathname(pathname: string): boolean {
     pathname === "/models" ||
     pathname.startsWith("/models/") ||
     pathname === "/scenarios" ||
-    pathname.startsWith("/scenarios/") ||
-    pathname === "/leaderboard" ||
-    pathname.startsWith("/leaderboard/") ||
-    pathname === "/test-results" ||
-    pathname.startsWith("/test-results/")
+    pathname.startsWith("/scenarios/")
   ) {
     return true;
   }

@@ -63,6 +63,9 @@ benchmark/**/*.zip
 
 # Results viewer generated artifacts
 benchmark/results-viewer/data/viewer-data.json
+# Synced copy for Next.js public Test Results page (see ui/scripts/sync-test-results-data.mjs)
+ui/public/benchmark/testResults/viewer-data.json
 benchmark/results-viewer/archived-results/results.json
 benchmark/results-viewer/archived-results/testResults/**
 
+**/*__pycache__/*

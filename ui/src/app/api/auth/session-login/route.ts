@@ -57,11 +57,14 @@ export async function POST(request: NextRequest) {
 
   let synced;
   try {
-    synced = await syncUserToBackend({
-      firebase_uid: decoded.uid,
-      email,
-      name: displayName,
-    });
+    synced = await syncUserToBackend(
+      {
+        firebase_uid: decoded.uid,
+        email,
+        name: displayName,
+      },
+      { kind: "idToken", idToken: idToken }
+    );
   } catch (e) {
     if (e instanceof BackendSyncError) {
       if (e.code === "CONFIG_ERROR") {
@@ -74,7 +77,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json(
           {
             error:
-              "Cannot reach the account API. Start the child-safety-evals server (default http://127.0.0.1:8100) and align INTERNAL_API_URL and INTERNAL_API_SECRET with the server env.",
+              "Cannot reach the account API. Start the child-safety-evals server and align INTERNAL_API_URL. Sync uses a Firebase ID token (no INTERNAL_API_SECRET required).",
             code: e.code,
           },
           { status: 502 }
@@ -103,12 +106,14 @@ export async function POST(request: NextRequest) {
     },
   });
 
+  const sessionDomain = process.env.SESSION_COOKIE_DOMAIN?.trim();
   res.cookies.set(SESSION_COOKIE_NAME, sessionCookie, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     path: "/",
     maxAge: Math.floor(expiresInMs / 1000),
+    ...(sessionDomain ? { domain: sessionDomain } : {}),
   });
 
   return res;

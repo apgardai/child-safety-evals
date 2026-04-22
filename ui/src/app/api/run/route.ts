@@ -6,6 +6,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { requireApiAuth } from "@/lib/auth-server";
 import {
+  cookieAuthFromRequest,
   fetchAiGatewayApiKeyRuntimeFromBackend,
   fetchCustomRuntimeConfigFromBackend,
   persistEvaluationRunToBackend,
@@ -119,6 +120,7 @@ export async function POST(request: NextRequest) {
   const auth = await requireApiAuth(request);
   if (!auth.ok) return auth.response;
   const sessionEmail = auth.session.email;
+  const internalAuth = cookieAuthFromRequest(request);
 
   let body: RunRequestBody;
   try {
@@ -194,7 +196,7 @@ export async function POST(request: NextRequest) {
   if (body.command === "run") {
     if (!apiKey) {
       try {
-        const rt = await fetchAiGatewayApiKeyRuntimeFromBackend(sessionEmail);
+        const rt = await fetchAiGatewayApiKeyRuntimeFromBackend(sessionEmail, internalAuth);
         apiKey = rt.api_key;
       } catch {
         return NextResponse.json(
@@ -213,7 +215,8 @@ export async function POST(request: NextRequest) {
         try {
           const cfg = await fetchCustomRuntimeConfigFromBackend(
             sessionEmail,
-            runBody.targetModel
+            runBody.targetModel,
+            internalAuth
           );
           customApiKey = cfg.custom_api_key;
           customApiEndpoint = cfg.custom_url;
@@ -229,18 +232,21 @@ export async function POST(request: NextRequest) {
         }
       }
       try {
-        await upsertModelInBackend({
-          alias: runBody.targetModel,
-          model_id: runBody.targetModel,
-          is_custom: true,
-          custom_url: customApiEndpoint,
-          custom_api_key: customApiKey,
-          parsing_key: customParsingKey || "message",
-          optional_parameters: {
-            parsingKey: customParsingKey || "message",
+        await upsertModelInBackend(
+          {
+            alias: runBody.targetModel,
+            model_id: runBody.targetModel,
+            is_custom: true,
+            custom_url: customApiEndpoint,
+            custom_api_key: customApiKey,
+            parsing_key: customParsingKey || "message",
+            optional_parameters: {
+              parsingKey: customParsingKey || "message",
+            },
+            created_by_email: sessionEmail,
           },
-          created_by_email: sessionEmail,
-        });
+          internalAuth
+        );
       } catch (e) {
         return NextResponse.json(
           {
@@ -350,11 +356,14 @@ export async function POST(request: NextRequest) {
                     }).\n`
                   );
                 }
-                const { id } = await persistEvaluationRunToBackend({
-                  email: sessionEmail,
-                  results: json,
-                  viewerData,
-                });
+                const { id } = await persistEvaluationRunToBackend(
+                  {
+                    email: sessionEmail,
+                    results: json,
+                    viewerData,
+                  },
+                  internalAuth
+                );
                 send(`\nSaved evaluation run to database (id: ${id}).\n`);
               }
             }
