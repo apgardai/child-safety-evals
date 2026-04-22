@@ -126,4 +126,8 @@ app.include_router(internal_router, prefix="/internal", tags=["internal"])
 
 @app.get("/")
 def root():
-    return {"service": "child-safety-evals-api", "docs": "/docs"}
+    return {
+        "service": "child-safety-evals-api",
+        "docs": "/docs",
+        "health": "/internal/health",
+    }

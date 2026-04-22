@@ -46,9 +46,20 @@ from app.schemas.user_sync import (
     SyncUserRequest,
     UserOut,
 )
-from app.services.database import get_db
+from app.services.database import check_db_connection, get_db
 
 router = APIRouter()
+
+
+@router.get("/health")
+def internal_health(db: Session = Depends(get_db)):
+    """
+    Liveness/readiness for load balancers, Docker, and CI. Checks Postgres connectivity.
+    Path: ``GET /internal/health``.
+    """
+    if not check_db_connection():
+        raise HTTPException(status_code=503, detail="Database unavailable")
+    return {"status": "ok"}
 
 
 @router.post("/sync-user")
@@ -261,16 +272,6 @@ def get_latest_evaluation_viewer_data(
         },
         "scenarios": scenarios,
     }
-
-
-@router.get("/health")
-def health(db: Session = Depends(get_db)):
-    from app.services.database import check_db_connection
-
-    ok = check_db_connection()
-    if not ok:
-        raise HTTPException(status_code=503, detail="Database unavailable")
-    return {"status": "ok"}
 
 
 @router.get("/models", response_model=list[ModelRegistryOut])
