@@ -6,7 +6,7 @@ on:
       - main
     paths:
       - "child-safety-evals/server/**"
-      - "child-safety-evals/server/.github/workflows/deploy.yml"
+      - "child-safety-evals/.github/workflows/deploy.yml"
   workflow_dispatch:
 
 jobs:
