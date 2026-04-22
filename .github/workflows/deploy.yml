@@ -131,7 +131,7 @@ jobs:
           ssh $SSH_OPTS -i key.pem ${EC2_USER}@${{ secrets.CSE_EC2_HOST }} bash -s << 'EOF'
             set -e
             echo "Waiting for API..."
-            HEALTH_URL="http://127.0.0.1:8100/internal/health"
+            HEALTH_URL="http://127.0.0.1:8000/internal/health"
             MAX_ATTEMPTS=30
             ATTEMPT=0
             while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
