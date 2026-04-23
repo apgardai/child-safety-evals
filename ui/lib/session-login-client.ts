@@ -1,3 +1,7 @@
+import axios from "axios";
+
+import requestsClient from "lib/requests-client";
+
 export type SessionLoginErrorBody = {
   error?: string;
   code?: string;
@@ -16,30 +20,35 @@ export async function postSessionLogin(body: {
   token: string;
   name?: string;
 }): Promise<SessionLoginResult> {
-  let res: Response;
+  let status = 0;
+  let j: SessionLoginErrorBody = {};
   try {
-    res = await fetch("/api/auth/session-login", {
-      method: "POST",
+    await requestsClient.post("/api/auth/session-login", body, {
       headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify(body),
     });
-  } catch {
+    return { ok: true };
+  } catch (error: unknown) {
+    if (!axios.isAxiosError<SessionLoginErrorBody>(error)) {
+      return {
+        ok: false,
+        message: "Network error while contacting the app. Check your connection and try again.",
+        retryable: true,
+      };
+    }
+    status = error.response?.status ?? 0;
+    j = (error.response?.data ?? {}) as SessionLoginErrorBody;
+  }
+
+  if (status === 0) {
     return {
       ok: false,
       message: "Network error while contacting the app. Check your connection and try again.",
       retryable: true,
     };
   }
-
-  const j = (await res.json().catch(() => ({}))) as SessionLoginErrorBody;
-  if (res.ok) {
-    return { ok: true };
-  }
-
   const code = j.code;
   const retryable =
-    (res.status === 502 || res.status === 503 || res.status === 504) &&
+    (status === 502 || status === 503 || status === 504) &&
     (code === "BACKEND_UNREACHABLE" ||
       code === "CONFIG_ERROR" ||
       code === "SYNC_REJECTED" ||
@@ -48,9 +57,9 @@ export async function postSessionLogin(body: {
 
   const message =
     j.error ||
-    (res.status === 502
+    (status === 502
       ? "Account service unavailable. Start the API server and try again."
-      : `Sign-in failed (${res.status})`);
+      : `Sign-in failed (${status})`);
 
   return { ok: false, message, retryable };
 }
