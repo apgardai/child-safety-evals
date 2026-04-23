@@ -1,8 +1,8 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
-import { requiresAuthPathname } from "lib/auth-paths";
-import { SESSION_COOKIE_NAME } from "lib/session-cookie-name";
+import { requiresAuthPathname } from "./lib/auth-paths";
+import { SESSION_COOKIE_NAME } from "./lib/session-cookie-name";
 
 async function hasActiveSession(request: NextRequest): Promise<boolean> {
   try {
