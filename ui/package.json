@@ -3,10 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "sync:test-results": "node ./scripts/sync-test-results-data.mjs",
-    "predev": "node ./scripts/sync-test-results-data.mjs",
     "dev": "next dev",
-    "prebuild": "node ./scripts/sync-test-results-data.mjs --strict",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"

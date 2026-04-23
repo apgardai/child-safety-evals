@@ -20,13 +20,15 @@ Next.js UI for running the child safety benchmark pipeline (generate seeds, expa
 
 ## Test Results (public page)
 
-The **Test Results** tab loads static viewer data built from `benchmark/results-viewer/testResults/` (aggregated by `benchmark/results-viewer/build-viewer-data.mjs`). On `yarn dev` / `yarn build`, `scripts/sync-test-results-data.mjs` copies `benchmark/results-viewer/data/viewer-data.json` into `public/benchmark/testResults/viewer-data.json`. If the source file is missing locally, run:
+The **Test Results** tab loads static viewer data from:
+
+`public/benchmark/testResults/viewer-data.json`
+
+To refresh that file from benchmark outputs, run:
 
 ```bash
 cd ../benchmark && node results-viewer/build-viewer-data.mjs
 ```
-
-Production builds use `prebuild` with `--strict` and require that file to exist.
 
 ## Development
 
