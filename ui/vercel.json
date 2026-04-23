@@ -1,0 +1,5 @@
+{
+    "buildCommand": "cd ../../benchmark && yarn install && yarn results-viewer:data && cd ../ui && yarn install && yarn build",
+    "outputDirectory": ".next",
+    "framework": "nextjs"
+  }
