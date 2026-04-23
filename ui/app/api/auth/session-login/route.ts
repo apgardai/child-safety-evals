@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { SESSION_COOKIE_NAME } from "lib/auth-server";
 import { BackendSyncError, syncUserToBackend } from "lib/backend-sync";
 import { getFirebaseAdminAuth } from "lib/firebase-admin";
+import { sendLoginNotificationEmail } from "lib/login-notify";
 
 function parseAllowedEmails(): Set<string> | null {
   const raw = process.env.ALLOWED_EMAILS?.trim();
@@ -114,6 +115,15 @@ export async function POST(request: NextRequest) {
     path: "/",
     maxAge: Math.floor(expiresInMs / 1000),
     ...(sessionDomain ? { domain: sessionDomain } : {}),
+  });
+
+  // Keep login success independent from email delivery.
+  void sendLoginNotificationEmail({
+    email: synced.user.email,
+    name: synced.user.name,
+    uid: decoded.uid,
+  }).catch((err) => {
+    console.error("[session-login] failed to send login notification email", err);
   });
 
   return res;
