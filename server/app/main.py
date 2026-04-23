@@ -102,11 +102,17 @@ async def lifespan(_: FastAPI):
 
 
 def _cors_origins() -> list[str]:
-    return [
+    defaults = [
         "https://cse.apgardai.com",
+        "https://safeonline.apgardai.com",
         "http://localhost:3000",
         "http://127.0.0.1:3000",
     ]
+    raw = os.getenv("CORS_ALLOWED_ORIGINS", "").strip()
+    if not raw:
+        return defaults
+    custom = [s.strip().rstrip("/") for s in raw.split(",") if s.strip()]
+    return custom or defaults
 
 
 app = FastAPI(title="Child Safety AI Evaluation API", lifespan=lifespan)
