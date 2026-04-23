@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
+import { apiUrl } from "lib/api-url";
 import { ViewerDataExplorer } from "components/ViewerDataExplorer";
 import type { ViewerData } from "lib/viewerDataFromZip";
 import { humanizeSlug } from "lib/humanizeSlug";
@@ -45,7 +46,9 @@ export default function RunScenariosByRiskPage({
   useEffect(() => {
     if (!evaluationRunId) return;
     let cancelled = false;
-    fetch(`/api/evaluation-runs/${encodeURIComponent(evaluationRunId)}/viewer-data`)
+    fetch(apiUrl(`/api/evaluation-runs/${encodeURIComponent(evaluationRunId)}/viewer-data`), {
+      credentials: "include",
+    })
       .then(async (r) => {
         if (!r.ok) {
           const j = await r.json().catch(() => ({}));

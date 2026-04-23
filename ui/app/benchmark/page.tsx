@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { apiUrl } from "lib/api-url";
 import { ResultsOverview } from "components/ResultsOverview";
 import type { ViewerData } from "lib/viewerDataFromZip";
 
@@ -138,7 +139,7 @@ export default function Home() {
   const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
-    fetch("/api/models")
+    fetch(apiUrl("/api/models"), { credentials: "include" })
       .then((r) => r.json())
       .then((data: { models?: string[]; customModels?: string[] }) => {
         console.log(data.models);
@@ -154,7 +155,9 @@ export default function Home() {
   const refreshOverviewFromDisk = useCallback(async (file?: string) => {
     try {
       const q = file ? `?file=${encodeURIComponent(file)}` : "";
-      const vr = await fetch(`/api/scenarios/viewer-data${q}`);
+      const vr = await fetch(apiUrl(`/api/scenarios/viewer-data${q}`), {
+        credentials: "include",
+      });
       if (vr.ok) {
         const j = (await vr.json()) as ViewerData;
         setOverviewData(j);
@@ -405,7 +408,9 @@ function PipelineForm({
     void (async () => {
       setApiKeyStatusLoading(true);
       try {
-        const r = await fetch("/api/account/ai-gateway-key");
+        const r = await fetch(apiUrl("/api/account/ai-gateway-key"), {
+          credentials: "include",
+        });
         const j = (await r.json().catch(() => ({}))) as { has_key?: boolean };
         if (!cancelled) setHasSavedApiKey(Boolean(j.has_key));
       } catch {
@@ -461,9 +466,10 @@ function PipelineForm({
     setSavingApiKey(true);
     setApiKeyMessage(null);
     try {
-      const r = await fetch("/api/account/ai-gateway-key", {
+      const r = await fetch(apiUrl("/api/account/ai-gateway-key"), {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ apiKey: trimmed }),
       });
       const j = (await r.json().catch(() => ({}))) as { error?: string };

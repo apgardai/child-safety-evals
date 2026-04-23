@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { apiUrl } from "lib/api-url";
+
 type EvaluationRunRow = {
   id: string;
   created_at: string;
@@ -25,7 +27,7 @@ export default function BenchmarkRunsPage() {
       setLoading(true);
       setError(null);
       try {
-        const res = await fetch("/api/evaluation-runs");
+        const res = await fetch(apiUrl("/api/evaluation-runs"), { credentials: "include" });
         const data = (await res.json().catch(() => ({}))) as {
           runs?: EvaluationRunRow[];
           error?: string;

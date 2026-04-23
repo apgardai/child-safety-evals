@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
+import { apiUrl } from "lib/api-url";
 import { requiresAuthPathname } from "lib/auth-paths";
 
 const baseTabs = [
@@ -31,7 +32,7 @@ export function TopNav() {
 
   const loadSession = useCallback(async () => {
     try {
-      const res = await fetch("/api/auth/me", { credentials: "include" });
+      const res = await fetch(apiUrl("/api/auth/me"), { credentials: "include" });
       if (res.ok) {
         const data = (await res.json()) as { user?: { email?: string } };
         setUserEmail(data.user?.email ?? null);
@@ -51,7 +52,7 @@ export function TopNav() {
 
   async function handleSignOut() {
     try {
-      await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
+      await fetch(apiUrl("/api/auth/logout"), { method: "POST", credentials: "include" });
     } catch {
       /* still clear UI */
     }

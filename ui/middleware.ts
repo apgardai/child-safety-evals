@@ -6,7 +6,11 @@ import { SESSION_COOKIE_NAME } from "./lib/session-cookie-name";
 
 async function hasActiveSession(request: NextRequest): Promise<boolean> {
   try {
-    const res = await fetch(new URL("/api/auth/me", request.url), {
+    const backendBase = process.env.INTERNAL_API_URL?.replace(/\/$/, "");
+    const url = backendBase
+      ? `${backendBase}/api/auth/me`
+      : new URL("/api/auth/me", request.url).toString();
+    const res = await fetch(url, {
       headers: {
         cookie: request.headers.get("cookie") ?? "",
       },

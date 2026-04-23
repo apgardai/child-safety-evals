@@ -2,13 +2,15 @@
 
 import { useState } from "react";
 
+import { apiUrl } from "lib/api-url";
+
 export function SignOutButton() {
   const [busy, setBusy] = useState(false);
 
   async function logout() {
     setBusy(true);
     try {
-      await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
+      await fetch(apiUrl("/api/auth/logout"), { method: "POST", credentials: "include" });
       window.location.assign("/");
     } finally {
       setBusy(false);

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ViewerDataExplorer } from "components/ViewerDataExplorer";
+import { apiUrl } from "lib/api-url";
 import type { ViewerData } from "lib/viewerDataFromZip";
 
 export default function ScenariosPage() {
@@ -26,7 +27,7 @@ export default function ScenariosPage() {
     const q = selectedZipFile
       ? `?file=${encodeURIComponent(selectedZipFile)}`
       : "";
-    fetch(`/api/scenarios/viewer-data${q}`)
+    fetch(apiUrl(`/api/scenarios/viewer-data${q}`), { credentials: "include" })
       .then(async (r) => {
         if (!r.ok) {
           const j = await r.json().catch(() => ({}));

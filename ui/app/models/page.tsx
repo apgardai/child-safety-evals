@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { apiUrl } from "lib/api-url";
+
 type ModelConfig = {
   model: string;
   maxTokens?: number;
@@ -43,7 +45,7 @@ export default function ModelsPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/models");
+      const res = await fetch(apiUrl("/api/models"), { credentials: "include" });
       const data = (await res.json()) as { registry?: ModelRegistry; error?: string };
       setRegistry(data.registry ?? {});
       if (data.error) setError(data.error);
@@ -99,9 +101,10 @@ export default function ModelsPage() {
       if (temp) config.temperature = Number(temp);
       if (providerOptionsRaw.trim().length) config.providerOptions = poParsed.value;
 
-      const res = await fetch("/api/models", {
+      const res = await fetch(apiUrl("/api/models"), {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ slug: slug.trim(), config }),
       });
       const data = (await res.json().catch(() => ({}))) as { error?: string };
@@ -123,9 +126,10 @@ export default function ModelsPage() {
     setSaving(true);
     setError(null);
     try {
-      const res = await fetch("/api/models", {
+      const res = await fetch(apiUrl("/api/models"), {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ slug: s }),
       });
       const data = (await res.json().catch(() => ({}))) as { error?: string };
