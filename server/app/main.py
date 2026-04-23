@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
 import app.models  # noqa: F401 — register SQLAlchemy models on Base.metadata
+from app.api.auth import router as auth_router
 from app.api.internal import router as internal_router
 from app.services.database import Base, engine
 from app.services.firebase import init_firebase
@@ -126,6 +127,7 @@ app.add_middleware(
 )
 
 # Internal routes: Firebase session cookie (forwarded from Next) or legacy X-Internal-Secret.
+app.include_router(auth_router, prefix="/api/auth", tags=["auth"])
 
 app.include_router(internal_router, prefix="/internal", tags=["internal"])
 
