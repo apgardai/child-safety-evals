@@ -95,6 +95,8 @@ jobs:
             echo "INTERNAL_API_SECRET=${{ secrets.CSE_INTERNAL_API_SECRET }}"
             echo "CORS_ORIGINS=${{ secrets.CSE_CORS_ORIGINS }}"
             echo "FIREBASE_CREDS_PATH=/app/firebase-credentials.json"
+            echo "GMAIL_EMAIL=${{ secrets.GMAIL_EMAIL }}"
+            echo "GMAIL_PASSWORD=${{ secrets.GMAIL_PASSWORD }}"
           } > /tmp/cse-server.env
           chmod 600 /tmp/cse-server.env
           scp $SSH_OPTS -i key.pem /tmp/cse-server.env \
