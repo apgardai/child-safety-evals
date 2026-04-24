@@ -104,7 +104,7 @@ def session_login(
         max_age=int(expires_in.total_seconds()),
         domain=session_domain or None,
         httponly=True,
-        secure=os.getenv("NODE_ENV", "development") == "production",
+        secure=True,
         samesite="none",
         path="/",
     )
