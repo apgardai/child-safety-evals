@@ -5,13 +5,7 @@ import * as path from "node:path";
 import { NextRequest, NextResponse } from "next/server";
 
 import { requireApiAuth } from "lib/auth-server";
-import {
-  cookieAuthFromRequest,
-  fetchAiGatewayApiKeyRuntimeFromBackend,
-  fetchCustomRuntimeConfigFromBackend,
-  persistEvaluationRunToBackend,
-  upsertModelInBackend,
-} from "lib/backend-sync";
+import { fastApiFetchJson } from "lib/server-fastapi";
 import {
   buildViewerDataFromResultsZip,
   extractResultsDocumentFromZipBuffer,
@@ -119,8 +113,7 @@ function buildArgs(body: RunRequestBody): string[] {
 export async function POST(request: NextRequest) {
   const auth = await requireApiAuth(request);
   if (!auth.ok) return auth.response;
-  const sessionEmail = auth.session.email;
-  const internalAuth = cookieAuthFromRequest(request);
+  const cookieHeader = request.headers.get("cookie") ?? "";
 
   let body: RunRequestBody;
   try {
@@ -196,7 +189,10 @@ export async function POST(request: NextRequest) {
   if (body.command === "run") {
     if (!apiKey) {
       try {
-        const rt = await fetchAiGatewayApiKeyRuntimeFromBackend(sessionEmail, internalAuth);
+        const rt = await fastApiFetchJson<{ api_key: string }>(
+          "/api/account/ai-gateway-key/runtime",
+          cookieHeader
+        );
         apiKey = rt.api_key;
       } catch {
         return NextResponse.json(
@@ -213,10 +209,13 @@ export async function POST(request: NextRequest) {
     if (isCustomTarget) {
       if (!customApiKey || !customApiEndpoint) {
         try {
-          const cfg = await fetchCustomRuntimeConfigFromBackend(
-            sessionEmail,
-            runBody.targetModel,
-            internalAuth
+          const cfg = await fastApiFetchJson<{
+            custom_url: string;
+            custom_api_key: string;
+            parsing_key: string;
+          }>(
+            `/api/models/${encodeURIComponent(runBody.targetModel)}/runtime-config`,
+            cookieHeader
           );
           customApiKey = cfg.custom_api_key;
           customApiEndpoint = cfg.custom_url;
@@ -232,20 +231,21 @@ export async function POST(request: NextRequest) {
         }
       }
       try {
-        await upsertModelInBackend(
+        await fastApiFetchJson<{ ok?: boolean }>(
+          "/api/models",
+          cookieHeader,
           {
-            alias: runBody.targetModel,
-            model_id: runBody.targetModel,
-            is_custom: true,
-            custom_url: customApiEndpoint,
-            custom_api_key: customApiKey,
-            parsing_key: customParsingKey || "message",
-            optional_parameters: {
-              parsingKey: customParsingKey || "message",
+            method: "PUT",
+            body: {
+              slug: runBody.targetModel,
+              config: {
+                model: runBody.targetModel,
+                customApiEndpoint,
+                customApiKey,
+                parsingKey: customParsingKey || "message",
+              },
             },
-            created_by_email: sessionEmail,
-          },
-          internalAuth
+          }
         );
       } catch (e) {
         return NextResponse.json(
@@ -356,13 +356,13 @@ export async function POST(request: NextRequest) {
                     }).\n`
                   );
                 }
-                const { id } = await persistEvaluationRunToBackend(
+                const { id } = await fastApiFetchJson<{ id: string }>(
+                  "/api/evaluation-runs",
+                  cookieHeader,
                   {
-                    email: sessionEmail,
-                    results: json,
-                    viewerData,
-                  },
-                  internalAuth
+                    method: "POST",
+                    body: { results: json, viewer_data: viewerData ?? null },
+                  }
                 );
                 send(`\nSaved evaluation run to database (id: ${id}).\n`);
               }

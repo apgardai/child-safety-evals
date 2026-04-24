@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-import { apiUrl } from "lib/api-url";
+import requestsClient from "lib/requests-client";
 
 export function SignOutButton() {
   const [busy, setBusy] = useState(false);
@@ -10,7 +10,7 @@ export function SignOutButton() {
   async function logout() {
     setBusy(true);
     try {
-      await fetch(apiUrl("/api/auth/logout"), { method: "POST", credentials: "include" });
+      await requestsClient.post("/api/auth/logout", null, { validateStatus: () => true });
       window.location.assign("/");
     } finally {
       setBusy(false);

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { apiUrl } from "lib/api-url";
+import requestsClient, { sameOriginApiUrl } from "lib/requests-client";
 import { ResultsOverview } from "components/ResultsOverview";
 import type { ViewerData } from "lib/viewerDataFromZip";
 
@@ -139,9 +139,10 @@ export default function Home() {
   const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
-    fetch(apiUrl("/api/models"), { credentials: "include" })
-      .then((r) => r.json())
-      .then((data: { models?: string[]; customModels?: string[] }) => {
+    requestsClient
+      .get<{ models?: string[]; customModels?: string[] }>("/api/models", { validateStatus: () => true })
+      .then((r) => {
+        const data = r.data ?? {};
         console.log(data.models);
         setModelList(data.models ?? []);
         setCustomModelList(data.customModels ?? []);
@@ -155,12 +156,11 @@ export default function Home() {
   const refreshOverviewFromDisk = useCallback(async (file?: string) => {
     try {
       const q = file ? `?file=${encodeURIComponent(file)}` : "";
-      const vr = await fetch(apiUrl(`/api/scenarios/viewer-data${q}`), {
-        credentials: "include",
+      const vr = await requestsClient.get<ViewerData>(`/api/scenarios/viewer-data${q}`, {
+        validateStatus: () => true,
       });
-      if (vr.ok) {
-        const j = (await vr.json()) as ViewerData;
-        setOverviewData(j);
+      if (vr.status >= 200 && vr.status < 300) {
+        setOverviewData(vr.data);
       }
     } catch {
       /* benchmark/data may have no zip yet */
@@ -186,10 +186,12 @@ export default function Home() {
       setOutput("Running evaluation...\n\n");
 
       try {
-        const res = await fetch("/api/run", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
+        const prefix = "Running evaluation...\n\n";
+        const runUrl = sameOriginApiUrl("/api/run");
+        let streamedBody = "";
+        const res = await requestsClient.post<string>(
+          runUrl,
+          {
             command: "run",
             apiKey: payload.apiKey,
             customApiKey: payload.customApiKey,
@@ -200,13 +202,32 @@ export default function Home() {
             userModel: payload.userModel,
             input: "data/scenarios.jsonl",
             prompts: payload.prompts,
-          }),
-          signal: abortRef.current.signal,
-        });
+          },
+          {
+            signal: abortRef.current.signal,
+            responseType: "text",
+            validateStatus: () => true,
+            headers: { "Content-Type": "application/json" },
+            transformResponse: [(data) => data],
+            onDownloadProgress: (e) => {
+              const xhr = (e as unknown as { target?: XMLHttpRequest }).target;
+              streamedBody = xhr?.responseText ?? streamedBody;
+              setOutput(prefix + streamedBody);
+            },
+          }
+        );
 
-        if (!res.ok) {
-          const err = await res.json().catch(() => ({}));
-          const data = err as { error?: string; code?: string };
+        if (res.status < 200 || res.status >= 300) {
+          let data: { error?: string; code?: string } = {};
+          if (typeof res.data === "string" && res.data.trim()) {
+            try {
+              data = JSON.parse(res.data) as { error?: string; code?: string };
+            } catch {
+              data = {};
+            }
+          } else if (res.data && typeof res.data === "object") {
+            data = res.data as { error?: string; code?: string };
+          }
           const msg =
             data.code === "CLI_NOT_BUILT"
               ? `${data.error}\n\nFrom the benchmark directory, run: yarn install && yarn tsbuild`
@@ -216,21 +237,10 @@ export default function Home() {
           return;
         }
 
-        const reader = res.body?.getReader();
-        const decoder = new TextDecoder();
-        if (!reader) {
-          setOutput("No response body");
-          setFlowPhase("idle");
-          return;
-        }
-
-        let text = "Running evaluation...\n\n";
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          text += decoder.decode(value, { stream: true });
-          setOutput(text);
-        }
+        const fullBody =
+          typeof res.data === "string" && res.data.length > 0 ? res.data : streamedBody;
+        const text = prefix + fullBody;
+        setOutput(text);
         const benchmarkHadTestFailures =
           /\bTest failed for key\b/m.test(text) ||
           /\d+\s+tests?\s+failed\b/i.test(text);
@@ -408,10 +418,10 @@ function PipelineForm({
     void (async () => {
       setApiKeyStatusLoading(true);
       try {
-        const r = await fetch(apiUrl("/api/account/ai-gateway-key"), {
-          credentials: "include",
+        const r = await requestsClient.get<{ has_key?: boolean }>("/api/account/ai-gateway-key", {
+          validateStatus: () => true,
         });
-        const j = (await r.json().catch(() => ({}))) as { has_key?: boolean };
+        const j = r.data ?? {};
         if (!cancelled) setHasSavedApiKey(Boolean(j.has_key));
       } catch {
         if (!cancelled) setHasSavedApiKey(false);
@@ -466,14 +476,13 @@ function PipelineForm({
     setSavingApiKey(true);
     setApiKeyMessage(null);
     try {
-      const r = await fetch(apiUrl("/api/account/ai-gateway-key"), {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ apiKey: trimmed }),
-      });
-      const j = (await r.json().catch(() => ({}))) as { error?: string };
-      if (!r.ok) {
+      const r = await requestsClient.put<{ error?: string }>(
+        "/api/account/ai-gateway-key",
+        { apiKey: trimmed },
+        { validateStatus: () => true }
+      );
+      const j = r.data ?? {};
+      if (r.status < 200 || r.status >= 300) {
         setApiKeyMessage(j.error || "Could not save API key.");
         return;
       }

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ViewerDataExplorer } from "components/ViewerDataExplorer";
-import { apiUrl } from "lib/api-url";
+import requestsClient from "lib/requests-client";
 import type { ViewerData } from "lib/viewerDataFromZip";
 
 export default function ScenariosPage() {
@@ -27,13 +27,21 @@ export default function ScenariosPage() {
     const q = selectedZipFile
       ? `?file=${encodeURIComponent(selectedZipFile)}`
       : "";
-    fetch(apiUrl(`/api/scenarios/viewer-data${q}`), { credentials: "include" })
-      .then(async (r) => {
-        if (!r.ok) {
-          const j = await r.json().catch(() => ({}));
-          throw new Error(j.error || `Failed with ${r.status}`);
+    requestsClient
+      .get<ViewerData>(`/api/scenarios/viewer-data${q}`, { validateStatus: () => true })
+      .then((r) => {
+        if (r.status < 200 || r.status >= 300) {
+          const body = r.data as unknown;
+          const errMsg =
+            typeof body === "object" &&
+            body !== null &&
+            "error" in body &&
+            typeof (body as { error?: string }).error === "string"
+              ? (body as { error: string }).error
+              : `Failed with ${r.status}`;
+          throw new Error(errMsg);
         }
-        return r.json();
+        return r.data;
       })
       .then((j: ViewerData) => {
         if (!cancelled) setServerData(j);

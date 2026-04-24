@@ -16,7 +16,6 @@ export function requiresAuthPathname(pathname: string): boolean {
   }
   if (
     pathname.startsWith("/api/run") ||
-    pathname.startsWith("/api/models") ||
     pathname.startsWith("/api/scenarios") ||
     pathname.startsWith("/api/custom-model") ||
     pathname.startsWith("/api/env")

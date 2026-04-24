@@ -7,9 +7,11 @@ import { SESSION_COOKIE_NAME } from "./lib/session-cookie-name";
 async function hasActiveSession(request: NextRequest): Promise<boolean> {
   try {
     const backendBase = process.env.INTERNAL_API_URL?.replace(/\/$/, "");
-    const url = backendBase
-      ? `${backendBase}/api/auth/me`
-      : new URL("/api/auth/me", request.url).toString();
+    // Auth lives on FastAPI only; without INTERNAL_API_URL we cannot probe (local cookie-only gate).
+    if (!backendBase) {
+      return true;
+    }
+    const url = `${backendBase}/api/auth/me`;
     const res = await fetch(url, {
       headers: {
         cookie: request.headers.get("cookie") ?? "",
@@ -23,9 +25,6 @@ async function hasActiveSession(request: NextRequest): Promise<boolean> {
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  if (pathname.startsWith("/api/auth")) {
-    return NextResponse.next();
-  }
   if (!requiresAuthPathname(pathname)) {
     return NextResponse.next();
   }
@@ -71,12 +70,8 @@ export const config = {
     "/scenarios",
     "/scenarios/:path*",
     "/api/run",
-    "/api/models",
     "/api/scenarios/:path*",
     "/api/custom-model",
     "/api/env",
-    "/api/evaluation-runs",
-    "/api/evaluation-runs/:path*",
-    "/api/account/ai-gateway-key",
   ],
 };

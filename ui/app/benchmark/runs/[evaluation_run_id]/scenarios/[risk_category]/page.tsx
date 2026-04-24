@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
-import { apiUrl } from "lib/api-url";
+import requestsClient from "lib/requests-client";
 import { ViewerDataExplorer } from "components/ViewerDataExplorer";
 import type { ViewerData } from "lib/viewerDataFromZip";
 import { humanizeSlug } from "lib/humanizeSlug";
@@ -46,15 +46,23 @@ export default function RunScenariosByRiskPage({
   useEffect(() => {
     if (!evaluationRunId) return;
     let cancelled = false;
-    fetch(apiUrl(`/api/evaluation-runs/${encodeURIComponent(evaluationRunId)}/viewer-data`), {
-      credentials: "include",
-    })
-      .then(async (r) => {
-        if (!r.ok) {
-          const j = await r.json().catch(() => ({}));
-          throw new Error(j.error || `Failed with ${r.status}`);
+    requestsClient
+      .get<ViewerData>(`/api/evaluation-runs/${encodeURIComponent(evaluationRunId)}/viewer-data`, {
+        validateStatus: () => true,
+      })
+      .then((r) => {
+        if (r.status < 200 || r.status >= 300) {
+          const body = r.data as unknown;
+          const errMsg =
+            typeof body === "object" &&
+            body !== null &&
+            "error" in body &&
+            typeof (body as { error?: string }).error === "string"
+              ? (body as { error: string }).error
+              : `Failed with ${r.status}`;
+          throw new Error(errMsg);
         }
-        return r.json();
+        return r.data;
       })
       .then((j: ViewerData) => {
         if (!cancelled) setServerData(j);

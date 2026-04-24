@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { apiUrl } from "lib/api-url";
+import requestsClient from "lib/requests-client";
 
 type ModelConfig = {
   model: string;
@@ -45,8 +45,10 @@ export default function ModelsPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(apiUrl("/api/models"), { credentials: "include" });
-      const data = (await res.json()) as { registry?: ModelRegistry; error?: string };
+      const res = await requestsClient.get<{ registry?: ModelRegistry; error?: string }>("/api/models", {
+        validateStatus: () => true,
+      });
+      const data = res.data;
       setRegistry(data.registry ?? {});
       if (data.error) setError(data.error);
     } catch (e) {
@@ -101,14 +103,13 @@ export default function ModelsPage() {
       if (temp) config.temperature = Number(temp);
       if (providerOptionsRaw.trim().length) config.providerOptions = poParsed.value;
 
-      const res = await fetch(apiUrl("/api/models"), {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ slug: slug.trim(), config }),
-      });
-      const data = (await res.json().catch(() => ({}))) as { error?: string };
-      if (!res.ok) {
+      const res = await requestsClient.put<{ error?: string }>(
+        "/api/models",
+        { slug: slug.trim(), config },
+        { validateStatus: () => true }
+      );
+      const data = res.data ?? {};
+      if (res.status < 200 || res.status >= 300) {
         setError(data.error ?? `Save failed: ${res.status}`);
         return;
       }
@@ -126,14 +127,12 @@ export default function ModelsPage() {
     setSaving(true);
     setError(null);
     try {
-      const res = await fetch(apiUrl("/api/models"), {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ slug: s }),
+      const res = await requestsClient.delete<{ error?: string }>("/api/models", {
+        data: { slug: s },
+        validateStatus: () => true,
       });
-      const data = (await res.json().catch(() => ({}))) as { error?: string };
-      if (!res.ok) {
+      const data = res.data ?? {};
+      if (res.status < 200 || res.status >= 300) {
         setError(data.error ?? `Delete failed: ${res.status}`);
         return;
       }

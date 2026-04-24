@@ -4,8 +4,8 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
-import { apiUrl } from "lib/api-url";
 import { requiresAuthPathname } from "lib/auth-paths";
+import requestsClient from "lib/requests-client";
 
 const baseTabs = [
   { href: "/", label: "Home" },
@@ -32,10 +32,11 @@ export function TopNav() {
 
   const loadSession = useCallback(async () => {
     try {
-      const res = await fetch(apiUrl("/api/auth/me"), { credentials: "include" });
-      if (res.ok) {
-        const data = (await res.json()) as { user?: { email?: string } };
-        setUserEmail(data.user?.email ?? null);
+      const res = await requestsClient.get<{ user?: { email?: string } }>("/api/auth/me", {
+        validateStatus: () => true,
+      });
+      if (res.status === 200) {
+        setUserEmail(res.data.user?.email ?? null);
       } else {
         setUserEmail(null);
       }
@@ -52,7 +53,7 @@ export function TopNav() {
 
   async function handleSignOut() {
     try {
-      await fetch(apiUrl("/api/auth/logout"), { method: "POST", credentials: "include" });
+      await requestsClient.post("/api/auth/logout", null, { validateStatus: () => true });
     } catch {
       /* still clear UI */
     }

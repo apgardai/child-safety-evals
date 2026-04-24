@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
-import { apiUrl } from "lib/api-url";
+import requestsClient from "lib/requests-client";
 
 type EvaluationRunRow = {
   id: string;
@@ -27,13 +27,13 @@ export default function BenchmarkRunsPage() {
       setLoading(true);
       setError(null);
       try {
-        const res = await fetch(apiUrl("/api/evaluation-runs"), { credentials: "include" });
-        const data = (await res.json().catch(() => ({}))) as {
-          runs?: EvaluationRunRow[];
-          error?: string;
-        };
+        const res = await requestsClient.get<{ runs?: EvaluationRunRow[]; error?: string }>(
+          "/api/evaluation-runs",
+          { validateStatus: () => true }
+        );
+        const data = res.data ?? {};
         if (!cancelled) {
-          if (!res.ok && data.error) setError(data.error);
+          if ((res.status < 200 || res.status >= 300) && data.error) setError(data.error);
           setRows(Array.isArray(data.runs) ? data.runs : []);
         }
       } catch (e) {
