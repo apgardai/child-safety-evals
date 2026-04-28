@@ -6,10 +6,13 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends curl && \
     rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt .
+# This Dockerfile is built with the repo root as context so server + benchmark
+# are both available in the runtime image.
+COPY server/requirements.txt ./requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . .
+COPY server/ ./
+COPY benchmark/ ./benchmark/
 
 RUN find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true && \
     find . -type f -name "*.pyc" -delete 2>/dev/null || true

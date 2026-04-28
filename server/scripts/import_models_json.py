@@ -19,7 +19,16 @@ from app.services.database import SessionLocal
 
 
 def _benchmark_models_path() -> Path:
-    return Path(__file__).resolve().parents[2] / "benchmark" / "models.json"
+    candidates = [
+        # Monorepo layout: <repo>/server and sibling <repo>/benchmark
+        SERVER_ROOT.parent / "benchmark" / "models.json",
+        # Container layout: /app contains both server files and /app/benchmark
+        SERVER_ROOT / "benchmark" / "models.json",
+    ]
+    for path in candidates:
+        if path.exists():
+            return path
+    return candidates[0]
 
 
 def _ensure_cse_models_shape() -> None:
