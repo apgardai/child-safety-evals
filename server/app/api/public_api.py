@@ -42,6 +42,15 @@ def require_session_email(request: Request) -> str:
     return session_email
 
 
+def _session_domain() -> str | None:
+    # Prefer SESSION_DOMAIN to match apgard-be; keep SESSION_COOKIE_DOMAIN for backwards compatibility.
+    return (
+        os.getenv("SESSION_DOMAIN", "").strip()
+        or os.getenv("SESSION_COOKIE_DOMAIN", "").strip()
+        or None
+    )
+
+
 @router.get("/auth/me")
 def auth_me(request: Request, db: Session = Depends(get_db)):
     email = require_session_email(request)
@@ -76,15 +85,15 @@ def auth_logout(request: Request, response: Response):
                 firebase_auth.revoke_refresh_tokens(uid)
         except Exception:
             pass
-    session_domain = os.getenv("SESSION_COOKIE_DOMAIN", "").strip()
+    session_domain = _session_domain()
     response.set_cookie(
         key=SESSION_COOKIE_NAME,
         value="",
         max_age=0,
-        domain=session_domain or None,
+        domain=session_domain,
         httponly=True,
-        secure=os.getenv("NODE_ENV", "development") == "production",
-        samesite="none",
+        secure=True,
+        samesite="None",
         path="/",
     )
     return {"ok": True}
@@ -144,6 +153,21 @@ def upsert_model_public(
     for key in ("customApiEndpoint", "customApiKey", "parsingKey"):
         if key in config and config[key] is not None:
             optional_parameters[key] = config[key]
+    if slug.startswith("custom-"):
+        print(
+            "[cse/custom-model] upsert requested",
+            {
+                "alias": slug,
+                "email": email,
+                "has_custom_api_endpoint": bool(
+                    str(config.get("customApiEndpoint", "")).strip()
+                ),
+                "has_custom_api_key": bool(
+                    str(config.get("customApiKey", "")).strip()
+                ),
+                "parsing_key": str(config.get("parsingKey", "")).strip() or "message",
+            },
+        )
     payload = ModelRegistryUpsert(
         alias=slug,
         model_id=model_id,
@@ -298,5 +322,24 @@ def model_runtime_config_public(
         raise HTTPException(status_code=404, detail="User not found")
     cfg = get_custom_runtime_config(db, alias=alias, account_id=user.account_id)
     if not cfg:
+        print(
+            "[cse/custom-model] runtime-config missing",
+            {
+                "alias": alias,
+                "email": email,
+                "account_id": str(user.account_id),
+            },
+        )
         raise HTTPException(status_code=404, detail="Custom model runtime config not found")
+    print(
+        "[cse/custom-model] runtime-config loaded",
+        {
+            "alias": alias,
+            "email": email,
+            "account_id": str(user.account_id),
+            "custom_url": cfg.get("custom_url"),
+            "parsing_key": cfg.get("parsing_key"),
+            "has_custom_api_key": bool(cfg.get("custom_api_key")),
+        },
+    )
     return cfg

@@ -95,6 +95,7 @@ jobs:
             echo "DATABASE_URL=${{ secrets.CSE_DATABASE_URL }}"
             echo "CSE_SECRETS_KEY=${{ secrets.CSE_SECRETS_KEY }}"
             echo "INTERNAL_API_SECRET=${{ secrets.CSE_INTERNAL_API_SECRET }}"
+            echo "SESSION_DOMAIN=.apgardai.com"
             echo "CORS_ORIGINS=${{ secrets.CSE_CORS_ORIGINS }}"
             echo "FIREBASE_CREDS_PATH=/app/firebase-credentials.json"
             echo "GMAIL_EMAIL=${{ secrets.GMAIL_EMAIL }}"

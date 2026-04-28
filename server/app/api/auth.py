@@ -20,6 +20,15 @@ class SessionLoginRequest(BaseModel):
     name: str = ""
 
 
+def _session_domain() -> str | None:
+    # Prefer SESSION_DOMAIN to match apgard-be; keep SESSION_COOKIE_DOMAIN for backwards compatibility.
+    return (
+        os.getenv("SESSION_DOMAIN", "").strip()
+        or os.getenv("SESSION_COOKIE_DOMAIN", "").strip()
+        or None
+    )
+
+
 def _parse_allowed_emails() -> set[str] | None:
     raw = os.getenv("ALLOWED_EMAILS", "").strip()
     if not raw:
@@ -97,15 +106,15 @@ def session_login(
     except Exception:
         raise HTTPException(status_code=400, detail="Could not create session")
 
-    session_domain = os.getenv("SESSION_COOKIE_DOMAIN", "").strip()
+    session_domain = _session_domain()
     response.set_cookie(
         key=SESSION_COOKIE_NAME,
         value=session_cookie,
         max_age=int(expires_in.total_seconds()),
-        domain=session_domain or None,
+        domain=session_domain,
         httponly=True,
         secure=True,
-        samesite="none",
+        samesite="None",
         path="/",
     )
 
