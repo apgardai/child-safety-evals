@@ -6,7 +6,9 @@
 export function requiresAuthPathname(pathname: string): boolean {
   if (
     pathname === "/benchmark" ||
-    pathname.startsWith("/benchmark/") ||
+    (pathname.startsWith("/benchmark/") &&
+      !pathname.startsWith("/benchmark/runs") &&
+      !pathname.startsWith("/benchmark/testResults/")) ||
     pathname === "/models" ||
     pathname.startsWith("/models/") ||
     pathname === "/scenarios" ||

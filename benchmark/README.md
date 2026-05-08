@@ -47,6 +47,13 @@ Generates a set of scenario seeds from the risk taxonomy.
 yarn cs-bench generate-seeds [model]
 ```
 
+Run the benchmark for leaderboard models:
+
+```bash
+yarn run:model <target-model>
+yarn run:model <target-model> [judge-model] [user-model]
+```
+
 | Argument / Option | Description |
 |---|---|
 | `[model]` | Model to use for seed generation (default: `gpt-5.2:high`) |

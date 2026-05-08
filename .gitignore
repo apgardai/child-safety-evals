@@ -16,6 +16,9 @@
 !**/.env.example
 **/*firebase-adminsdk*.json
 **/*-firebase-adminsdk-*.json
+**/firebase-credentials.json
+**/application_default_credentials.json
+**/*service-account*.json
 
 ############################
 # Node / package managers
@@ -44,6 +47,22 @@
 **/.parcel-cache/
 **/.eslintcache
 **/.venv/
+**/.vercel/
+
+############################
+# Python (FastAPI server)
+############################
+**/venv/
+**/__pycache__/
+**/*.egg-info/
+
+############################
+# Tests / typecheck caches
+############################
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
 
 ############################
 # Logs
@@ -65,5 +84,3 @@ benchmark/**/*.zip
 benchmark/results-viewer/data/viewer-data.json
 benchmark/results-viewer/archived-results/results.json
 benchmark/results-viewer/archived-results/testResults/**
-
-**/*__pycache__/*

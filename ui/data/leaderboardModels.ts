@@ -3,6 +3,8 @@ export type DocLink = { label: string; href: string };
 export type LeaderboardRow = {
   provider: string;
   model: string;
+  /** Known benchmark target slugs that should map to this leaderboard card. */
+  benchmarkTargets?: string[];
   date: string;
   size: string;
   license: string;
@@ -15,6 +17,7 @@ export const mainLeaderboardModels: LeaderboardRow[] = [
   {
     provider: "Anthropic",
     model: "Claude Opus / Sonnet 4.6",
+    benchmarkTargets: ["claude-opus-4.6", "claude-sonnet-4.6"],
     date: "02/05/26 / 02/17/26",
     size: "Undisclosed (200k–1m context)",
     license: "Proprietary",
@@ -28,6 +31,7 @@ export const mainLeaderboardModels: LeaderboardRow[] = [
   {
     provider: "OpenAI",
     model: "GPT 5.2",
+    benchmarkTargets: ["gpt-5.2", "gpt-5.2:high", "gpt-5.2:high:limited", "gpt-4o"],
     date: "12/11/25",
     size: "Undisclosed (400k context)",
     license: "Proprietary",
@@ -39,6 +43,7 @@ export const mainLeaderboardModels: LeaderboardRow[] = [
   {
     provider: "Z.ai",
     model: "GLM 5",
+    benchmarkTargets: ["glm-5"],
     date: "02/12/26",
     size: "745B (200k context)",
     license: "Open Source",
@@ -53,6 +58,7 @@ export const mainLeaderboardModels: LeaderboardRow[] = [
   {
     provider: "Moonshot AI",
     model: "Kimi K2.5",
+    benchmarkTargets: ["kimi-k2.5"],
     date: "01/26/26",
     size: "1T",
     license: "Open Source",
@@ -69,6 +75,7 @@ export const mainLeaderboardModels: LeaderboardRow[] = [
   {
     provider: "Google",
     model: "Gemini 3.1 Pro / Flash",
+    benchmarkTargets: ["gemini-3.1-pro", "gemini-3.1-flash"],
     date: "02/19/26",
     size: "Undisclosed (1m context)",
     license: "Proprietary",
@@ -85,6 +92,7 @@ export const mainLeaderboardModels: LeaderboardRow[] = [
   {
     provider: "Meta",
     model: "Llama 4 Maverick / Scout",
+    benchmarkTargets: ["llama-4-maverick", "llama-4-scout"],
     date: "04/05/25",
     size: "17B",
     license: "Open Source",
@@ -102,6 +110,7 @@ export const mainLeaderboardModels: LeaderboardRow[] = [
   {
     provider: "xAI",
     model: "Grok 4.1 Fast",
+    benchmarkTargets: ["grok-4.1-fast"],
     date: "11/19/25",
     size: "Undisclosed (2m context)",
     license: "Proprietary",
@@ -113,6 +122,7 @@ export const mainLeaderboardModels: LeaderboardRow[] = [
   {
     provider: "Mistral",
     model: "Mistral Large 3",
+    benchmarkTargets: ["mistral-large-3"],
     date: "12/02/25",
     size: "675B",
     license: "Proprietary",
@@ -123,6 +133,7 @@ export const mainLeaderboardModels: LeaderboardRow[] = [
   {
     provider: "DeepSeek",
     model: "DeepSeek-V3.2",
+    benchmarkTargets: ["deepseek-v3.2"],
     date: "12/01/25",
     size: "685B",
     license: "Open Source",
@@ -140,6 +151,7 @@ export const otherLeaderboardModels: LeaderboardRow[] = [
   {
     provider: "Alibaba",
     model: "Qwen3.5-397B-A17B",
+    benchmarkTargets: ["qwen3.5-397b-a17b"],
     date: "02/16/26",
     size: "397B",
     license: "Open Source",
@@ -154,6 +166,7 @@ export const otherLeaderboardModels: LeaderboardRow[] = [
   {
     provider: "Nvidia",
     model: "Nemotron-3-Nano-30B-A3B",
+    benchmarkTargets: ["nemotron-3-nano-30b-a3b"],
     date: "9/2025–10/2025",
     size: "30B",
     license: "Open Source",

@@ -1,13 +1,18 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
+
 import { ResultsOverview } from "components/ResultsOverview";
 import { TestResultsModelOverview } from "components/TestResultsModelOverview";
 import { ViewerDataExplorer } from "components/ViewerDataExplorer";
 import { humanizeSlug } from "lib/humanizeSlug";
 import type { ViewerData } from "lib/viewerDataFromZip";
 
-export default function TestResultsPage() {
+function TestResultsBody() {
+  const searchParams = useSearchParams();
+  const runId = searchParams.get("runId")?.trim() ?? "";
+
   const [data, setData] = useState<ViewerData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -18,17 +23,26 @@ export default function TestResultsPage() {
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/benchmark/testResults/viewer-data.json")
+    setLoading(true);
+    setError(null);
+    setData(null);
+    setSelectedRisk(null);
+
+    const url = runId
+      ? `/api/local-run-viewer-data?runId=${encodeURIComponent(runId)}`
+      : "/benchmark/testResults/viewer-data.json";
+
+    fetch(url)
       .then(async (r) => {
         if (!r.ok) {
-          const j = await r.json().catch(() => ({}));
+          const j = (await r.json().catch(() => ({}))) as { error?: string };
           throw new Error(
             typeof j.error === "string" ? j.error : `Failed with ${r.status}`
           );
         }
-        return r.json();
+        return r.json() as Promise<ViewerData>;
       })
-      .then((j: ViewerData) => {
+      .then((j) => {
         if (!cancelled) setData(j);
       })
       .catch((e) => {
@@ -40,7 +54,7 @@ export default function TestResultsPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [runId]);
 
   const blockingError = !data && error;
 
@@ -67,6 +81,10 @@ export default function TestResultsPage() {
     }
   }
 
+  const scenariosHashHref = runId
+    ? `/test-results?runId=${encodeURIComponent(runId)}#scenarios`
+    : "/test-results#scenarios";
+
   return (
     <div className="min-h-screen p-6 md:p-10 max-w-7xl mx-auto">
       {blockingError && (
@@ -86,7 +104,7 @@ export default function TestResultsPage() {
           <TestResultsModelOverview data={data} />
           <ResultsOverview
             data={data}
-            scenariosHref="/test-results#scenarios"
+            scenariosHref={scenariosHashHref}
             showScenariosCta={false}
             onSelectRisk={handleSelectRisk}
           />
@@ -103,5 +121,21 @@ export default function TestResultsPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function TestResultsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen p-6 md:p-10 max-w-7xl mx-auto">
+          <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4 text-[var(--muted)]">
+            Loading…
+          </div>
+        </div>
+      }
+    >
+      <TestResultsBody />
+    </Suspense>
   );
 }

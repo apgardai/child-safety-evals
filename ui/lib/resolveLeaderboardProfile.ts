@@ -22,6 +22,13 @@ export function resolveLeaderboardRowForTarget(
   const s = (target ?? "").trim().toLowerCase();
   if (!s) return null;
 
+  for (const row of allRows) {
+    const targets = row.benchmarkTargets ?? [];
+    if (targets.some(t => s === t.toLowerCase())) {
+      return row;
+    }
+  }
+
   const rules: Array<{ match: (slug: string) => boolean; row?: LeaderboardRow }> = [
     { match: slug => slug.includes("deepseek"), row: byProvider("DeepSeek") },
     { match: slug => slug.includes("claude"), row: byProvider("Anthropic") },
