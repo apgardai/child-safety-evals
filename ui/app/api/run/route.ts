@@ -104,7 +104,6 @@ function buildArgs(body: RunRequestBody): string[] {
 export async function POST(request: NextRequest) {
   const auth = await requireApiAuth(request);
   if (!auth.ok) return auth.response;
-  const cookieHeader = request.headers.get("cookie") ?? "";
 
   let body: RunRequestBody;
   try {
@@ -144,7 +143,7 @@ export async function POST(request: NextRequest) {
   if (body.command === "run") {
     const cookieHeader = request.headers.get("cookie") ?? "";
     const runBody = body as RunOptions;
-    let apiKey = typeof bodyWithKey.apiKey === "string" ? bodyWithKey.apiKey.trim() : "";
+    const apiKey = typeof bodyWithKey.apiKey === "string" ? bodyWithKey.apiKey.trim() : "";
     if (apiKey) {
       try {
         await fastApiFetchJson("/api/account/ai-gateway-key", cookieHeader, {
