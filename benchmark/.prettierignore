@@ -1,4 +1,0 @@
-data/*
-**/tsconfig.json
-**/wrangler.jsonc
-**/worker-configuration.d.ts
