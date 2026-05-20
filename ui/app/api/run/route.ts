@@ -1,19 +1,10 @@
 import { existsSync, readFileSync } from "node:fs";
 import { spawn } from "node:child_process";
-import * as os from "node:os";
 import * as path from "node:path";
 import { NextRequest, NextResponse } from "next/server";
 
 import { requireApiAuth } from "lib/auth-server";
 import { fastApiFetchJson } from "lib/server-fastapi";
-import {
-  buildViewerDataFromResultsZip,
-  extractResultsDocumentFromZipBuffer,
-} from "lib/viewerDataFromZip";
-import {
-  createPipeResultsZipStdoutFilter,
-  extractZipBase64FromStdout,
-} from "lib/pipeResultsStdout";
 
 function parseEnvFile(envPath: string): Record<string, string> {
   if (!existsSync(envPath)) return {};
@@ -143,69 +134,48 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const benchmarkPath = getBenchmarkPath();
-  const envPath = path.join(benchmarkPath, ".env");
-  const cliPath = path.join(benchmarkPath, "packages", "cli", "build", "src", "cli.js");
-
-  if (!existsSync(cliPath)) {
-    return NextResponse.json(
-      {
-        error:
-          "Benchmark CLI not built. Build it first from the benchmark directory: cd ../benchmark && yarn install && yarn tsbuild",
-        code: "CLI_NOT_BUILT",
-        benchmarkPath,
-      },
-      { status: 503 }
-    );
-  }
-
-  let runOutputAbsPath: string | null = null;
-  if (body.command === "run") {
-    const tempBase = `cse-results-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.json`;
-    runOutputAbsPath = path.join(os.tmpdir(), tempBase);
-    (body as RunOptions).output = runOutputAbsPath;
-  }
-  const args = buildArgs(body);
   const bodyWithKey = body as RunRequestBody & {
     apiKey?: string;
     customApiKey?: string;
     customApiEndpoint?: string;
     customParsingKey?: string;
   };
-  let apiKey = typeof bodyWithKey.apiKey === "string" ? bodyWithKey.apiKey.trim() : "";
-  let customApiKey =
-    typeof bodyWithKey.customApiKey === "string"
-      ? bodyWithKey.customApiKey.trim()
-      : "";
-  let customApiEndpoint =
-    typeof bodyWithKey.customApiEndpoint === "string"
-      ? bodyWithKey.customApiEndpoint.trim()
-      : "";
-  let customParsingKey =
-    typeof bodyWithKey.customParsingKey === "string"
-      ? bodyWithKey.customParsingKey.trim()
-      : "";
 
   if (body.command === "run") {
-    if (!apiKey) {
+    const cookieHeader = request.headers.get("cookie") ?? "";
+    const runBody = body as RunOptions;
+    let apiKey = typeof bodyWithKey.apiKey === "string" ? bodyWithKey.apiKey.trim() : "";
+    if (apiKey) {
       try {
-        const rt = await fastApiFetchJson<{ api_key: string }>(
-          "/api/account/ai-gateway-key/runtime",
-          cookieHeader
-        );
-        apiKey = rt.api_key;
-      } catch {
+        await fastApiFetchJson("/api/account/ai-gateway-key", cookieHeader, {
+          method: "PUT",
+          body: { apiKey },
+        });
+      } catch (e) {
         return NextResponse.json(
           {
             error:
-              "AI Gateway API key is required. Provide it in the form or save it to your account first.",
+              e instanceof Error
+                ? `Could not save AI Gateway key: ${e.message}`
+                : "Could not save AI Gateway key",
           },
-          { status: 400 }
+          { status: 502 }
         );
       }
     }
-    const runBody = body as RunOptions;
     const isCustomTarget = runBody.targetModel.startsWith("custom-");
+    let customApiKey =
+      typeof bodyWithKey.customApiKey === "string"
+        ? bodyWithKey.customApiKey.trim()
+        : "";
+    let customApiEndpoint =
+      typeof bodyWithKey.customApiEndpoint === "string"
+        ? bodyWithKey.customApiEndpoint.trim()
+        : "";
+    let customParsingKey =
+      typeof bodyWithKey.customParsingKey === "string"
+        ? bodyWithKey.customParsingKey.trim()
+        : "";
     if (isCustomTarget) {
       if (!customApiKey || !customApiEndpoint) {
         try {
@@ -231,22 +201,18 @@ export async function POST(request: NextRequest) {
         }
       }
       try {
-        await fastApiFetchJson<{ ok?: boolean }>(
-          "/api/models",
-          cookieHeader,
-          {
-            method: "PUT",
-            body: {
-              slug: runBody.targetModel,
-              config: {
-                model: runBody.targetModel,
-                customApiEndpoint,
-                customApiKey,
-                parsingKey: customParsingKey || "message",
-              },
+        await fastApiFetchJson("/api/models", cookieHeader, {
+          method: "PUT",
+          body: {
+            slug: runBody.targetModel,
+            config: {
+              model: runBody.targetModel,
+              customApiEndpoint,
+              customApiKey,
+              parsingKey: customParsingKey || "message",
             },
-          }
-        );
+          },
+        });
       } catch (e) {
         return NextResponse.json(
           {
@@ -259,10 +225,64 @@ export async function POST(request: NextRequest) {
         );
       }
     }
+    try {
+      const started = await fastApiFetchJson<{
+        id: string;
+        status: string;
+        celery_task_id?: string;
+      }>("/api/evaluation-runs/start", cookieHeader, {
+        method: "POST",
+        body: {
+          target_model: runBody.targetModel,
+          judge_model: runBody.judgeModel ?? "gpt-5.2:high:limited",
+          user_model: runBody.userModel ?? "deepseek-v3.2",
+          input: runBody.input ?? "data/scenarios.jsonl",
+          prompts: runBody.prompts,
+          custom_api_key: customApiKey || undefined,
+          custom_api_endpoint: customApiEndpoint || undefined,
+          custom_parsing_key: customParsingKey || undefined,
+        },
+      });
+      return NextResponse.json({
+        queued: true,
+        runId: started.id,
+        status: started.status,
+        celeryTaskId: started.celery_task_id,
+        message:
+          "Evaluation queued on the server. Poll GET /api/evaluation-runs/{id} for status.",
+      });
+    } catch (e) {
+      return NextResponse.json(
+        {
+          error:
+            e instanceof Error
+              ? `Could not queue evaluation: ${e.message}`
+              : "Could not queue evaluation",
+        },
+        { status: 502 }
+      );
+    }
   }
+
+  const benchmarkPath = getBenchmarkPath();
+  const envPath = path.join(benchmarkPath, ".env");
+  const cliPath = path.join(benchmarkPath, "packages", "cli", "build", "src", "cli.js");
+
+  if (!existsSync(cliPath)) {
+    return NextResponse.json(
+      {
+        error:
+          "Benchmark CLI not built. Build it first from the benchmark directory: cd ../benchmark && yarn install && yarn tsbuild",
+        code: "CLI_NOT_BUILT",
+        benchmarkPath,
+      },
+      { status: 503 }
+    );
+  }
+
+  const args = buildArgs(body);
   const envFromFile = parseEnvFile(envPath);
-  const useInMemoryEnv =
-    apiKey.length > 0 || customApiKey.length > 0 || customApiEndpoint.length > 0;
+  const useInMemoryEnv = false;
 
   const stream = new ReadableStream({
     start(controller) {
@@ -277,26 +297,11 @@ export async function POST(request: NextRequest) {
         controller.close();
       };
 
-      let runStdoutRaw = "";
-      const pipeZipFilter =
-        body.command === "run" ? createPipeResultsZipStdoutFilter() : null;
-
       const nodeArgs = useInMemoryEnv
         ? [cliPath, ...args]
         : ["--env-file=" + envPath, cliPath, ...args];
       const spawnEnv = useInMemoryEnv
-        ? {
-            ...process.env,
-            ...envFromFile,
-            ...(apiKey ? { AI_GATEWAY_API_KEY: apiKey } : {}),
-            ...(customApiKey ? { CUSTOM_API_KEY: customApiKey } : {}),
-            ...(customApiEndpoint
-              ? { CUSTOM_MODEL_API_ENDPOINT: customApiEndpoint }
-              : {}),
-            ...(customParsingKey
-              ? { CUSTOM_MODEL_PARSING_KEY: customParsingKey }
-              : {}),
-          }
+        ? { ...process.env, ...envFromFile }
         : undefined;
 
       const child = spawn(process.execPath, nodeArgs, {
@@ -307,13 +312,7 @@ export async function POST(request: NextRequest) {
       });
 
       child.stdout?.on("data", (chunk: Buffer) => {
-        const t = chunk.toString();
-        if (body.command === "run" && pipeZipFilter) {
-          runStdoutRaw += t;
-          send(pipeZipFilter(t));
-        } else {
-          send(t);
-        }
+        send(chunk.toString());
       });
       child.stderr?.on("data", (chunk: Buffer) => {
         send(chunk.toString());
@@ -329,44 +328,6 @@ export async function POST(request: NextRequest) {
           try {
             if (signal) send(`\nProcess killed: ${signal}\n`);
             else if (code != null && code !== 0) send(`\nExit code: ${code}\n`);
-            else if (body.command === "run") {
-              const b64 = extractZipBase64FromStdout(runStdoutRaw);
-              if (!b64) {
-                send(
-                  `\nNote: no results archive was emitted (rebuild CLI from ../benchmark with yarn tsbuild, or the run ended before completion).\n`
-                );
-              } else {
-                const zipBytes = new Uint8Array(Buffer.from(b64, "base64"));
-                const zipBuffer = zipBytes.buffer.slice(
-                  zipBytes.byteOffset,
-                  zipBytes.byteOffset + zipBytes.byteLength
-                );
-                const json =
-                  (await extractResultsDocumentFromZipBuffer(zipBuffer)) ??
-                  ({} as Record<string, unknown>);
-                let viewerData: Record<string, unknown> | undefined;
-                try {
-                  viewerData = (await buildViewerDataFromResultsZip(
-                    zipBuffer
-                  )) as Record<string, unknown>;
-                } catch (zipErr) {
-                  send(
-                    `\nNote: piped results could not be parsed for scenario/message ingestion (${
-                      zipErr instanceof Error ? zipErr.message : "unknown error"
-                    }).\n`
-                  );
-                }
-                const { id } = await fastApiFetchJson<{ id: string }>(
-                  "/api/evaluation-runs",
-                  cookieHeader,
-                  {
-                    method: "POST",
-                    body: { results: json, viewer_data: viewerData ?? null },
-                  }
-                );
-                send(`\nSaved evaluation run to database (id: ${id}).\n`);
-              }
-            }
           } catch (e) {
             console.error("[api/run] persist evaluation run:", e);
             send(

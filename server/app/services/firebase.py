@@ -12,9 +12,17 @@ SESSION_COOKIE_NAME = "cse_session"
 
 
 def _default_creds_path() -> Path:
-    # server/app/services/firebase.py -> parents[3] == child-safety-evals repo root
-    root = Path(__file__).resolve().parents[3]
-    return root / "apgard-safe-online-firebase-adminsdk-fbsvc-d4f5701c1a.json"
+    """Resolve Firebase service account JSON for local dev and Docker (/app)."""
+    server_root = Path(__file__).resolve().parents[2]
+    monorepo_root = Path(__file__).resolve().parents[3]
+    for candidate in (
+        server_root / "firebase-credentials.json",
+        Path("/app/firebase-credentials.json"),
+        monorepo_root / "apgard-safe-online-firebase-adminsdk-fbsvc-d4f5701c1a.json",
+    ):
+        if candidate.is_file():
+            return candidate
+    return server_root / "firebase-credentials.json"
 
 
 def init_firebase() -> None:

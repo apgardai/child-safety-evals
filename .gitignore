@@ -19,6 +19,7 @@
 **/firebase-credentials.json
 **/application_default_credentials.json
 **/*service-account*.json
+server/firebase-credentials.json
 
 ############################
 # Node / package managers
@@ -84,3 +85,9 @@ benchmark/**/*.zip
 benchmark/results-viewer/data/viewer-data.json
 benchmark/results-viewer/archived-results/results.json
 benchmark/results-viewer/archived-results/testResults/**
+
+**/*__pycache__/*
+**/*.pyc
+server/app/crud/__pycache__/evaluation_runs.cpython-311.pyc
+
+**/dump.rdb

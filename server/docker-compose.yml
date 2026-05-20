@@ -1,10 +1,51 @@
 services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+    mem_limit: 200m
+    command: redis-server --maxmemory 150mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
   web:
     image: ${DOCKER_USERNAME}/child_safety_evals:${IMAGE_TAG:-prod-latest}
     ports:
       - "8000:8000"
     env_file: .env
+    environment:
+      REDIS_BROKER_URL: redis://redis:6379/0
+      FIREBASE_CREDS_PATH: /app/firebase-credentials.json
     volumes:
       - ./firebase-credentials.json:/app/firebase-credentials.json:ro
+      # Live-mount Python app so new API routes (e.g. cancel) work without rebuilding the image.
+      - ./app:/app/app:ro
+    depends_on:
+      redis:
+        condition: service_healthy
     restart: unless-stopped
+    mem_limit: 400m
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1
+
+  worker:
+    image: ${DOCKER_USERNAME}/child_safety_evals:${IMAGE_TAG:-prod-latest}
+    env_file: .env
+    environment:
+      REDIS_BROKER_URL: redis://redis:6379/0
+      FIREBASE_CREDS_PATH: /app/firebase-credentials.json
+    volumes:
+      - ./firebase-credentials.json:/app/firebase-credentials.json:ro
+      - ./app:/app/app:ro
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    mem_limit: 512m
+    command: >
+      celery -A app.services.celery_app worker
+      --loglevel=info
+      --concurrency=1

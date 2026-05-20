@@ -3,7 +3,7 @@ FROM python:3.11-slim
 WORKDIR /app
 
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends curl && \
+    apt-get install -y --no-install-recommends curl nodejs && \
     rm -rf /var/lib/apt/lists/*
 
 # This Dockerfile is built with the repo root as context so server + benchmark
@@ -16,6 +16,8 @@ COPY benchmark/ ./benchmark/
 
 RUN find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true && \
     find . -type f -name "*.pyc" -delete 2>/dev/null || true
+
+ENV FIREBASE_CREDS_PATH=/app/firebase-credentials.json
 
 EXPOSE 8000
 

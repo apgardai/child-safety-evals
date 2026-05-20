@@ -8,9 +8,14 @@ from app.models.assessment import Assessment
 from app.models.conversation import Conversation
 from app.models.conversation_message import ConversationMessage
 from app.models.evaluation_run import EvaluationRun
+from app.services.benchmark_progress import parse_scenario_progress_from_log
 from app.models.evaluation_scenario import EvaluationScenario
 from app.models.model_registry import ModelRegistryEntry
 from app.models.user import User
+
+_MAX_PROGRESS_LOG_CHARS = 512_000
+_ACTIVE_STATUSES = ("pending", "running")
+_CANCELLABLE_STATUSES = _ACTIVE_STATUSES
 
 
 def _num_scores(payload: dict[str, Any]) -> int:
@@ -110,9 +115,176 @@ def _overall_score_pct(payload: dict[str, Any]) -> float | None:
     return (points / (total * 2)) * 100.0
 
 
-def create_evaluation_run(
+def create_pending_evaluation_run(
     db: Session,
     *,
+    user: User,
+    target_model: str,
+    judge_model: str,
+    user_model: str,
+    prompts: list[str] | None,
+    celery_task_id: str | None = None,
+) -> EvaluationRun:
+    run = EvaluationRun(
+        account_id=user.account_id,
+        created_by_user_id=user.id,
+        target_model_name=target_model,
+        judge_model=judge_model,
+        user_model=user_model,
+        prompts=prompts,
+        status="pending",
+        celery_task_id=celery_task_id,
+        progress_log="Evaluation queued.\n",
+        results_json=None,
+    )
+    db.add(run)
+    db.commit()
+    db.refresh(run)
+    return run
+
+
+def append_evaluation_run_log(
+    db: Session,
+    run: EvaluationRun,
+    text: str,
+    *,
+    commit: bool = True,
+) -> EvaluationRun:
+    if not text:
+        return run
+    current = run.progress_log or ""
+    combined = current + text
+    if len(combined) > _MAX_PROGRESS_LOG_CHARS:
+        combined = "...[earlier log truncated]\n" + combined[-_MAX_PROGRESS_LOG_CHARS:]
+    run.progress_log = combined
+    db.add(run)
+    if commit:
+        db.commit()
+        db.refresh(run)
+    return run
+
+
+def get_active_evaluation_run_for_account(
+    db: Session,
+    *,
+    account_id: UUID,
+) -> EvaluationRun | None:
+    return (
+        db.query(EvaluationRun)
+        .filter(
+            EvaluationRun.account_id == account_id,
+            EvaluationRun.status.in_(_ACTIVE_STATUSES),
+        )
+        .order_by(EvaluationRun.created_at.desc())
+        .first()
+    )
+
+
+def evaluation_run_detail_dict(run: EvaluationRun) -> dict[str, Any]:
+    payload = run.results_json if isinstance(run.results_json, dict) else None
+    prompts = run.prompts
+    if prompts is None and isinstance(payload, dict) and isinstance(payload.get("prompts"), list):
+        prompts = [str(p) for p in payload["prompts"]]
+    elif isinstance(prompts, list):
+        prompts = [str(p) for p in prompts]
+    return {
+        "id": run.id,
+        "created_at": run.created_at,
+        "status": run.status or "completed",
+        "target_model": run.target_model_name,
+        "judge_model": run.judge_model,
+        "user_model": run.user_model,
+        "prompts": prompts,
+        "error_message": run.error_message,
+        "progress_log": run.progress_log,
+        "celery_task_id": run.celery_task_id,
+        "scenarios_completed": run.scenarios_completed,
+        "scenarios_total": run.scenarios_total,
+        "results": payload,
+    }
+
+
+def set_evaluation_run_scenario_total(
+    db: Session,
+    run: EvaluationRun,
+    *,
+    scenarios_total: int,
+) -> EvaluationRun:
+    run.scenarios_total = scenarios_total
+    db.add(run)
+    db.commit()
+    db.refresh(run)
+    return run
+
+
+def sync_evaluation_run_scenario_progress(
+    db: Session,
+    run: EvaluationRun,
+) -> EvaluationRun:
+    """Update scenarios_completed/total from the latest benchmark progress bar in the log."""
+    completed, total = parse_scenario_progress_from_log(run.progress_log)
+    changed = False
+    if total is not None and run.scenarios_total != total:
+        run.scenarios_total = total
+        changed = True
+    if completed is not None and run.scenarios_completed != completed:
+        run.scenarios_completed = completed
+        changed = True
+    if changed:
+        db.add(run)
+        db.commit()
+        db.refresh(run)
+    return run
+
+
+def is_evaluation_run_cancelled(
+    db: Session,
+    *,
+    run_id: UUID,
+    account_id: UUID,
+) -> bool:
+    run = get_evaluation_run_for_account(db, run_id=run_id, account_id=account_id)
+    return run is not None and run.status == "cancelled"
+
+
+def cancel_evaluation_run(
+    db: Session,
+    *,
+    run: EvaluationRun,
+) -> EvaluationRun:
+    if run.status not in _CANCELLABLE_STATUSES:
+        raise ValueError(
+            f"Cannot cancel evaluation run with status {run.status!r}"
+        )
+    append_evaluation_run_log(db, run, "\nEvaluation cancelled by user.\n")
+    return set_evaluation_run_status(db, run, status="cancelled")
+
+
+def set_evaluation_run_status(
+    db: Session,
+    run: EvaluationRun,
+    *,
+    status: str,
+    celery_task_id: str | None = None,
+    error_message: str | None = None,
+) -> EvaluationRun:
+    run.status = status
+    if celery_task_id is not None:
+        run.celery_task_id = celery_task_id
+    if error_message is not None:
+        run.error_message = error_message
+    if status == "running" and not (run.progress_log or "").strip():
+        run.progress_log = (run.progress_log or "") + "Worker started.\n"
+    db.add(run)
+    db.commit()
+    db.refresh(run)
+    return run
+
+
+def _persist_run_details(
+    db: Session,
+    *,
+    run: EvaluationRun,
     user: User,
     results: dict[str, Any],
     viewer_data: dict[str, Any] | None = None,
@@ -137,15 +309,20 @@ def create_evaluation_run(
         if target_entry:
             target_model_id = target_entry.id
 
-    run = EvaluationRun(
-        account_id=user.account_id,
-        created_by_user_id=user.id,
-        target_model_id=target_model_id,
-        target_model_name=target_name,
-        judge_model=judge_name,
-        user_model=user_name,
-        prompts=prompts,
-        results_json=results,
+    run.target_model_id = target_model_id
+    run.target_model_name = target_name or run.target_model_name
+    run.judge_model = judge_name or run.judge_model
+    run.user_model = user_name or run.user_model
+    if prompts is not None:
+        run.prompts = prompts
+    run.results_json = results
+    run.status = "completed"
+    run.error_message = None
+    append_evaluation_run_log(
+        db,
+        run,
+        "\nEvaluation completed successfully.\n",
+        commit=False,
     )
     db.add(run)
     db.flush()
@@ -305,6 +482,35 @@ def create_evaluation_run(
     return run
 
 
+def create_evaluation_run(
+    db: Session,
+    *,
+    user: User,
+    results: dict[str, Any],
+    viewer_data: dict[str, Any] | None = None,
+) -> EvaluationRun:
+    run = EvaluationRun(
+        account_id=user.account_id,
+        created_by_user_id=user.id,
+        status="completed",
+        results_json=results,
+    )
+    db.add(run)
+    db.flush()
+    return _persist_run_details(db, run=run, user=user, results=results, viewer_data=viewer_data)
+
+
+def complete_evaluation_run(
+    db: Session,
+    *,
+    run: EvaluationRun,
+    user: User,
+    results: dict[str, Any],
+    viewer_data: dict[str, Any] | None = None,
+) -> EvaluationRun:
+    return _persist_run_details(db, run=run, user=user, results=results, viewer_data=viewer_data)
+
+
 def list_evaluation_runs_for_account(
     db: Session,
     *,
@@ -358,10 +564,15 @@ def summarize_run(run: EvaluationRun) -> dict[str, Any]:
     return {
         "id": run.id,
         "created_at": run.created_at,
+        "status": run.status or "completed",
         "target_model": run.target_model_name,
         "judge_model": run.judge_model,
         "user_model": run.user_model,
         "prompts": prompts,
         "num_scores": _num_scores(payload),
         "overall_score_pct": _overall_score_pct(payload),
+        "error_message": run.error_message,
+        "progress_log": run.progress_log,
+        "scenarios_completed": run.scenarios_completed,
+        "scenarios_total": run.scenarios_total,
     }

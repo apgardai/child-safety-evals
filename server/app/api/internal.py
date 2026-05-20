@@ -12,6 +12,7 @@ from app.api.deps import (
 from app.crud.evaluation_runs import (
     aggregate_safety_scores_from_scenarios,
     create_evaluation_run,
+    evaluation_run_detail_dict,
     get_evaluation_run_for_account,
     list_evaluation_runs_for_account,
     summarize_run,
@@ -167,19 +168,7 @@ def get_evaluation_run_endpoint(
     run = get_evaluation_run_for_account(db, run_id=run_id, account_id=user.account_id)
     if not run:
         raise HTTPException(status_code=404, detail="Evaluation run not found")
-    payload = run.results_json if isinstance(run.results_json, dict) else {}
-    prompts = run.prompts
-    if prompts is None and isinstance(payload.get("prompts"), list):
-        prompts = [str(p) for p in payload["prompts"]]
-    return EvaluationRunDetailOut(
-        id=run.id,
-        created_at=run.created_at,
-        target_model=run.target_model_name,
-        judge_model=run.judge_model,
-        user_model=run.user_model,
-        prompts=prompts,
-        results=payload,
-    )
+    return EvaluationRunDetailOut(**evaluation_run_detail_dict(run))
 
 
 @router.get("/evaluation-runs/latest/viewer-data")

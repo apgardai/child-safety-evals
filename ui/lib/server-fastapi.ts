@@ -44,3 +44,27 @@ export async function fastApiFetchJson<T>(
   }
   return JSON.parse(text) as T;
 }
+
+/** Forward a FastAPI response without throwing on non-2xx (for Next.js route proxies). */
+export async function fastApiForward(
+  path: string,
+  cookieHeader: string,
+  init: { method?: string; body?: unknown } = {}
+): Promise<{ status: number; body: string; contentType: string | null }> {
+  const method = init.method ?? "GET";
+  const headers: Record<string, string> = { Cookie: cookieHeader };
+  if (init.body !== undefined) {
+    headers["Content-Type"] = "application/json";
+  }
+  const res = await fetch(joinUrl(path), {
+    method,
+    headers,
+    body: init.body !== undefined ? JSON.stringify(init.body) : undefined,
+  });
+  const text = await res.text();
+  return {
+    status: res.status,
+    body: text,
+    contentType: res.headers.get("content-type"),
+  };
+}
