@@ -26,6 +26,13 @@ def _ensure_backwards_compatible_schema() -> None:
         # cse_evaluation_runs
         "ALTER TABLE IF EXISTS cse_evaluation_runs ADD COLUMN IF NOT EXISTS target_model_id UUID",
         "ALTER TABLE IF EXISTS cse_evaluation_runs ADD COLUMN IF NOT EXISTS target_model_name VARCHAR",
+        "ALTER TABLE IF EXISTS cse_evaluation_runs ADD COLUMN IF NOT EXISTS status VARCHAR DEFAULT 'completed'",
+        "ALTER TABLE IF EXISTS cse_evaluation_runs ADD COLUMN IF NOT EXISTS celery_task_id VARCHAR",
+        "ALTER TABLE IF EXISTS cse_evaluation_runs ADD COLUMN IF NOT EXISTS error_message TEXT",
+        "ALTER TABLE IF EXISTS cse_evaluation_runs ADD COLUMN IF NOT EXISTS progress_log TEXT",
+        "ALTER TABLE IF EXISTS cse_evaluation_runs ADD COLUMN IF NOT EXISTS scenarios_completed INTEGER",
+        "ALTER TABLE IF EXISTS cse_evaluation_runs ADD COLUMN IF NOT EXISTS scenarios_total INTEGER",
+        "ALTER TABLE IF EXISTS cse_evaluation_runs ALTER COLUMN results_json DROP NOT NULL",
         # cse_conversations
         "ALTER TABLE IF EXISTS cse_conversations ADD COLUMN IF NOT EXISTS evaluation_run_id UUID",
         # cse_assessments

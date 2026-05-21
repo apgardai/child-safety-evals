@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import Column, DateTime, ForeignKey, String, func
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import relationship
 
@@ -38,7 +38,14 @@ class EvaluationRun(Base):
     user_model = Column(String, nullable=True)
     prompts = Column(JSONB, nullable=True)
 
-    results_json = Column(JSONB, nullable=False)
+    status = Column(String, nullable=False, default="completed", index=True)
+    celery_task_id = Column(String, nullable=True, index=True)
+    error_message = Column(String, nullable=True)
+    progress_log = Column(Text, nullable=True)
+    scenarios_completed = Column(Integer, nullable=True)
+    scenarios_total = Column(Integer, nullable=True)
+
+    results_json = Column(JSONB, nullable=True)
 
     account = relationship("Account", back_populates="evaluation_runs")
     created_by_user = relationship("User", back_populates="evaluation_runs")

@@ -70,6 +70,7 @@ export const config = {
     "/scenarios",
     "/scenarios/:path*",
     "/api/run",
+    "/api/evaluation-runs/:path*",
     "/api/scenarios/:path*",
     "/api/custom-model",
     "/api/env",

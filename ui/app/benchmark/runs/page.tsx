@@ -5,15 +5,46 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import requestsClient from "lib/requests-client";
+import {
+  EVALUATION_RUN_STATUS_META,
+  normalizeEvaluationRunStatus,
+  type EvaluationRunStatus,
+} from "lib/evaluationRunStatus";
 
 type EvaluationRunRow = {
   id: string;
   created_at: string;
+  status?: string;
   target_model: string | null;
   judge_model: string | null;
   user_model: string | null;
   overall_score_pct?: number | null;
+  error_message?: string | null;
 };
+
+function RunStatusBadge({
+  status,
+  errorMessage,
+}: {
+  status: EvaluationRunStatus;
+  errorMessage?: string | null;
+}) {
+  const meta = EVALUATION_RUN_STATUS_META[status];
+  return (
+    <span
+      className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-semibold uppercase tracking-wide ${meta.badgeClass}`}
+      title={status === "failed" && errorMessage ? errorMessage : undefined}
+    >
+      {(status === "pending" || status === "running") && (
+        <span
+          className="inline-block h-2 w-2 animate-pulse rounded-full bg-current"
+          aria-hidden
+        />
+      )}
+      {meta.label}
+    </span>
+  );
+}
 
 export default function BenchmarkRunsPage() {
   const router = useRouter();
@@ -78,6 +109,7 @@ export default function BenchmarkRunsPage() {
             <thead className="bg-black/30">
               <tr className="text-left text-[var(--muted)]">
                 <th className="px-4 py-3 font-medium">Run ID</th>
+                <th className="px-4 py-3 font-medium">Status</th>
                 <th className="px-4 py-3 font-medium">Target</th>
                 <th className="px-4 py-3 font-medium">User</th>
                 <th className="px-4 py-3 font-medium">Judge</th>
@@ -88,18 +120,20 @@ export default function BenchmarkRunsPage() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td className="px-4 py-4 text-[var(--muted)]" colSpan={6}>
+                  <td className="px-4 py-4 text-[var(--muted)]" colSpan={7}>
                     Loading runs...
                   </td>
                 </tr>
               ) : rows.length === 0 ? (
                 <tr>
-                  <td className="px-4 py-4 text-[var(--muted)]" colSpan={6}>
+                  <td className="px-4 py-4 text-[var(--muted)]" colSpan={7}>
                     No runs found.
                   </td>
                 </tr>
               ) : (
-                rows.map((r) => (
+                rows.map((r) => {
+                  const status = normalizeEvaluationRunStatus(r.status);
+                  return (
                   <tr
                     key={r.id}
                     className="border-t border-[var(--border)] cursor-pointer hover:bg-white/5 focus-within:bg-white/5"
@@ -114,6 +148,12 @@ export default function BenchmarkRunsPage() {
                     aria-label={`Open evaluation run ${r.id}`}
                   >
                     <td className="px-4 py-3 font-mono text-xs text-[var(--accent)]">{r.id}</td>
+                    <td className="px-4 py-3">
+                      <RunStatusBadge
+                        status={status}
+                        errorMessage={r.error_message}
+                      />
+                    </td>
                     <td className="px-4 py-3">{r.target_model || "-"}</td>
                     <td className="px-4 py-3">{r.user_model || "-"}</td>
                     <td className="px-4 py-3">{r.judge_model || "-"}</td>
@@ -126,7 +166,8 @@ export default function BenchmarkRunsPage() {
                       {new Date(r.created_at).toLocaleString()}
                     </td>
                   </tr>
-                ))
+                  );
+                })
               )}
             </tbody>
           </table>

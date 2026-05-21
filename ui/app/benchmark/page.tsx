@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import requestsClient, { sameOriginApiUrl } from "lib/requests-client";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import requestsClient from "lib/requests-client";
+import { EvaluationRunTracker } from "components/EvaluationRunTracker";
 import { ResultsOverview } from "components/ResultsOverview";
+import { useActiveEvaluationRun } from "hooks/useActiveEvaluationRun";
 import type { ViewerData } from "lib/viewerDataFromZip";
 
 const PROMPTS = ["default", "child"];
@@ -129,21 +131,54 @@ function PipelineStepper({ phase }: { phase: FlowPhase }) {
 }
 
 export default function Home() {
-  const [output, setOutput] = useState("");
-  const [running, setRunning] = useState(false);
   const [modelList, setModelList] = useState<string[]>([]);
   const [customModelList, setCustomModelList] = useState<string[]>([]);
-  const [flowPhase, setFlowPhase] = useState<FlowPhase>("idle");
   const [overviewData, setOverviewData] = useState<ViewerData | null>(null);
-  const [latestEvaluationRunId, setLatestEvaluationRunId] = useState<string | null>(null);
-  const abortRef = useRef<AbortController | null>(null);
+
+  const refreshOverviewFromRun = useCallback(async (runId?: string | null) => {
+    try {
+      const path = runId
+        ? `/api/evaluation-runs/${encodeURIComponent(runId)}/viewer-data`
+        : "/api/scenarios/viewer-data";
+      const vr = await requestsClient.get<ViewerData>(path, {
+        validateStatus: () => true,
+      });
+      if (vr.status >= 200 && vr.status < 300) {
+        setOverviewData(vr.data);
+      }
+    } catch {
+      /* run may not have viewer rows yet */
+    }
+  }, []);
+
+  const {
+    run: activeRun,
+    loading: runLoading,
+    starting,
+    cancelling,
+    isInFlight,
+    pollError,
+    startEvaluation,
+    cancelEvaluation,
+    refreshRun,
+  } = useActiveEvaluationRun({
+    onCompleted: (runId) => {
+      void refreshOverviewFromRun(runId);
+    },
+  });
+
+  const flowPhase: FlowPhase =
+    activeRun?.status === "completed"
+      ? "complete"
+      : isInFlight
+        ? "running"
+        : "idle";
 
   useEffect(() => {
     requestsClient
       .get<{ models?: string[]; customModels?: string[] }>("/api/models", { validateStatus: () => true })
       .then((r) => {
         const data = r.data ?? {};
-        console.log(data.models);
         setModelList(data.models ?? []);
         setCustomModelList(data.customModels ?? []);
       })
@@ -153,127 +188,11 @@ export default function Home() {
       });
   }, []);
 
-  const refreshOverviewFromDisk = useCallback(async (file?: string) => {
-    try {
-      const q = file ? `?file=${encodeURIComponent(file)}` : "";
-      const vr = await requestsClient.get<ViewerData>(`/api/scenarios/viewer-data${q}`, {
-        validateStatus: () => true,
-      });
-      if (vr.status >= 200 && vr.status < 300) {
-        setOverviewData(vr.data);
-      }
-    } catch {
-      /* benchmark/data may have no zip yet */
+  useEffect(() => {
+    if (activeRun?.status === "completed" && activeRun.id) {
+      void refreshOverviewFromRun(activeRun.id);
     }
-  }, []);
-
-  const runBenchmark = useCallback(
-    async (payload: {
-      apiKey: string;
-      customApiKey?: string;
-      customApiEndpoint?: string;
-      customParsingKey?: string;
-      targetModel: string;
-      judgeModel?: string;
-      userModel?: string;
-      prompts?: string[];
-    }) => {
-      abortRef.current = new AbortController();
-      setRunning(true);
-      setFlowPhase("running");
-      setOverviewData(null);
-      setLatestEvaluationRunId(null);
-      setOutput("Running evaluation...\n\n");
-
-      try {
-        const prefix = "Running evaluation...\n\n";
-        const runUrl = sameOriginApiUrl("/api/run");
-        let streamedBody = "";
-        const res = await requestsClient.post<string>(
-          runUrl,
-          {
-            command: "run",
-            apiKey: payload.apiKey,
-            customApiKey: payload.customApiKey,
-            customApiEndpoint: payload.customApiEndpoint,
-            customParsingKey: payload.customParsingKey,
-            targetModel: payload.targetModel,
-            judgeModel: payload.judgeModel,
-            userModel: payload.userModel,
-            input: "data/scenarios.jsonl",
-            prompts: payload.prompts,
-          },
-          {
-            signal: abortRef.current.signal,
-            responseType: "text",
-            validateStatus: () => true,
-            headers: { "Content-Type": "application/json" },
-            transformResponse: [(data) => data],
-            onDownloadProgress: (e) => {
-              const xhr = (e as unknown as { target?: XMLHttpRequest }).target;
-              streamedBody = xhr?.responseText ?? streamedBody;
-              setOutput(prefix + streamedBody);
-            },
-          }
-        );
-
-        if (res.status < 200 || res.status >= 300) {
-          let data: { error?: string; code?: string } = {};
-          if (typeof res.data === "string" && res.data.trim()) {
-            try {
-              data = JSON.parse(res.data) as { error?: string; code?: string };
-            } catch {
-              data = {};
-            }
-          } else if (res.data && typeof res.data === "object") {
-            data = res.data as { error?: string; code?: string };
-          }
-          const msg =
-            data.code === "CLI_NOT_BUILT"
-              ? `${data.error}\n\nFrom the benchmark directory, run: yarn install && yarn tsbuild`
-              : `Error ${res.status}: ${data.error ?? res.statusText}`;
-          setOutput(msg);
-          setFlowPhase("idle");
-          return;
-        }
-
-        const fullBody =
-          typeof res.data === "string" && res.data.length > 0 ? res.data : streamedBody;
-        const text = prefix + fullBody;
-        setOutput(text);
-        const benchmarkHadTestFailures =
-          /\bTest failed for key\b/m.test(text) ||
-          /\d+\s+tests?\s+failed\b/i.test(text);
-        if (benchmarkHadTestFailures) {
-          setOverviewData(null);
-          setLatestEvaluationRunId(null);
-          setFlowPhase("idle");
-        } else {
-          const idMatch = text.match(/Saved evaluation run to database \(id:\s*([^)]+)\)/);
-          if (idMatch?.[1]) {
-            setLatestEvaluationRunId(idMatch[1].trim());
-          }
-          setFlowPhase("complete");
-          await refreshOverviewFromDisk();
-        }
-      } catch (e) {
-        if ((e as Error).name === "AbortError") {
-          setOutput((prev) => prev + "\n\n[Stopped by user]");
-        } else {
-          setOutput((prev) => prev + `\n\nError: ${(e as Error).message}`);
-        }
-        setFlowPhase("idle");
-      } finally {
-        setRunning(false);
-        abortRef.current = null;
-      }
-    },
-    [refreshOverviewFromDisk]
-  );
-
-  const stop = useCallback(() => {
-    if (abortRef.current) abortRef.current.abort();
-  }, []);
+  }, [activeRun?.status, activeRun?.id, refreshOverviewFromRun]);
 
   return (
     <div className="min-h-screen p-6 md:p-10 max-w-7xl mx-auto">
@@ -309,44 +228,24 @@ export default function Home() {
       </header>
 
       <PipelineForm
-        onRun={runBenchmark}
-        disabled={running}
+        onRun={startEvaluation}
+        disabled={isInFlight}
         modelList={modelList}
         customModelList={customModelList}
         flowPhase={flowPhase}
       />
 
-      <div className="mt-8 rounded-xl border border-[var(--border)] bg-[var(--surface)] overflow-hidden">
-        <div className="flex items-center justify-between px-4 py-2 border-b border-[var(--border)] bg-black/30">
-          <span className="text-sm font-medium text-[var(--muted)]">Output</span>
-          <div className="flex items-center gap-2">
-            {flowPhase === "complete" && (
-              <Link
-                href={
-                  latestEvaluationRunId
-                    ? `/benchmark/runs/${encodeURIComponent(latestEvaluationRunId)}`
-                    : "/benchmark/runs"
-                }
-                className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-1 text-sm font-medium text-white hover:bg-[var(--border)]"
-              >
-                View Results
-              </Link>
-            )}
-            {running && (
-              <button
-                type="button"
-                onClick={stop}
-                className="text-sm px-3 py-1 rounded bg-[var(--error)]/20 text-[var(--error)] hover:bg-[var(--error)]/30"
-              >
-                Stop
-              </button>
-            )}
-          </div>
-        </div>
-        <pre className="p-4 text-sm text-[var(--text)] overflow-auto max-h-[400px] font-mono whitespace-pre-wrap break-words">
-          {output || "Run benchmark to see output."}
-        </pre>
-      </div>
+      {(activeRun || starting || pollError || runLoading) && (
+        <EvaluationRunTracker
+          run={activeRun}
+          pollError={pollError}
+          loading={runLoading}
+          starting={starting}
+          cancelling={cancelling}
+          onRefresh={refreshRun}
+          onCancel={cancelEvaluation}
+        />
+      )}
 
       {overviewData && (
         <div className="mt-10 rounded-xl border border-[var(--border)] bg-[var(--surface)]/80 p-5 md:p-6">
