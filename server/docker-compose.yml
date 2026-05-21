@@ -22,8 +22,6 @@ services:
       FIREBASE_CREDS_PATH: /app/firebase-credentials.json
     volumes:
       - ./firebase-credentials.json:/app/firebase-credentials.json:ro
-      # Live-mount Python app so new API routes (e.g. cancel) work without rebuilding the image.
-      - ./app:/app/app:ro
     depends_on:
       redis:
         condition: service_healthy
@@ -39,7 +37,6 @@ services:
       FIREBASE_CREDS_PATH: /app/firebase-credentials.json
     volumes:
       - ./firebase-credentials.json:/app/firebase-credentials.json:ro
-      - ./app:/app/app:ro
     depends_on:
       redis:
         condition: service_healthy

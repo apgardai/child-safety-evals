@@ -55,6 +55,8 @@ server/firebase-credentials.json
 ############################
 **/venv/
 **/__pycache__/
+**/*.py[cod]
+**/*$py.class
 **/*.egg-info/
 
 ############################
@@ -85,9 +87,5 @@ benchmark/**/*.zip
 benchmark/results-viewer/data/viewer-data.json
 benchmark/results-viewer/archived-results/results.json
 benchmark/results-viewer/archived-results/testResults/**
-
-**/*__pycache__/*
-**/*.pyc
-server/app/crud/__pycache__/evaluation_runs.cpython-311.pyc
 
 **/dump.rdb
