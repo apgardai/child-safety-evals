@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import requestsClient from "lib/requests-client";
+import { viewerDataRequest } from "lib/viewerDataApi";
 import { ViewerDataExplorer } from "components/ViewerDataExplorer";
 import type { ViewerData } from "lib/viewerDataFromZip";
 import { humanizeSlug } from "lib/humanizeSlug";
@@ -46,8 +47,10 @@ export default function RunScenariosByRiskPage({
   useEffect(() => {
     if (!evaluationRunId) return;
     let cancelled = false;
+    const { url, params } = viewerDataRequest(evaluationRunId);
     requestsClient
-      .get<ViewerData>(`/api/evaluation-runs/${encodeURIComponent(evaluationRunId)}/viewer-data`, {
+      .get<ViewerData>(url, {
+        params,
         validateStatus: () => true,
       })
       .then((r) => {

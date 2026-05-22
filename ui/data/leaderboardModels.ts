@@ -91,16 +91,26 @@ export const mainLeaderboardModels: LeaderboardRow[] = [
   },
   {
     provider: "Meta",
-    model: "Llama 4 Maverick / Scout",
-    benchmarkTargets: ["llama-4-maverick", "llama-4-scout"],
+    model: "Llama 4 Maverick",
+    benchmarkTargets: ["llama-4-maverick"],
     date: "04/05/25",
-    size: "17B",
+    size: "17B (128E)",
     license: "Open Source",
     apiLinks: [
       {
         label: "Llama-4-Maverick-17B-128E-Instruct — Hugging Face",
         href: "https://huggingface.co/meta-llama/Llama-4-Maverick-17B-128E-Instruct",
       },
+    ],
+  },
+  {
+    provider: "Meta",
+    model: "Llama 4 Scout",
+    benchmarkTargets: ["llama-4-scout"],
+    date: "04/05/25",
+    size: "17B (16E)",
+    license: "Open Source",
+    apiLinks: [
       {
         label: "Llama-4-Scout-17B-16E-Instruct — Hugging Face",
         href: "https://huggingface.co/meta-llama/Llama-4-Scout-17B-16E-Instruct",

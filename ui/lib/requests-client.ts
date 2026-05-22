@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const DEFAULT_INTERNAL_API_URL = "http://localhost:8100";
+const DEFAULT_INTERNAL_API_URL = "http://localhost:8000";
 
 function normalizeBaseUrl(url: string | undefined): string {
   return (url ?? "").trim().replace(/\/$/, "");

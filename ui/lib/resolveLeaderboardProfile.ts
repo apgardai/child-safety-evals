@@ -13,6 +13,13 @@ function byProvider(name: string): LeaderboardRow | undefined {
   return allRows.find((r) => r.provider === name);
 }
 
+function byBenchmarkTarget(slug: string): LeaderboardRow | undefined {
+  const s = slug.trim().toLowerCase();
+  return allRows.find((r) =>
+    (r.benchmarkTargets ?? []).some((t) => t.toLowerCase() === s)
+  );
+}
+
 /**
  * Best-effort match from benchmark `models.json` / results `target` slug to a curated leaderboard row.
  */
@@ -41,8 +48,20 @@ export function resolveLeaderboardRowForTarget(
     { match: slug => slug.includes("nemotron"), row: byProvider("Nvidia") },
     {
       match: slug =>
+        slug.includes("llama-4-scout") ||
+        (slug.includes("llama") && slug.includes("scout")),
+      row: byBenchmarkTarget("llama-4-scout"),
+    },
+    {
+      match: slug =>
+        slug.includes("llama-4-maverick") ||
+        (slug.includes("llama") && slug.includes("maverick")),
+      row: byBenchmarkTarget("llama-4-maverick"),
+    },
+    {
+      match: slug =>
         slug.includes("llama") || slug.includes("meta-llama") || slug.includes("meta/"),
-      row: byProvider("Meta"),
+      row: byBenchmarkTarget("llama-4-scout") ?? byBenchmarkTarget("llama-4-maverick"),
     },
     {
       match: slug =>

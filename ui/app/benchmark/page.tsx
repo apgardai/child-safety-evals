@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import requestsClient from "lib/requests-client";
+import { viewerDataRequest } from "lib/viewerDataApi";
 import { EvaluationRunTracker } from "components/EvaluationRunTracker";
 import { ResultsOverview } from "components/ResultsOverview";
 import { useActiveEvaluationRun } from "hooks/useActiveEvaluationRun";
@@ -137,10 +138,11 @@ export default function Home() {
 
   const refreshOverviewFromRun = useCallback(async (runId?: string | null) => {
     try {
-      const path = runId
-        ? `/api/evaluation-runs/${encodeURIComponent(runId)}/viewer-data`
-        : "/api/scenarios/viewer-data";
-      const vr = await requestsClient.get<ViewerData>(path, {
+      const req = runId
+        ? viewerDataRequest(runId)
+        : { url: "/api/scenarios/viewer-data" as const };
+      const vr = await requestsClient.get<ViewerData>(req.url, {
+        params: "params" in req ? req.params : undefined,
         validateStatus: () => true,
       });
       if (vr.status >= 200 && vr.status < 300) {

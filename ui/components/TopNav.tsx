@@ -10,7 +10,6 @@ import requestsClient from "lib/requests-client";
 const baseTabs = [
   { href: "/", label: "Home" },
   { href: "/leaderboard", label: "Leaderboard" },
-  { href: "/test-results", label: "Test results" },
 ] as const;
 
 const benchmarkTab = { href: "/benchmark", label: "Run Evaluations" } as const;

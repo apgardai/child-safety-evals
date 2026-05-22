@@ -26,6 +26,12 @@ from app.crud.evaluation_runs import (
     summarize_run,
 )
 from app.services.benchmark_progress import count_scenario_test_tasks
+from app.services.local_benchmark_results import (
+    is_local_run_id,
+    list_model_result_runs,
+    load_local_run_viewer_data,
+    load_model_result_viewer_data,
+)
 from app.services.evaluation_cancel import revoke_evaluation_celery_task
 from app.schemas.evaluation_runs import (
     EvaluationRunActiveOut,
@@ -448,14 +454,26 @@ def persist_evaluation_run_public(
 @router.get("/evaluation-runs/{evaluation_run_id}/viewer-data")
 def run_viewer_data_public(
     request: Request,
-    evaluation_run_id: UUID,
+    evaluation_run_id: str,
     db: Session = Depends(get_db),
 ):
+    if is_local_run_id(evaluation_run_id):
+        try:
+            return load_local_run_viewer_data(evaluation_run_id)
+        except FileNotFoundError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
     email = require_session_email(request)
+    try:
+        run_uuid = UUID(evaluation_run_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail="Invalid evaluation run id.") from exc
     return get_latest_evaluation_viewer_data(
         request=request,
         email=email,
-        run_id=evaluation_run_id,
+        run_id=run_uuid,
         x_internal_secret=None,
         db=db,
     )
@@ -471,6 +489,46 @@ def scenarios_viewer_data_public(request: Request, db: Session = Depends(get_db)
         x_internal_secret=None,
         db=db,
     )
+
+
+@router.get("/model-results")
+def list_model_results_public():
+    """Leaderboard rows from ``benchmark/data/model-results/*/results.json``."""
+    return {"runs": list_model_result_runs()}
+
+
+@router.get("/model-results/viewer-data")
+def model_result_viewer_data_query_public(
+    model_id: str | None = None,
+    runId: str | None = None,
+):
+    """Viewer data by ``model_id`` (preferred) or legacy ``local-model-{id}`` runId."""
+    try:
+        if model_id and model_id.strip():
+            return load_model_result_viewer_data(model_id.strip())
+        if runId and runId.strip():
+            if not is_local_run_id(runId):
+                raise HTTPException(status_code=400, detail="Invalid local run id.")
+            return load_local_run_viewer_data(runId)
+        raise HTTPException(
+            status_code=400,
+            detail="Provide model_id or runId query parameter.",
+        )
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.get("/model-results/{model_dir}/viewer-data")
+def model_result_viewer_data_public(model_dir: str):
+    """Scenario-level assessments for a filesystem model run."""
+    try:
+        return load_model_result_viewer_data(model_dir)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @router.get("/account/ai-gateway-key")

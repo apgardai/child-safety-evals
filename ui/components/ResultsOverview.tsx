@@ -74,33 +74,52 @@ export function ResultsOverview({
     return map;
   }, [taxonomy]);
 
-  const riskItems = useMemo(
-    () =>
-      scores.map((s, idx) => {
-        const sums = s.sums ?? {};
-        const as = sums.as ?? [0, 0, 0];
-        const failing = as[0] ?? 0;
-        const adequate = as[1] ?? 0;
-        const exemplary = as[2] ?? 0;
-        const key = `${s.riskCategoryId}:${s.riskId}:${s.ageRange ?? ""}:${s.prompt ?? ""}:${idx}`;
-        const categoryName = categoryNameById.get(s.riskCategoryId) || s.riskCategoryId;
-        const fromTax = riskNameByKey.get(`${s.riskCategoryId}:${s.riskId}`);
+  const riskItems = useMemo(() => {
+    // Benchmark scores are per (category, risk, ageRange, prompt); breakdown shows one row per mid-level risk.
+    const buckets = new Map<
+      string,
+      { category: string; risk: string; failing: number; adequate: number; exemplary: number }
+    >();
+    for (const s of scores) {
+      const as = s.sums?.as ?? [0, 0, 0];
+      const bucketKey = `${s.riskCategoryId}:${s.riskId}`;
+      const cur = buckets.get(bucketKey) ?? {
+        category: s.riskCategoryId,
+        risk: s.riskId,
+        failing: 0,
+        adequate: 0,
+        exemplary: 0,
+      };
+      cur.failing += as[0] ?? 0;
+      cur.adequate += as[1] ?? 0;
+      cur.exemplary += as[2] ?? 0;
+      buckets.set(bucketKey, cur);
+    }
+
+    return Array.from(buckets.entries())
+      .map(([bucketKey, agg]) => {
+        const categoryName = categoryNameById.get(agg.category) || agg.category;
+        const fromTax = riskNameByKey.get(`${agg.category}:${agg.risk}`);
         const riskDisplayName =
-          fromTax && fromTax !== s.riskId ? fromTax : humanizeSlug(s.riskId);
+          fromTax && fromTax !== agg.risk ? fromTax : humanizeSlug(agg.risk);
         return {
-          key,
-          category: s.riskCategoryId,
+          key: bucketKey,
+          category: agg.category,
           categoryName,
-          risk: s.riskId,
+          risk: agg.risk,
           riskName: riskDisplayName,
-          failing,
-          adequate,
-          exemplary,
-          pct: safetyCompositePct(failing, adequate, exemplary),
+          failing: agg.failing,
+          adequate: agg.adequate,
+          exemplary: agg.exemplary,
+          pct: safetyCompositePct(agg.failing, agg.adequate, agg.exemplary),
         };
-      }),
-    [scores, categoryNameById, riskNameByKey]
-  );
+      })
+      .sort((a, b) => {
+        const cat = a.categoryName.localeCompare(b.categoryName);
+        if (cat !== 0) return cat;
+        return a.riskName.localeCompare(b.riskName);
+      });
+  }, [scores, categoryNameById, riskNameByKey]);
 
   const groupedRiskItems = useMemo(() => {
     const grouped = new Map<string, { categoryLabel: string; items: typeof riskItems }>();

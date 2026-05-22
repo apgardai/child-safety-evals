@@ -13,7 +13,10 @@ services:
       retries: 5
 
   web:
-    image: ${DOCKER_USERNAME}/child_safety_evals:${IMAGE_TAG:-prod-latest}
+    build:
+      context: ..
+      dockerfile: server/Dockerfile
+    image: ${CHILD_SAFETY_EVALS_IMAGE:-child_safety_evals:local}
     ports:
       - "8000:8000"
     env_file: .env
@@ -22,6 +25,7 @@ services:
       FIREBASE_CREDS_PATH: /app/firebase-credentials.json
     volumes:
       - ./firebase-credentials.json:/app/firebase-credentials.json:ro
+      - ../benchmark/data:/app/benchmark/data:ro
     depends_on:
       redis:
         condition: service_healthy
@@ -30,13 +34,17 @@ services:
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1
 
   worker:
-    image: ${DOCKER_USERNAME}/child_safety_evals:${IMAGE_TAG:-prod-latest}
+    build:
+      context: ..
+      dockerfile: server/Dockerfile
+    image: ${CHILD_SAFETY_EVALS_IMAGE:-child_safety_evals:local}
     env_file: .env
     environment:
       REDIS_BROKER_URL: redis://redis:6379/0
       FIREBASE_CREDS_PATH: /app/firebase-credentials.json
     volumes:
       - ./firebase-credentials.json:/app/firebase-credentials.json:ro
+      - ../benchmark/data:/app/benchmark/data:ro
     depends_on:
       redis:
         condition: service_healthy
