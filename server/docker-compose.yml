@@ -20,8 +20,10 @@ services:
     environment:
       REDIS_BROKER_URL: redis://redis:6379/0
       FIREBASE_CREDS_PATH: /app/firebase-credentials.json
+      BENCHMARK_ROOT: /app/benchmark
     volumes:
       - ./firebase-credentials.json:/app/firebase-credentials.json:ro
+      - ${BENCHMARK_HOST_PATH:-../benchmark}:/app/benchmark:ro
     depends_on:
       redis:
         condition: service_healthy
@@ -35,8 +37,10 @@ services:
     environment:
       REDIS_BROKER_URL: redis://redis:6379/0
       FIREBASE_CREDS_PATH: /app/firebase-credentials.json
+      BENCHMARK_ROOT: /app/benchmark
     volumes:
       - ./firebase-credentials.json:/app/firebase-credentials.json:ro
+      - ${BENCHMARK_HOST_PATH:-../benchmark}:/app/benchmark:ro
     depends_on:
       redis:
         condition: service_healthy

@@ -7,6 +7,9 @@ on:
     paths:
       # Monorepo (e.g. apgard): server lives under child-safety-evals/server
       - "child-safety-evals/server/**"
+      - "child-safety-evals/benchmark/data/**"
+      - "child-safety-evals/benchmark/models.json"
+      - "child-safety-evals/benchmark/packages/benchmark/data/**"
       - "child-safety-evals/.github/workflows/deploy.yml"
       # Standalone child-safety-evals repo: server at repo root server/
       - "server/**"
@@ -38,9 +41,11 @@ jobs:
         run: |
           if [ -d child-safety-evals/server ]; then
             echo "CSE_SERVER_ROOT=child-safety-evals/server" >> "$GITHUB_ENV"
+            echo "CSE_ROOT=child-safety-evals" >> "$GITHUB_ENV"
             echo "Using monorepo path: child-safety-evals/server"
           elif [ -d server ]; then
             echo "CSE_SERVER_ROOT=server" >> "$GITHUB_ENV"
+            echo "CSE_ROOT=." >> "$GITHUB_ENV"
             echo "Using standalone repo path: server"
           else
             echo "Expected child-safety-evals/server (monorepo) or server/ (standalone)."
@@ -87,12 +92,30 @@ jobs:
           scp $SSH_OPTS -i key.pem "${CSE_SERVER_ROOT}/docker-compose.yml" \
             ${EC2_USER}@${{ secrets.CSE_EC2_HOST }}:${{ env.EC2_DEPLOY_DIR }}/
 
+      - name: Sync benchmark assets to EC2
+        run: |
+          set -e
+          rsync -az --delete \
+            --exclude node_modules \
+            --exclude .yarn \
+            --exclude 'packages/cli/build' \
+            --exclude 'packages/benchmark/build' \
+            --exclude 'data/.benchmark-expand-tmp' \
+            --exclude 'data/.benchmark-run-tmp' \
+            --exclude 'data/results' \
+            --exclude 'data/results.zip' \
+            --exclude 'data/results.json' \
+            --exclude 'data/scenarioSeeds_kora.jsonl' \
+            "${CSE_ROOT}/benchmark/" \
+            ${EC2_USER}@${{ secrets.CSE_EC2_HOST }}:${{ env.EC2_DEPLOY_DIR }}/benchmark/
+
       - name: Create env file (local) and upload
         run: |
           set -e
           {
             echo "DOCKER_USERNAME=${{ secrets.DOCKER_USERNAME }}"
             echo "IMAGE_TAG=${{ env.IMAGE_PREFIX }}-${{ env.IMAGE_TAG }}"
+            echo "BENCHMARK_HOST_PATH=./benchmark"
             echo "DATABASE_URL=${{ secrets.CSE_DATABASE_URL }}"
             echo "CSE_SECRETS_KEY=${{ secrets.CSE_SECRETS_KEY }}"
             echo "INTERNAL_API_SECRET=${{ secrets.CSE_INTERNAL_API_SECRET }}"
