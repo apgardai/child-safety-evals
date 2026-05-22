@@ -92,6 +92,7 @@ jobs:
           set -e
           {
             echo "DOCKER_USERNAME=${{ secrets.DOCKER_USERNAME }}"
+            echo "IMAGE_TAG=${{ env.IMAGE_PREFIX }}-${{ env.IMAGE_TAG }}"
             echo "DATABASE_URL=${{ secrets.CSE_DATABASE_URL }}"
             echo "CSE_SECRETS_KEY=${{ secrets.CSE_SECRETS_KEY }}"
             echo "INTERNAL_API_SECRET=${{ secrets.CSE_INTERNAL_API_SECRET }}"
@@ -126,9 +127,8 @@ jobs:
           ssh $SSH_OPTS -i key.pem ${EC2_USER}@${{ secrets.CSE_EC2_HOST }} bash -s << EOF
             set -e
             cd ${{ env.EC2_DEPLOY_DIR }}
-            export IMAGE_TAG="${{ env.IMAGE_PREFIX }}-${{ env.IMAGE_TAG }}"
-            export DOCKER_USERNAME="${{ secrets.DOCKER_USERNAME }}"
             docker compose -p ${{ env.COMPOSE_PROJECT }} down
+            docker compose -p ${{ env.COMPOSE_PROJECT }} pull
             docker compose -p ${{ env.COMPOSE_PROJECT }} up -d
           EOF
 
