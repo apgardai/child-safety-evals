@@ -80,8 +80,13 @@ htmlcov/
 # - archives
 ############################
 benchmark/data/**
+!benchmark/data/scenarioSeeds.jsonl
+!benchmark/data/scenarios.jsonl
+!benchmark/data/model-results/
+!benchmark/data/model-results/**
 benchmark/data/.benchmark-*-tmp/**
 benchmark/**/*.zip
+!benchmark/data/model-results/**/*.zip
 
 # Results viewer generated artifacts
 benchmark/results-viewer/data/viewer-data.json

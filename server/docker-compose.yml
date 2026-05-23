@@ -23,7 +23,8 @@ services:
       BENCHMARK_ROOT: /app/benchmark
     volumes:
       - ./firebase-credentials.json:/app/firebase-credentials.json:ro
-      - ${BENCHMARK_HOST_PATH:-../benchmark}:/app/benchmark:ro
+      # Mount only data/ so image COPY keeps models.json + packages/ under /app/benchmark
+      - ${BENCHMARK_HOST_PATH:-../benchmark}/data:/app/benchmark/data:ro
     depends_on:
       redis:
         condition: service_healthy
@@ -40,7 +41,7 @@ services:
       BENCHMARK_ROOT: /app/benchmark
     volumes:
       - ./firebase-credentials.json:/app/firebase-credentials.json:ro
-      - ${BENCHMARK_HOST_PATH:-../benchmark}:/app/benchmark:ro
+      - ${BENCHMARK_HOST_PATH:-../benchmark}/data:/app/benchmark/data:ro
     depends_on:
       redis:
         condition: service_healthy

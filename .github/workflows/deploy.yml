@@ -110,6 +110,17 @@ jobs:
             "${CSE_ROOT}/benchmark/" \
             ${EC2_USER}@${{ secrets.CSE_EC2_HOST }}:${{ env.EC2_DEPLOY_DIR }}/benchmark/
 
+      - name: Verify benchmark layout on EC2
+        run: |
+          ssh $SSH_OPTS -i key.pem ${EC2_USER}@${{ secrets.CSE_EC2_HOST }} bash -s << 'EOF'
+            set -e
+            DEPLOY_DIR="${{ env.EC2_DEPLOY_DIR }}"
+            test -f "${DEPLOY_DIR}/benchmark/data/model-results/llama-4-scout/results.json" \
+              -o -f "${DEPLOY_DIR}/benchmark/data/model-results/llama-4-scout/results/results.json" \
+              || { echo "Missing llama-4-scout results under benchmark/data/model-results/"; exit 1; }
+            echo "Benchmark data directory OK on host."
+          EOF
+
       - name: Create env file (local) and upload
         run: |
           set -e
