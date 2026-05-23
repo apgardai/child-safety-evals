@@ -36,6 +36,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # benchmark/ is a submodule (apgardai/benchmark); without this, rsync ships no model-results.
+          submodules: recursive
 
       - name: Resolve server directory (monorepo vs standalone repo)
         run: |
@@ -92,10 +95,24 @@ jobs:
           scp $SSH_OPTS -i key.pem "${CSE_SERVER_ROOT}/docker-compose.yml" \
             ${EC2_USER}@${{ secrets.CSE_EC2_HOST }}:${{ env.EC2_DEPLOY_DIR }}/
 
+      - name: Check benchmark data is in git checkout
+        run: |
+          set -e
+          SCOUT_JSON="${CSE_ROOT}/benchmark/data/model-results/llama-4-scout/results.json"
+          SCOUT_NESTED="${CSE_ROOT}/benchmark/data/model-results/llama-4-scout/results/results.json"
+          if [ ! -f "$SCOUT_JSON" ] && [ ! -f "$SCOUT_NESTED" ]; then
+            echo "::error::benchmark/data/model-results/ is not in this commit (gitignored or not added)."
+            echo "Force-add and push before deploy, e.g.:"
+            echo "  git add -f benchmark/data/model-results/ benchmark/data/scenarioSeeds.jsonl benchmark/data/scenarios.jsonl"
+            exit 1
+          fi
+          test -f "${CSE_ROOT}/benchmark/models.json"
+
       - name: Sync benchmark assets to EC2
         run: |
           set -e
-          rsync -az --delete \
+          # Do not use --delete: absent gitignored paths would wipe existing EC2 data.
+          rsync -az \
             -e "ssh $SSH_OPTS -i key.pem" \
             --exclude node_modules \
             --exclude .yarn \
@@ -109,17 +126,6 @@ jobs:
             --exclude 'data/scenarioSeeds_kora.jsonl' \
             "${CSE_ROOT}/benchmark/" \
             ${EC2_USER}@${{ secrets.CSE_EC2_HOST }}:${{ env.EC2_DEPLOY_DIR }}/benchmark/
-
-      - name: Verify benchmark layout on EC2
-        run: |
-          ssh $SSH_OPTS -i key.pem ${EC2_USER}@${{ secrets.CSE_EC2_HOST }} bash -s << 'EOF'
-            set -e
-            DEPLOY_DIR="${{ env.EC2_DEPLOY_DIR }}"
-            test -f "${DEPLOY_DIR}/benchmark/data/model-results/llama-4-scout/results.json" \
-              -o -f "${DEPLOY_DIR}/benchmark/data/model-results/llama-4-scout/results/results.json" \
-              || { echo "Missing llama-4-scout results under benchmark/data/model-results/"; exit 1; }
-            echo "Benchmark data directory OK on host."
-          EOF
 
       - name: Create env file (local) and upload
         run: |
