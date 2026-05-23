@@ -96,6 +96,7 @@ jobs:
         run: |
           set -e
           rsync -az --delete \
+            -e "ssh $SSH_OPTS -i key.pem" \
             --exclude node_modules \
             --exclude .yarn \
             --exclude 'packages/cli/build' \
