@@ -273,6 +273,19 @@ def _scenarios_from_test_results_dir(
     return scenarios
 
 
+def _zip_scenario_entries(zf: zipfile.ZipFile) -> list[tuple[str, str]]:
+    """``(zip member path, file name)`` for scenario JSON under ``testResults/``."""
+    entries: list[tuple[str, str]] = []
+    for name in zf.namelist():
+        if not name.endswith(".json"):
+            continue
+        parts = [p for p in name.split("/") if p]
+        if len(parts) < 2 or parts[-2].lower() != "testresults":
+            continue
+        entries.append((name, parts[-1]))
+    return entries
+
+
 def _scenarios_from_zip(
     zip_path: Path,
     category_by_id: dict[str, str],
@@ -280,11 +293,7 @@ def _scenarios_from_zip(
 ) -> list[dict[str, Any]]:
     scenarios: list[dict[str, Any]] = []
     with zipfile.ZipFile(zip_path, "r") as zf:
-        for name in zf.namelist():
-            if not name.startswith("testResults/") or not name.endswith(".json"):
-                continue
-            if name.count("/") != 1:
-                continue
+        for name, file_name in _zip_scenario_entries(zf):
             try:
                 raw = zf.read(name).decode("utf-8")
                 record = json.loads(raw)
@@ -292,7 +301,6 @@ def _scenarios_from_zip(
                 continue
             if not isinstance(record, dict):
                 continue
-            file_name = name.split("/")[-1]
             scenarios.append(
                 _normalize_scenario_record(record, file_name, category_by_id, risk_by_key)
             )
@@ -324,9 +332,13 @@ def list_model_result_runs() -> list[dict[str, Any]]:
 
 
 def _artifact_roots(bundle_dir: Path, run_dir: Path) -> list[Path]:
-    """Dirs that may contain ``results.zip`` or ``testResults/`` (bundle or model dir)."""
+    """Dirs that may contain ``results.zip`` or ``testResults/``.
+
+    CLI output often has ``results.json`` at the model dir while per-scenario JSON
+    lives under ``results/testResults/`` (nested bundle next to a top-level summary).
+    """
     roots: list[Path] = []
-    for candidate in (bundle_dir, run_dir):
+    for candidate in (bundle_dir, run_dir, run_dir / "results", bundle_dir / "results"):
         if candidate not in roots:
             roots.append(candidate)
     return roots
@@ -359,7 +371,8 @@ def _load_viewer_from_bundle(bundle_dir: Path, *, run_dir: Path) -> dict[str, An
     if not scenarios:
         raise FileNotFoundError(
             f"No scenario results under {run_dir} "
-            "(expected results.zip or testResults/*.json in the model-results folder)"
+            "(expected results.zip or testResults/*.json under the model dir, "
+            "a nested results/ folder, or results/testResults/)"
         )
 
     try:
