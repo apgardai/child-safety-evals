@@ -6,6 +6,7 @@ import requestsClient from "lib/requests-client";
 import { viewerDataRequest } from "lib/viewerDataApi";
 import { EvaluationRunTracker } from "components/EvaluationRunTracker";
 import { ResumableEvaluationBanner } from "components/ResumableEvaluationBanner";
+import BenchmarkScenariosPreview from "components/BenchmarkScenariosPreview";
 import { ResultsOverview } from "components/ResultsOverview";
 import { useActiveEvaluationRun } from "hooks/useActiveEvaluationRun";
 import type { ViewerData } from "lib/viewerDataFromZip";
@@ -588,6 +589,8 @@ function PipelineForm({
             </div>
           </div>
         </div>
+
+        <BenchmarkScenariosPreview prompts={prompts} />
 
         <div className="mt-4 flex flex-wrap items-center gap-3">
           <button

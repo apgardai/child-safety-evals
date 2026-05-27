@@ -27,7 +27,9 @@ from app.crud.evaluation_runs import (
     set_evaluation_run_status,
     summarize_run,
 )
+from app.schemas.benchmark_preview import BenchmarkScenariosPreviewOut
 from app.services.benchmark_progress import count_scenario_test_tasks
+from app.services.benchmark_scenarios_preview import load_benchmark_scenarios_preview
 from app.services.local_benchmark_results import (
     is_local_run_id,
     list_model_result_runs,
@@ -542,6 +544,24 @@ def run_viewer_data_public(
         x_internal_secret=None,
         db=db,
     )
+
+
+@router.get("/benchmark/scenarios-preview", response_model=BenchmarkScenariosPreviewOut)
+def benchmark_scenarios_preview_public(
+    request: Request,
+    input: str = "data/scenarios.jsonl",
+    prompts: str | None = None,
+):
+    require_session_email(request)
+    prompt_list: list[str] | None = None
+    if prompts:
+        prompt_list = [p.strip() for p in prompts.split(",") if p.strip()]
+    try:
+        return load_benchmark_scenarios_preview(scenarios_input=input, prompts=prompt_list)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except (json.JSONDecodeError, ValueError, TypeError) as exc:
+        raise HTTPException(status_code=400, detail=f"Invalid scenarios file: {exc}") from exc
 
 
 @router.get("/scenarios/viewer-data")
