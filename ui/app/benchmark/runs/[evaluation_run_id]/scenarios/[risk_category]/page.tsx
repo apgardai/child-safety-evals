@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
+import { PageContainer } from "components/PageContainer";
 import requestsClient from "lib/requests-client";
 import { viewerDataRequest } from "lib/viewerDataApi";
 import { ViewerDataExplorer } from "components/ViewerDataExplorer";
@@ -82,10 +83,10 @@ export default function RunScenariosByRiskPage({
   }, [evaluationRunId]);
 
   return (
-    <div className="min-h-screen p-6 md:p-10 max-w-7xl mx-auto">
+    <PageContainer>
       <header className="mb-6 flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-white">Scenarios</h1>
+          <h1 className="text-2xl font-bold text-[var(--text)]">Scenarios</h1>
           <p className="text-sm text-[var(--muted)]">
             {decodedRiskCategory === "all"
               ? "Showing all risk categories."
@@ -95,7 +96,7 @@ export default function RunScenariosByRiskPage({
         <div className="flex flex-wrap items-center justify-end gap-2">
           <Link
             href={`/benchmark/runs/${encodeURIComponent(evaluationRunId)}`}
-            className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--border)]"
+            className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-sm font-medium text-[var(--text)] hover:bg-[var(--gray-100)]"
           >
             Back to breakdown
           </Link>
@@ -134,6 +135,6 @@ export default function RunScenariosByRiskPage({
           }}
         />
       )}
-    </div>
+    </PageContainer>
   );
 }

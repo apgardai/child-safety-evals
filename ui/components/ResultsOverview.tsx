@@ -165,7 +165,7 @@ export function ResultsOverview({
       {showToolbar ? (
         <div className="flex flex-wrap items-center justify-end gap-2">
           {onUploadZip && (
-            <label className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--border)] cursor-pointer">
+            <label className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-sm font-medium text-[var(--text)] hover:bg-[var(--gray-100)] cursor-pointer">
               {uploadBusy ? "Uploading..." : "Upload .zip"}
               <input
                 type="file"
@@ -192,16 +192,16 @@ export function ResultsOverview({
       ) : null}
       {uploadLabel && (
         <div className="text-xs text-[var(--muted)]">
-          Dataset: <span className="text-white/90">{uploadLabel}</span>
+          Dataset: <span className="text-[var(--text)]/90">{uploadLabel}</span>
         </div>
       )}
 
       <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 md:p-5">
-        <h3 className="text-lg font-semibold text-white mb-1">Risk breakdown</h3>
+        <h3 className="text-lg font-semibold text-[var(--text)] mb-1">Risk breakdown</h3>
         <p className="text-xs text-[var(--muted)] mb-4">
           Overall score and every mid-level risk listed under its high-level category.{" "}
           {onSelectRisk ? (
-            <span className="text-white/80">Click a row to filter scenarios below.</span>
+            <span className="text-[var(--muted)]">Click a row to filter scenarios below.</span>
           ) : null}
         </p>
 
@@ -230,8 +230,8 @@ export function ResultsOverview({
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--border)]/70">
-              <tr className="bg-black/[0.12]">
-                <td colSpan={2} className="py-3 pr-3 align-middle font-semibold text-white">
+              <tr className="bg-[var(--gray-100)]">
+                <td colSpan={2} className="py-3 pr-3 align-middle font-semibold text-[var(--text)]">
                   Overall
                 </td>
                 <td className="py-3 pr-3 align-middle text-xs text-[var(--muted)]">
@@ -240,7 +240,7 @@ export function ResultsOverview({
                 <td className="py-3 px-2 align-middle">
                   <ScorePercentBar pct={overallRiskStats.pct} />
                 </td>
-                <td className="py-3 px-2 align-middle text-right text-xl font-bold tabular-nums text-white">
+                <td className="py-3 px-2 align-middle text-right text-xl font-bold tabular-nums text-[var(--text)]">
                   {overallRiskStats.pct.toFixed(0)}%
                 </td>
               </tr>
@@ -255,7 +255,7 @@ export function ResultsOverview({
                   const interactive = Boolean(onSelectRisk);
                   const rowClass = [
                     "transition-colors",
-                    interactive ? "cursor-pointer hover:bg-white/[0.05]" : "",
+                    interactive ? "cursor-pointer hover:bg-[var(--gray-100)]" : "",
                   ]
                     .filter(Boolean)
                     .join(" ");
@@ -288,7 +288,7 @@ export function ResultsOverview({
                       {i === 0 ? (
                         <td
                           rowSpan={n}
-                          className="align-top border-r border-[var(--border)]/50 py-2.5 pr-3 text-white font-medium leading-snug"
+                          className="align-top border-r border-[var(--border)]/50 py-2.5 pr-3 text-[var(--text)] font-medium leading-snug"
                         >
                           {categoryTitle}
                         </td>
@@ -297,7 +297,7 @@ export function ResultsOverview({
                         {i + 1}
                       </td>
                       <td className="py-2.5 pr-3 align-top min-w-0">
-                        <div className="font-medium text-white leading-snug break-words">{r.riskName}</div>
+                        <div className="font-medium text-[var(--text)] leading-snug break-words">{r.riskName}</div>
                         {onSelectRisk ? (
                           <div className="mt-1 text-[10px] text-[var(--accent)]">Scenarios →</div>
                         ) : null}
@@ -305,7 +305,7 @@ export function ResultsOverview({
                       <td className="py-2.5 px-2 align-middle">
                         <ScorePercentBar pct={r.pct} />
                       </td>
-                      <td className="py-2.5 px-2 align-middle text-right font-semibold tabular-nums text-white">
+                      <td className="py-2.5 px-2 align-middle text-right font-semibold tabular-nums text-[var(--text)]">
                         {r.pct.toFixed(0)}%
                       </td>
                     </tr>

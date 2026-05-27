@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { PageContainer } from "components/PageContainer";
 import requestsClient from "lib/requests-client";
 import { viewerDataRequest } from "lib/viewerDataApi";
 import type { ViewerData } from "lib/viewerDataFromZip";
@@ -106,15 +107,15 @@ export default function RunScenariosPage({
   }, [evaluationRunId]);
 
   return (
-    <div className="min-h-screen p-6 md:p-10 max-w-7xl mx-auto">
+    <PageContainer>
       <header className="mb-6 flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-white">Risk Breakdown</h1>
+          <h1 className="text-2xl font-bold text-[var(--text)]">Risk Breakdown</h1>
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2">
           <Link
             href="/benchmark/runs"
-            className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--border)]"
+            className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-sm font-medium text-[var(--text)] hover:bg-[var(--gray-100)]"
           >
             Back
           </Link>
@@ -122,7 +123,7 @@ export default function RunScenariosPage({
       </header>
 
       {evaluationRunId && (
-        <div className="mb-4 rounded-lg border border-[var(--accent)]/30 bg-[var(--accent)]/10 px-3 py-2 text-sm text-white">
+        <div className="mb-4 rounded-lg border border-[var(--accent)]/30 bg-[var(--accent)]/10 px-3 py-2 text-sm text-[var(--text)]">
           Viewing evaluation run:{" "}
           <span className="font-medium text-[var(--accent)]">{evaluationRunId}</span>
         </div>
@@ -158,7 +159,7 @@ export default function RunScenariosPage({
           </div>
 
           <div className="overflow-x-auto">
-            <table className="min-w-full text-sm text-white">
+            <table className="min-w-full text-sm text-[var(--text)]">
               <thead className="border-b border-[var(--border)] text-[10px] uppercase tracking-wide text-[var(--muted)]">
                 <tr>
                   <th className="px-3 py-2 text-left font-medium">Risk Category</th>
@@ -172,7 +173,7 @@ export default function RunScenariosPage({
                 {riskRows.map((r) => (
                   <tr
                     key={r.category}
-                    className="cursor-pointer border-b border-[var(--border)]/60 hover:bg-white/5"
+                    className="cursor-pointer border-b border-[var(--border)]/60 hover:bg-[var(--gray-100)]"
                     onClick={() =>
                       router.push(
                         `/benchmark/runs/${encodeURIComponent(evaluationRunId)}/scenarios/${encodeURIComponent(
@@ -200,6 +201,6 @@ export default function RunScenariosPage({
           </div>
         </section>
       )}
-    </div>
+    </PageContainer>
   );
 }

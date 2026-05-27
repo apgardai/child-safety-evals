@@ -12,7 +12,7 @@ export const EVALUATION_RUN_STATUS_META: Record<
   pending: {
     label: "Queued",
     badgeClass:
-      "bg-amber-500/25 text-amber-200 border border-amber-500/50",
+      "bg-amber-500/15 text-amber-800 border border-amber-500/40",
     barClass: "bg-amber-500/20 border-amber-500/40",
   },
   running: {
@@ -36,8 +36,8 @@ export const EVALUATION_RUN_STATUS_META: Record<
   cancelled: {
     label: "Cancelled",
     badgeClass:
-      "bg-zinc-500/25 text-zinc-300 border border-zinc-500/50",
-    barClass: "bg-zinc-500/20 border-zinc-500/40",
+      "bg-[var(--gray-200)] text-[var(--muted)] border border-[var(--gray-300)]",
+    barClass: "bg-[var(--gray-200)] border-[var(--gray-300)]",
   },
 };
 

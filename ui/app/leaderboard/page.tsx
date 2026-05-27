@@ -1,9 +1,10 @@
 import { ModelLeaderboard } from "components/ModelLeaderboard";
+import { PageContainer } from "components/PageContainer";
 
 export default function LeaderboardPage() {
   return (
-    <div className="flex flex-col items-center px-4 py-10 md:px-8 md:py-12">
+    <PageContainer className="flex flex-col items-center">
       <ModelLeaderboard />
-    </div>
+    </PageContainer>
   );
 }

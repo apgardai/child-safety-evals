@@ -13,6 +13,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef, useState } from "react";
 
+import { ApgardLogo } from "components/ApgardLogo";
 import { GoogleSignInButton } from "components/GoogleSignInButton";
 import { EMAIL_FOR_SIGN_IN_STORAGE_KEY, getEmailLinkActionUrl } from "lib/email-link-auth";
 import { getFirebaseAuth } from "lib/firebase-client";
@@ -199,9 +200,9 @@ function LoginForm() {
 
   if (completingEmailLink) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-6">
-        <div className="w-full max-w-md rounded-xl border border-[var(--border)] bg-[var(--surface)]/90 p-8 shadow-lg text-center space-y-4">
-          <p className="text-white">Completing sign-in…</p>
+      <div className="site-container flex min-h-[calc(100vh-4rem)] flex-col items-center justify-center py-6">
+        <div className="apgard-card w-full max-w-md space-y-4 p-8 text-center">
+          <p className="text-[var(--text)]">Completing sign-in…</p>
           {error && (
             <>
               <p className="text-sm text-[var(--error)]" role="alert">
@@ -212,7 +213,7 @@ function LoginForm() {
                   type="button"
                   onClick={() => void retrySessionLogin()}
                   disabled={retryingSession}
-                  className="w-full rounded-lg border border-[var(--border)] bg-black/30 py-2.5 text-sm font-medium text-white hover:bg-black/50 disabled:opacity-50"
+                  className="w-full rounded-lg border border-[var(--border)] bg-white py-2.5 text-sm font-medium text-[var(--text)] hover:bg-[var(--gray-200)] disabled:opacity-50"
                 >
                   {retryingSession ? "Retrying…" : "Try again"}
                 </button>
@@ -225,9 +226,12 @@ function LoginForm() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-6">
-      <div className="w-full max-w-md rounded-xl border border-[var(--border)] bg-[var(--surface)]/90 p-8 shadow-lg">
-        <h1 className="text-xl font-semibold text-white text-center mb-1">Sign in</h1>
+    <div className="site-container flex min-h-[calc(100vh-4rem)] flex-col items-center justify-center py-6">
+      <div className="apgard-card w-full max-w-md p-8">
+        <div className="mb-6 flex justify-center">
+          <ApgardLogo href="/" variant="full" width={100} height={56} />
+        </div>
+        <h1 className="mb-1 text-center text-xl font-semibold text-brand-dark">Sign in</h1>
 
         <GoogleSignInButton
           onSessionFailure={(pending) => {
@@ -241,7 +245,7 @@ function LoginForm() {
         />
 
         {sessionRetryable && pendingSessionRef.current && (
-          <div className="mb-4 rounded-lg border border-[var(--border)] bg-black/20 p-3 text-center">
+          <div className="mb-4 rounded-lg border border-[var(--border)] bg-[var(--gray-100)] p-3 text-center">
             <p className="text-xs text-[var(--muted)] mb-2">
               Firebase sign-in worked, but creating a session failed (often the API server is stopped).
             </p>
@@ -249,7 +253,7 @@ function LoginForm() {
               type="button"
               onClick={() => void retrySessionLogin()}
               disabled={retryingSession}
-              className="w-full rounded-lg border border-[var(--border)] py-2 text-sm font-medium text-white hover:bg-white/10 disabled:opacity-50"
+              className="w-full rounded-lg border border-[var(--border)] py-2 text-sm font-medium text-[var(--text)] hover:bg-[var(--gray-100)] disabled:opacity-50"
             >
               {retryingSession ? "Retrying…" : "Retry session"}
             </button>
@@ -274,7 +278,7 @@ function LoginForm() {
               className={`flex-1 rounded-md py-2 text-sm font-medium transition-colors ${
                 emailAuthMode === "password"
                   ? "bg-[var(--accent)] text-white"
-                  : "text-[var(--muted)] hover:text-white"
+                  : "text-[var(--muted)] hover:text-[var(--color-accent-nav)]"
               }`}
             >
               Password
@@ -289,7 +293,7 @@ function LoginForm() {
               className={`flex-1 rounded-md py-2 text-sm font-medium transition-colors ${
                 emailAuthMode === "link"
                   ? "bg-[var(--accent)] text-white"
-                  : "text-[var(--muted)] hover:text-white"
+                  : "text-[var(--muted)] hover:text-[var(--color-accent-nav)]"
               }`}
             >
               Email link
@@ -306,7 +310,7 @@ function LoginForm() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="w-full rounded-lg border border-[var(--border)] bg-black/30 px-3 py-2 text-white"
+                className="w-full rounded-lg border border-[var(--border)] bg-white px-3 py-2 text-[var(--text)]"
                 autoComplete="email"
               />
             </div>
@@ -337,7 +341,7 @@ function LoginForm() {
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full rounded-lg border border-[var(--border)] bg-black/30 px-3 py-2 text-white"
+                  className="w-full rounded-lg border border-[var(--border)] bg-white px-3 py-2 text-[var(--text)]"
                   autoComplete="name"
                 />
               </div>
@@ -349,7 +353,7 @@ function LoginForm() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="w-full rounded-lg border border-[var(--border)] bg-black/30 px-3 py-2 text-white"
+                className="w-full rounded-lg border border-[var(--border)] bg-white px-3 py-2 text-[var(--text)]"
                 autoComplete="email"
               />
             </div>
@@ -361,7 +365,7 @@ function LoginForm() {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 minLength={6}
-                className="w-full rounded-lg border border-[var(--border)] bg-black/30 px-3 py-2 text-white"
+                className="w-full rounded-lg border border-[var(--border)] bg-white px-3 py-2 text-[var(--text)]"
                 autoComplete={isLogin ? "current-password" : "new-password"}
               />
             </div>
@@ -394,7 +398,7 @@ function LoginForm() {
         </button>
 
         <p className="mt-6 text-center text-sm text-[var(--muted)]">
-          <Link href="/" className="text-white hover:underline">
+          <Link href="/" className="text-[var(--text)] hover:underline">
             ← Back to home
           </Link>
         </p>

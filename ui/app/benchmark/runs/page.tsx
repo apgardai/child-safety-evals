@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { PageContainer } from "components/PageContainer";
 import requestsClient from "lib/requests-client";
 import {
   EVALUATION_RUN_STATUS_META,
@@ -79,10 +80,10 @@ export default function BenchmarkRunsPage() {
   }, []);
 
   return (
-    <div className="min-h-screen p-6 md:p-10 max-w-7xl mx-auto">
+    <PageContainer>
       <header className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">Evaluation Runs</h1>
+          <h1 className="text-2xl font-bold text-[var(--text)] tracking-tight">Evaluation Runs</h1>
           <p className="text-[var(--muted)] mt-1">
             Recent benchmark runs for your account.
           </p>
@@ -90,7 +91,7 @@ export default function BenchmarkRunsPage() {
         <div className="flex items-center gap-2">
           <Link
             href="/benchmark"
-            className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--border)]"
+            className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-sm font-medium text-[var(--text)] hover:bg-[var(--gray-100)]"
           >
             Back to Benchmark
           </Link>
@@ -105,8 +106,8 @@ export default function BenchmarkRunsPage() {
 
       <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="min-w-full text-sm text-white">
-            <thead className="bg-black/30">
+          <table className="min-w-full text-sm text-[var(--text)]">
+            <thead className="bg-white">
               <tr className="text-left text-[var(--muted)]">
                 <th className="px-4 py-3 font-medium">Run ID</th>
                 <th className="px-4 py-3 font-medium">Status</th>
@@ -136,7 +137,7 @@ export default function BenchmarkRunsPage() {
                   return (
                   <tr
                     key={r.id}
-                    className="border-t border-[var(--border)] cursor-pointer hover:bg-white/5 focus-within:bg-white/5"
+                    className="cursor-pointer border-t border-[var(--border)] hover:bg-[var(--gray-100)] focus-within:bg-[var(--gray-100)]"
                     tabIndex={0}
                     onClick={() => router.push(`/benchmark/runs/${encodeURIComponent(r.id)}`)}
                     onKeyDown={(e) => {
@@ -173,6 +174,6 @@ export default function BenchmarkRunsPage() {
           </table>
         </div>
       </div>
-    </div>
+    </PageContainer>
   );
 }

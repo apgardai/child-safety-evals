@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { PageContainer } from "components/PageContainer";
 import requestsClient from "lib/requests-client";
 
 type ModelConfig = {
@@ -146,10 +147,10 @@ export default function ModelsPage() {
   };
 
   return (
-    <div className="min-h-screen p-6 md:p-10 max-w-6xl mx-auto">
+    <PageContainer>
       <header className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">Models</h1>
+          <h1 className="text-2xl font-bold text-[var(--text)] tracking-tight">Models</h1>
           <p className="text-[var(--muted)] mt-1">
             Manage model registry entries for gateway models.
             To run a custom model, use{" "}
@@ -162,7 +163,7 @@ export default function ModelsPage() {
         <div className="flex items-center gap-2">
           <Link
             href="/benchmark"
-            className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--border)]"
+            className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-sm font-medium text-[var(--text)] hover:bg-[var(--gray-100)]"
           >
             Back
           </Link>
@@ -170,7 +171,7 @@ export default function ModelsPage() {
             type="button"
             onClick={() => void refresh()}
             disabled={loading || saving}
-            className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--border)] disabled:opacity-50"
+            className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-sm font-medium text-[var(--text)] hover:bg-[var(--gray-100)] disabled:opacity-50"
           >
             Refresh
           </button>
@@ -178,7 +179,7 @@ export default function ModelsPage() {
       </header>
 
       {error && (
-        <div className="mb-6 rounded-lg border border-[var(--border)] bg-black/30 p-4 text-sm text-[var(--error)]">
+        <div className="mb-6 rounded-lg border border-[var(--border)] bg-white p-4 text-sm text-[var(--error)]">
           {error}
         </div>
       )}
@@ -187,7 +188,7 @@ export default function ModelsPage() {
         {/* Registry list */}
         <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5">
           <div className="flex items-center justify-between gap-3 mb-4">
-            <h2 className="text-lg font-semibold text-white">Model registry</h2>
+            <h2 className="text-lg font-semibold text-[var(--text)]">Model registry</h2>
           </div>
 
           {loading ? (
@@ -199,10 +200,10 @@ export default function ModelsPage() {
               {slugs.map((s) => (
                 <div
                   key={s}
-                  className="flex items-center justify-between gap-3 rounded-lg border border-[var(--border)] bg-black/20 px-3 py-2"
+                  className="flex items-center justify-between gap-3 rounded-lg border border-[var(--border)] bg-[var(--gray-100)] px-3 py-2"
                 >
                   <div className="min-w-0">
-                    <div className="text-sm font-medium text-white truncate">{s}</div>
+                    <div className="text-sm font-medium text-[var(--text)] truncate">{s}</div>
                     <div className="text-xs text-[var(--muted)] truncate">
                       {registry[s]?.model ?? ""}
                     </div>
@@ -211,7 +212,7 @@ export default function ModelsPage() {
                     <button
                       type="button"
                       onClick={() => startEdit(s)}
-                      className="rounded-md px-3 py-1 text-sm text-white border border-[var(--border)] hover:bg-[var(--border)]"
+                      className="rounded-md px-3 py-1 text-sm text-[var(--text)] border border-[var(--border)] hover:bg-[var(--gray-100)]"
                     >
                       Edit
                     </button>
@@ -231,7 +232,7 @@ export default function ModelsPage() {
 
         {/* Editor */}
         <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5">
-          <h2 className="text-lg font-semibold text-white mb-4">
+          <h2 className="text-lg font-semibold text-[var(--text)] mb-4">
             {editingSlug ? `Edit: ${editingSlug}` : "Add model"}
           </h2>
           <div className="space-y-4">
@@ -243,11 +244,11 @@ export default function ModelsPage() {
                 type="text"
                 value={slug}
                 onChange={(e) => setSlug(e.target.value)}
-                className="w-full rounded-lg border border-[var(--border)] bg-black/30 px-3 py-2 text-white placeholder-[var(--muted)] focus:border-[var(--accent)] focus:outline-none"
+                className="w-full rounded-lg border border-[var(--border)] bg-white px-3 py-2 text-[var(--text)] placeholder-[var(--muted)] focus:border-[var(--accent)] focus:outline-none"
                 placeholder="gpt-4o"
               />
               <p className="text-xs text-[var(--muted)] mt-1">
-                Type in your slug here (e.g. <code className="text-white">gpt-4o</code>).
+                Type in your slug here (e.g. <code className="text-[var(--text)]">gpt-4o</code>).
               </p>
             </div>
 
@@ -259,11 +260,11 @@ export default function ModelsPage() {
                 type="text"
                 value={model}
                 onChange={(e) => setModel(e.target.value)}
-                className="w-full rounded-lg border border-[var(--border)] bg-black/30 px-3 py-2 text-white placeholder-[var(--muted)] focus:border-[var(--accent)] focus:outline-none"
+                className="w-full rounded-lg border border-[var(--border)] bg-white px-3 py-2 text-[var(--text)] placeholder-[var(--muted)] focus:border-[var(--accent)] focus:outline-none"
                 placeholder="openai/gpt-4o"
               />
               <p className="text-xs text-[var(--muted)] mt-1">
-                Provider/model identifier for the AI SDK gateway (e.g. <code className="text-white">openai/gpt-4o</code>).
+                Provider/model identifier for the AI SDK gateway (e.g. <code className="text-[var(--text)]">openai/gpt-4o</code>).
               </p>
             </div>
 
@@ -276,7 +277,7 @@ export default function ModelsPage() {
                   type="number"
                   value={maxTokens}
                   onChange={(e) => setMaxTokens(e.target.value)}
-                  className="w-full rounded-lg border border-[var(--border)] bg-black/30 px-3 py-2 text-white focus:border-[var(--accent)] focus:outline-none"
+                  className="w-full rounded-lg border border-[var(--border)] bg-white px-3 py-2 text-[var(--text)] focus:border-[var(--accent)] focus:outline-none"
                   placeholder="4000"
                 />
               </div>
@@ -289,7 +290,7 @@ export default function ModelsPage() {
                   step="0.1"
                   value={temperature}
                   onChange={(e) => setTemperature(e.target.value)}
-                  className="w-full rounded-lg border border-[var(--border)] bg-black/30 px-3 py-2 text-white focus:border-[var(--accent)] focus:outline-none"
+                  className="w-full rounded-lg border border-[var(--border)] bg-white px-3 py-2 text-[var(--text)] focus:border-[var(--accent)] focus:outline-none"
                   placeholder="0.5"
                 />
               </div>
@@ -302,11 +303,11 @@ export default function ModelsPage() {
               <textarea
                 value={providerOptionsRaw}
                 onChange={(e) => setProviderOptionsRaw(e.target.value)}
-                className="w-full min-h-[140px] rounded-lg border border-[var(--border)] bg-black/30 px-3 py-2 text-white font-mono text-sm focus:border-[var(--accent)] focus:outline-none"
+                className="w-full min-h-[140px] rounded-lg border border-[var(--border)] bg-white px-3 py-2 text-[var(--text)] font-mono text-sm focus:border-[var(--accent)] focus:outline-none"
                 spellCheck={false}
               />
               <p className="text-xs text-[var(--muted)] mt-1">
-                Shape: <code className="text-white">{`{ \"openai\": { \"reasoningEffort\": \"high\" } }`}</code>
+                Shape: <code className="text-[var(--text)]">{`{ \"openai\": { \"reasoningEffort\": \"high\" } }`}</code>
               </p>
             </div>
 
@@ -324,7 +325,7 @@ export default function ModelsPage() {
                   type="button"
                   onClick={startAdd}
                   disabled={saving}
-                  className="rounded-lg border border-[var(--border)] bg-black/20 px-4 py-2 text-sm font-medium text-white hover:bg-[var(--border)] disabled:opacity-50"
+                  className="rounded-lg border border-[var(--border)] bg-[var(--gray-100)] px-4 py-2 text-sm font-medium text-[var(--text)] hover:bg-[var(--gray-100)] disabled:opacity-50"
                 >
                   New model
                 </button>
@@ -333,6 +334,6 @@ export default function ModelsPage() {
           </div>
         </section>
       </div>
-    </div>
+    </PageContainer>
   );
 }

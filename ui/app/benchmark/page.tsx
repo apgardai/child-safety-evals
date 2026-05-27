@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react
 import requestsClient from "lib/requests-client";
 import { viewerDataRequest } from "lib/viewerDataApi";
 import { EvaluationRunTracker } from "components/EvaluationRunTracker";
+import { PageContainer } from "components/PageContainer";
 import { ResumableEvaluationBanner } from "components/ResumableEvaluationBanner";
 import BenchmarkScenariosPreview from "components/BenchmarkScenariosPreview";
 import { ResultsOverview } from "components/ResultsOverview";
@@ -51,8 +52,8 @@ function ModelField({
           required={required}
           className={
             dropdownOnly
-              ? "w-full rounded-lg border border-[var(--border)] bg-black/30 px-3 py-2 text-white focus:border-[var(--accent)] focus:outline-none"
-              : "shrink-0 w-[180px] rounded-lg border border-[var(--border)] bg-black/30 px-3 py-2 text-white focus:border-[var(--accent)] focus:outline-none"
+              ? "w-full rounded-lg border border-[var(--border)] bg-white px-3 py-2 text-[var(--text)] focus:border-[var(--accent)] focus:outline-none"
+              : "shrink-0 w-[180px] rounded-lg border border-[var(--border)] bg-white px-3 py-2 text-[var(--text)] focus:border-[var(--accent)] focus:outline-none"
           }
           aria-label={`${label} preset`}
         >
@@ -70,7 +71,7 @@ function ModelField({
             onChange={(e) => onChange(e.target.value)}
             required={required}
             placeholder={placeholder}
-            className="min-w-0 max-w-[240px] flex-1 rounded-lg border border-[var(--border)] bg-black/30 px-3 py-2 text-white placeholder-[var(--muted)] focus:border-[var(--accent)] focus:outline-none"
+            className="min-w-0 max-w-[240px] flex-1 rounded-lg border border-[var(--border)] bg-white px-3 py-2 text-[var(--text)] placeholder-[var(--muted)] focus:border-[var(--accent)] focus:outline-none"
           />
         )}
       </div>
@@ -145,7 +146,7 @@ function PipelineChecklist({
                   ? "border-[var(--success)] bg-[var(--success)]/20"
                   : step.active
                     ? "border-[var(--accent)] bg-[var(--accent)]/20"
-                    : "border-[var(--border)] bg-black/30",
+                    : "border-[var(--border)] bg-white",
               ].join(" ")}
             >
               <input
@@ -175,7 +176,7 @@ function PipelineChecklist({
               <h3
                 className={[
                   "text-sm font-semibold",
-                  step.active ? "text-[var(--accent)]" : "text-white",
+                  step.active ? "text-[var(--accent)]" : "text-[var(--text)]",
                 ].join(" ")}
               >
                 {step.title}
@@ -255,23 +256,23 @@ export default function Home() {
   }, [loadModels]);
 
   return (
-    <div className="min-h-screen p-6 md:p-10 max-w-7xl mx-auto">
+    <PageContainer>
       <header className="mb-10 flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">
+          <h1 className="text-2xl font-bold text-[var(--text)] tracking-tight">
             Youth Mental Wellbeing Benchmark
           </h1>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Link
             href="/models"
-            className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--border)]"
+            className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-sm font-medium text-[var(--text)] hover:bg-[var(--gray-100)]"
           >
             Models
           </Link>
           <Link
             href="/benchmark/runs"
-            className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--border)]"
+            className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-sm font-medium text-[var(--text)] hover:bg-[var(--gray-100)]"
           >
             Runs
           </Link>
@@ -316,7 +317,7 @@ export default function Home() {
           />
         </div>
       )}
-    </div>
+    </PageContainer>
   );
 }
 
@@ -545,7 +546,7 @@ function PipelineForm({
     flowPhase === "complete" ? "complete" : flowPhase === "running" ? "running" : "idle";
 
   const runStep = (
-    <div className="space-y-4 rounded-lg border border-[var(--border)] bg-black/20 p-4 ring-1 ring-[var(--accent)]/25">
+    <div className="space-y-4 rounded-lg border border-[var(--border)] bg-[var(--gray-100)] p-4 ring-1 ring-[var(--accent)]/25">
       <div className="space-y-3">
         <div>
           <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
@@ -559,7 +560,7 @@ function PipelineForm({
                     "rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
                     hasSavedApiKey
                       ? "border border-[var(--success)]/50 bg-[var(--success)]/15 text-[var(--success)]"
-                      : "border border-[var(--border)] bg-black/30 text-[var(--muted)]",
+                      : "border border-[var(--border)] bg-white text-[var(--muted)]",
                   ].join(" ")}
                 >
                   {hasSavedApiKey ? "Saved to Account" : "Not Saved"}
@@ -590,13 +591,13 @@ function PipelineForm({
                       ? "Saved key exists. Enter a new key to override this run."
                       : "Enter key for this run, or save it to account"
                   }
-                  className="w-full rounded-lg border border-[var(--border)] bg-black/30 px-3 py-2 text-white placeholder-[var(--muted)] focus:border-[var(--accent)] focus:outline-none"
+                  className="w-full rounded-lg border border-[var(--border)] bg-white px-3 py-2 text-[var(--text)] placeholder-[var(--muted)] focus:border-[var(--accent)] focus:outline-none"
                 />
                 <button
                   type="button"
                   onClick={() => void saveApiKey()}
                   disabled={savingApiKey || !apiKey.trim()}
-                  className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm font-medium text-white hover:bg-[var(--border)] disabled:opacity-50"
+                  className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm font-medium text-[var(--text)] hover:bg-[var(--gray-100)] disabled:opacity-50"
                 >
                   {savingApiKey ? "Saving..." : "Save key"}
                 </button>
@@ -619,7 +620,7 @@ function PipelineForm({
           dropdownOnly
         />
         {isCustomTarget && (
-          <div className="space-y-3 rounded-lg border border-[var(--border)] bg-black/25 p-3">
+          <div className="space-y-3 rounded-lg border border-[var(--border)] bg-[var(--gray-100)] p-3">
             <p className="text-xs text-[var(--muted)] leading-relaxed">
               Add a custom HTTP target. Credentials are saved to your account so you can reuse this
               model in future runs.
@@ -633,7 +634,7 @@ function PipelineForm({
                 value={customDisplayName}
                 onChange={(e) => setCustomDisplayName(e.target.value)}
                 placeholder="E.g. My AI Tutor, Companion Chatbot"
-                className="w-full rounded-lg border border-[var(--border)] bg-black/30 px-3 py-2 text-sm text-white placeholder-[var(--muted)] focus:border-[var(--accent)] focus:outline-none"
+                className="w-full rounded-lg border border-[var(--border)] bg-white px-3 py-2 text-sm text-[var(--text)] placeholder-[var(--muted)] focus:border-[var(--accent)] focus:outline-none"
                 autoComplete="off"
               />
             </div>
@@ -646,7 +647,7 @@ function PipelineForm({
                 value={customApiEndpoint}
                 onChange={(e) => setCustomApiEndpoint(e.target.value)}
                 placeholder="https://example.com/v1/chat"
-                className="w-full rounded-lg border border-[var(--border)] bg-black/30 px-3 py-2 text-sm text-white placeholder-[var(--muted)] focus:border-[var(--accent)] focus:outline-none"
+                className="w-full rounded-lg border border-[var(--border)] bg-white px-3 py-2 text-sm text-[var(--text)] placeholder-[var(--muted)] focus:border-[var(--accent)] focus:outline-none"
                 autoComplete="off"
               />
             </div>
@@ -659,7 +660,7 @@ function PipelineForm({
                 value={customApiKey}
                 onChange={(e) => setCustomApiKey(e.target.value)}
                 placeholder="Passed as CUSTOM_API_KEY"
-                className="w-full rounded-lg border border-[var(--border)] bg-black/30 px-3 py-2 text-sm text-white placeholder-[var(--muted)] focus:border-[var(--accent)] focus:outline-none"
+                className="w-full rounded-lg border border-[var(--border)] bg-white px-3 py-2 text-sm text-[var(--text)] placeholder-[var(--muted)] focus:border-[var(--accent)] focus:outline-none"
               />
             </div>
             <div>
@@ -671,11 +672,11 @@ function PipelineForm({
                 value={customParsingKey}
                 onChange={(e) => setCustomParsingKey(e.target.value)}
                 placeholder="message"
-                className="w-full rounded-lg border border-[var(--border)] bg-black/30 px-3 py-2 text-sm text-white placeholder-[var(--muted)] focus:border-[var(--accent)] focus:outline-none"
+                className="w-full rounded-lg border border-[var(--border)] bg-white px-3 py-2 text-sm text-[var(--text)] placeholder-[var(--muted)] focus:border-[var(--accent)] focus:outline-none"
               />
               <p className="mt-1 text-xs text-[var(--muted)]">
                 Response field to read text from (supports dot paths, e.g.{" "}
-                <code className="text-white">data.message</code>).
+                <code className="text-[var(--text)]">data.message</code>).
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2 pt-1">
@@ -683,7 +684,7 @@ function PipelineForm({
                 type="button"
                 onClick={() => void saveCustomModelToAccount()}
                 disabled={savingCustomModel || disabled}
-                className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--border)] disabled:opacity-50"
+                className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-sm font-medium text-[var(--text)] hover:bg-[var(--gray-100)] disabled:opacity-50"
               >
                 {savingCustomModel ? "Saving…" : "Save custom model"}
               </button>
@@ -732,7 +733,7 @@ function PipelineForm({
                   disabled={isCustomTargetModel}
                   className="rounded border-[var(--border)] text-[var(--accent)] focus:ring-[var(--accent)] disabled:cursor-not-allowed"
                 />
-                <span className="text-sm text-white">{p}</span>
+                <span className="text-sm text-[var(--text)]">{p}</span>
               </label>
             ))}
           </div>
@@ -752,7 +753,7 @@ function PipelineForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5">
-        <h2 className="text-lg font-semibold text-white mb-1">Evaluation Pipeline</h2>
+        <h2 className="text-lg font-semibold text-[var(--text)] mb-1">Evaluation Pipeline</h2>
         <p className="text-sm text-[var(--muted)] mb-4">
         Run youth mental wellbeing evaluations against a target model using pre-generated test scenarios. Configure the target model below.
         </p>

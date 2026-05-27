@@ -46,7 +46,7 @@ function SafetyGradeBadge({
         ? "bg-[#3d3510] text-[#e6c86a] border-[#6b5c18]"
         : kind === "exemplary"
           ? "bg-[#123d1f] text-[#7fd99a] border-[#1f6b36]"
-          : "bg-black/35 text-[var(--muted)] border-[var(--border)]";
+          : "bg-[var(--gray-100)] text-[var(--muted)] border-[var(--border)]";
 
   return (
     <span
@@ -126,7 +126,7 @@ function formatTargetModelLabel(slug: string | undefined): string {
 function AiMark() {
   return (
     <span
-      className="inline-flex h-5 min-w-[1.25rem] shrink-0 items-center justify-center rounded border border-white/15 bg-white/[0.07] px-1 text-[9px] font-bold tracking-tight text-white/90"
+      className="inline-flex h-5 min-w-[1.25rem] shrink-0 items-center justify-center rounded border border-white/15 bg-white/[0.07] px-1 text-[9px] font-bold tracking-tight text-[var(--text)]/90"
       aria-hidden
     >
       AI
@@ -173,12 +173,12 @@ function ScenarioDetailMeta({
             {f.label === "Model maker" && maker !== "—" ? (
               <div className="flex items-center gap-2">
                 <AiMark />
-                <span className="text-sm font-semibold text-white break-words">
+                <span className="text-sm font-semibold text-[var(--text)] break-words">
                   {f.value}
                 </span>
               </div>
             ) : (
-              <span className="text-sm font-semibold text-white break-words">
+              <span className="text-sm font-semibold text-[var(--text)] break-words">
                 {f.value}
               </span>
             )}
@@ -196,14 +196,14 @@ function ChatConversation({
 }) {
   if (!messages.length) {
     return (
-      <div className="mt-3 rounded-md border border-[var(--border)] bg-black/25 px-3 py-3 text-sm leading-relaxed text-white whitespace-pre-wrap">
+      <div className="mt-3 rounded-md border border-[var(--border)] bg-[var(--gray-100)] px-3 py-3 text-sm leading-relaxed text-[var(--text)] whitespace-pre-wrap">
         <p className="mt-5 text-sm text-[var(--muted)]">No conversation messages.</p>
       </div>
     );
   }
 
   return (
-    <div className="mt-3 rounded-md border border-[var(--border)] bg-black/25 px-3 py-3 text-sm leading-relaxed text-white whitespace-pre-wrap">
+    <div className="mt-3 rounded-md border border-[var(--border)] bg-[var(--gray-100)] px-3 py-3 text-sm leading-relaxed text-[var(--text)] whitespace-pre-wrap">
       <div className="mt-5 space-y-6">
         {messages.map((m, i) => {
           const role = m.role.toLowerCase();
@@ -214,7 +214,7 @@ function ChatConversation({
             return (
               <div key={`${i}-${m.role}`} className="flex w-full justify-end">
                 <div
-                  className="ml-[28%] min-w-0 max-w-[min(100%,34rem)] rounded-2xl rounded-br-md border border-zinc-600/40 bg-zinc-700/95 px-4 py-3 text-sm leading-relaxed text-white shadow-sm whitespace-pre-wrap"
+                  className="ml-[28%] min-w-0 max-w-[min(100%,34rem)] rounded-2xl rounded-br-md border border-[var(--border)] bg-[var(--gray-100)] px-4 py-3 text-sm leading-relaxed text-[var(--text)] shadow-sm whitespace-pre-wrap"
                 >
                   {m.content}
                 </div>
@@ -225,7 +225,7 @@ function ChatConversation({
           if (isAssistant) {
             return (
               <div key={`${i}-${m.role}`} className="flex w-full justify-start">
-                <div className="mr-[18%] sm:mr-[22%] min-w-0 max-w-[min(100%,36rem)] rounded-2xl rounded-bl-md border border-zinc-700/45 bg-zinc-800/75 px-4 py-3 text-sm leading-relaxed text-white shadow-sm">
+                <div className="mr-[18%] sm:mr-[22%] min-w-0 max-w-[min(100%,36rem)] rounded-2xl rounded-bl-md border border-[var(--color-primary)]/25 bg-white px-4 py-3 text-sm leading-relaxed text-[var(--text)] shadow-sm">
                   <div>
                     {m.content.split(/\n\n+/).map((block, j) => (
                       <p key={j} className="mb-3 last:mb-0 whitespace-pre-wrap">
@@ -246,7 +246,7 @@ function ChatConversation({
               <div className="text-[10px] font-medium uppercase tracking-wide text-[var(--muted)] mb-1">
                 {m.role}
               </div>
-              <div className="text-sm text-white/90 whitespace-pre-wrap leading-relaxed">
+              <div className="text-sm text-[var(--text)]/90 whitespace-pre-wrap leading-relaxed">
                 {m.content}
               </div>
             </div>
@@ -394,7 +394,7 @@ export function ViewerDataExplorer({
             <select
               value={ageRange}
               onChange={(e) => setAgeRange(e.target.value)}
-              className="rounded-lg border border-[var(--border)] bg-black/30 px-3 py-2 text-white"
+              className="rounded-lg border border-[var(--border)] bg-white px-3 py-2 text-[var(--text)]"
             >
               <option value="all">All Ages</option>
               {ageRanges.map((v) => (
@@ -406,7 +406,7 @@ export function ViewerDataExplorer({
             <select
               value={risk}
               onChange={(e) => handleRiskSelectChange(e.target.value)}
-              className="rounded-lg border border-[var(--border)] bg-black/30 px-3 py-2 text-white"
+              className="rounded-lg border border-[var(--border)] bg-white px-3 py-2 text-[var(--text)]"
             >
               <option value="all">All Risks</option>
               {risks.map((v) => (
@@ -418,7 +418,7 @@ export function ViewerDataExplorer({
             <select
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
-              className="rounded-lg border border-[var(--border)] bg-black/30 px-3 py-2 text-white"
+              className="rounded-lg border border-[var(--border)] bg-white px-3 py-2 text-[var(--text)]"
             >
               <option value="all">All Prompts</option>
               {prompts.map((v) => (
@@ -430,7 +430,7 @@ export function ViewerDataExplorer({
             <select
               value={grade}
               onChange={(e) => setGrade(e.target.value)}
-              className="rounded-lg border border-[var(--border)] bg-black/30 px-3 py-2 text-white"
+              className="rounded-lg border border-[var(--border)] bg-white px-3 py-2 text-[var(--text)]"
             >
               <option value="all">All Grades</option>
               <option value="failing">Failing</option>
@@ -441,7 +441,7 @@ export function ViewerDataExplorer({
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search scenario"
-              className="rounded-lg border border-[var(--border)] bg-black/30 px-3 py-2 text-white placeholder-[var(--muted)]"
+              className="rounded-lg border border-[var(--border)] bg-white px-3 py-2 text-[var(--text)] placeholder-[var(--muted)]"
             />
           </div>
         </section>
@@ -453,7 +453,7 @@ export function ViewerDataExplorer({
           <div className="max-h-[70vh] overflow-x-auto overflow-y-auto">
             <table className="w-full min-w-[52rem] border-collapse text-left text-sm">
               <thead>
-                <tr className="border-b border-[var(--border)] bg-black/20 text-[10px] font-medium uppercase tracking-wide text-[var(--muted)]">
+                <tr className="border-b border-[var(--border)] bg-[var(--gray-100)] text-[10px] font-medium uppercase tracking-wide text-[var(--muted)]">
                   <th scope="col" className="px-4 py-2.5 align-bottom font-medium min-w-[10rem]">
                     Scenario
                   </th>
@@ -491,18 +491,18 @@ export function ViewerDataExplorer({
                       tabIndex={0}
                       role="button"
                       aria-pressed={isSelected}
-                      className={`cursor-pointer transition-colors hover:bg-black/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--accent)]/50 ${
-                        isSelected ? "bg-black/25" : ""
+                      className={`cursor-pointer transition-colors hover:bg-[var(--gray-100)] focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--accent)]/50 ${
+                        isSelected ? "bg-[var(--gray-100)]" : ""
                       }`}
                     >
-                      <td className="px-4 py-2.5 align-top text-white font-medium min-w-0 max-w-[28rem]">
+                      <td className="px-4 py-2.5 align-top text-[var(--text)] font-medium min-w-0 max-w-[28rem]">
                         <div className="break-words leading-snug">{s.scenarioTitle}</div>
                       </td>
                       <td className="px-3 py-2.5 align-top text-[var(--muted)] tabular-nums whitespace-nowrap">
                         {formatAgeRangeLabel(s.ageRange)}
                       </td>
                       <td className="px-3 py-2.5 align-top min-w-0">
-                        <div className="text-white font-medium break-words leading-snug">
+                        <div className="text-[var(--text)] font-medium break-words leading-snug">
                           {riskPrimary}
                         </div>
                         {riskSecondary ? (
@@ -511,7 +511,7 @@ export function ViewerDataExplorer({
                           </div>
                         ) : null}
                       </td>
-                      <td className="px-3 py-2.5 align-top text-white/90 whitespace-nowrap">
+                      <td className="px-3 py-2.5 align-top text-[var(--text)]/90 whitespace-nowrap">
                         {formatPromptVariantLabel(s.prompt)}
                       </td>
                       <td className="px-4 py-2.5 align-top text-right">
@@ -534,13 +534,13 @@ export function ViewerDataExplorer({
         ) : (
           <div className="p-4 space-y-4 max-h-[82vh] overflow-auto">
             <div className="flex items-start justify-between gap-2">
-              <h3 className="text-white font-semibold leading-tight">
+              <h3 className="text-[var(--text)] font-semibold leading-tight">
                 {selected.scenarioTitle}
               </h3>
               <button
                 type="button"
                 onClick={() => setSelected(null)}
-                className="text-xs rounded border border-[var(--border)] px-2 py-1 text-[var(--muted)] hover:bg-black/20"
+                className="text-xs rounded border border-[var(--border)] px-2 py-1 text-[var(--muted)] hover:bg-[var(--gray-100)]"
               >
                 Close
               </button>
@@ -552,28 +552,28 @@ export function ViewerDataExplorer({
             />
 
             <div>
-              <div className="flex flex-wrap items-center gap-2 text-white">
+              <div className="flex flex-wrap items-center gap-2 text-[var(--text)]">
                 <span className="text-sm font-bold tracking-tight">Assessment:</span>
                 <SafetyGradeBadge grade={selected.safetyGrade} />
               </div>
               <div className="mt-2 h-px w-full bg-[var(--border)]" aria-hidden />
-              <div className="mt-3 rounded-md border border-[var(--border)] bg-black/25 px-3 py-3 text-sm leading-relaxed text-white whitespace-pre-wrap">
+              <div className="mt-3 rounded-md border border-[var(--border)] bg-[var(--gray-100)] px-3 py-3 text-sm leading-relaxed text-[var(--text)] whitespace-pre-wrap">
                 {selected.assessmentReasons || "No assessment text."}
               </div>
             </div>
 
             <div>
-              <div className="flex flex-wrap items-center gap-2 text-white">
+              <div className="flex flex-wrap items-center gap-2 text-[var(--text)]">
                 <span className="text-sm font-bold tracking-tight">Scenario:</span>
               </div>
               <div className="mt-2 h-px w-full bg-[var(--border)]" aria-hidden />
-              <div className="mt-3 rounded-md border border-[var(--border)] bg-black/25 px-3 py-3 text-sm leading-relaxed text-white whitespace-pre-wrap">
+              <div className="mt-3 rounded-md border border-[var(--border)] bg-[var(--gray-100)] px-3 py-3 text-sm leading-relaxed text-[var(--text)] whitespace-pre-wrap">
                 {selected.narrative || "No scenario narrative."}
               </div>
             </div>
 
             <div>
-              <div className="flex items-center gap-2 text-white">
+              <div className="flex items-center gap-2 text-[var(--text)]">
                 <span className="text-sm font-bold tracking-tight">Conversation:</span>
               </div>
               <div className="mt-2 h-px w-full bg-[var(--border)]" aria-hidden />

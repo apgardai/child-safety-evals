@@ -94,17 +94,9 @@ export default function BenchmarkScenariosPreview({
     };
   }, [scenariosInput, promptsKey, prompts]);
 
-  const testCount = useMemo(() => {
-    if (!data) return null;
-    const variants = prompts.length ? prompts : ["default"];
-    return data.scenario_count * variants.length;
-  }, [data, prompts]);
-
-  const promptLabel = prompts.length ? prompts.join(", ") : "default";
-
   const rootClass = embedded
     ? "mt-3"
-    : "mt-6 rounded-xl border border-[var(--border)] bg-black/20 p-4 md:p-5";
+    : "mt-6 rounded-xl border border-[var(--border)] bg-[var(--gray-100)] p-4 md:p-5";
 
   return (
     <section className={rootClass}>
@@ -113,12 +105,12 @@ export default function BenchmarkScenariosPreview({
           type="button"
           onClick={() => setExpanded((v) => !v)}
           disabled={loading || !!error || !data?.scenarios.length}
-          className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-xs font-medium text-white hover:bg-[var(--border)] disabled:opacity-50"
+          className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-xs font-medium text-[var(--text)] hover:bg-[var(--gray-100)] disabled:opacity-50"
         >
           {expanded ? "Hide table" : "Preview Scenarios"}
         </button>
         {!embedded && (
-          <h3 className="text-sm font-semibold text-white">Expanded scenarios preview</h3>
+          <h3 className="text-sm font-semibold text-[var(--text)]">Expanded scenarios preview</h3>
         )}
       </div>
 
@@ -153,12 +145,12 @@ export default function BenchmarkScenariosPreview({
                 <th className="px-2 py-2 font-medium min-w-[14rem]">First user message</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[var(--border)] text-white/90">
+            <tbody className="divide-y divide-[var(--border)] text-[var(--text)]/90">
               {data.scenarios.map((row) => (
-                <tr key={row.scenario_id} className="hover:bg-white/5 align-top">
+                <tr key={row.scenario_id} className="align-top hover:bg-[var(--gray-100)]">
                   <td className="px-2 py-2 text-[var(--muted)]">{row.index}</td>
                   <td className="px-2 py-2 max-w-[10rem]">
-                    <span className="font-medium text-white">{row.short_title}</span>
+                    <span className="font-medium text-[var(--text)]">{row.short_title}</span>
                     <div className="mt-0.5 text-[10px] text-[var(--muted)] truncate" title={row.scenario_id}>
                       {row.scenario_id}
                     </div>

@@ -113,11 +113,11 @@ export function ModelBenchmarkResults({ modelId, scenariosHref }: ModelBenchmark
         onSelectRisk={handleSelectRisk}
       />
       <section id="scenarios" className="scroll-mt-24">
-        <h2 className="text-lg font-semibold text-white mb-4">Scenarios</h2>
+        <h2 className="text-lg font-semibold text-[var(--text)] mb-4">Scenarios</h2>
         {selectedRisk && selectedRiskDescription ? (
           <p className="mb-3 text-xs text-[var(--muted)]">
             Filtered from risk breakdown:{" "}
-            <span className="text-white/90">{selectedRiskDescription}</span>
+            <span className="text-[var(--text)]/90">{selectedRiskDescription}</span>
           </p>
         ) : null}
         <ViewerDataExplorer data={data} selectedRisk={selectedRisk} />

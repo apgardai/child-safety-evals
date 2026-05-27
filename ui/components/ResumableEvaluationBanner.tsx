@@ -23,7 +23,7 @@ export function ResumableEvaluationBanner({
           <p className="mt-1 text-sm text-[var(--muted)]">
             {run.target_model && (
               <>
-                Target <span className="text-white">{run.target_model}</span>
+                Target <span className="text-[var(--text)]">{run.target_model}</span>
                 {" · "}
               </>
             )}
@@ -40,7 +40,7 @@ export function ResumableEvaluationBanner({
         <div className="flex shrink-0 flex-wrap gap-2">
           <Link
             href={`/benchmark/runs/${encodeURIComponent(run.id)}`}
-            className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-sm font-medium text-white hover:bg-[var(--border)]"
+            className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-sm font-medium text-[var(--text)] hover:bg-[var(--gray-100)]"
           >
             View run
           </Link>
@@ -48,7 +48,7 @@ export function ResumableEvaluationBanner({
             <button
               type="button"
               onClick={onDismiss}
-              className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-sm text-[var(--muted)] hover:text-white hover:bg-[var(--border)]/60"
+              className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-sm text-[var(--muted)] hover:text-[var(--color-accent-nav)] hover:bg-[var(--gray-100)]"
             >
               Dismiss
             </button>

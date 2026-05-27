@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
+import { ApgardLogo } from "components/ApgardLogo";
 import { requiresAuthPathname } from "lib/auth-paths";
 import { clearAllStoredEvaluationRunIds } from "lib/active-evaluation-run-storage";
 import requestsClient from "lib/requests-client";
@@ -17,10 +18,10 @@ const benchmarkTab = { href: "/benchmark", label: "Run Evaluations" } as const;
 
 function tabClassName(active: boolean) {
   return [
-    "rounded-md px-3 py-2 text-sm font-medium transition-colors",
+    "border-b-[3px] px-2 py-2 text-sm font-semibold capitalize transition-colors md:px-3 md:text-base",
     active
-      ? "bg-[var(--border)] text-white"
-      : "text-[var(--muted)] hover:bg-[var(--border)]/60 hover:text-white",
+      ? "border-[var(--color-accent-nav)] text-[var(--color-accent-nav)]"
+      : "border-transparent text-brand-dark hover:border-[var(--color-accent-nav)] hover:text-[var(--color-accent-nav)]",
   ].join(" ");
 }
 
@@ -79,17 +80,12 @@ export function TopNav() {
     : [...baseTabs];
 
   return (
-    <header className="sticky top-0 z-50 border-b border-[var(--border)] bg-[var(--surface)]/95 backdrop-blur-md">
-      <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3 md:gap-6 md:px-6">
-        <Link
-          href="/"
-          className="shrink-0 text-sm font-semibold text-white md:text-base tracking-tight hover:text-[var(--accent)]"
-        >
-          Child Safety AI Evaluations
-        </Link>
+    <header className="sticky top-0 z-50 border-b border-[var(--border)] bg-[var(--bg)]/90 backdrop-blur-md">
+      <div className="site-container flex items-center gap-3 py-3 md:gap-6">
+        <ApgardLogo href="/" width={50} height={28} title="YouthSafe AI Benchmark" />
 
         <nav
-          className="flex min-w-0 flex-1 items-center justify-center gap-1 overflow-x-auto sm:gap-2"
+          className="flex min-w-0 flex-1 items-center justify-center gap-2 overflow-x-auto sm:gap-4"
           aria-label="Primary"
         >
           {navTabs.map((tab) => {
@@ -105,7 +101,7 @@ export function TopNav() {
           })}
         </nav>
 
-        <div className="flex shrink-0 items-center justify-end gap-2 md:gap-3 min-w-0">
+        <div className="flex min-w-0 shrink-0 items-center justify-end gap-2 md:gap-3">
           {!authReady ? (
             <span className="text-xs text-[var(--muted)] md:text-sm" aria-hidden>
               …
@@ -121,16 +117,13 @@ export function TopNav() {
               <button
                 type="button"
                 onClick={() => void handleSignOut()}
-                className="rounded-lg border border-[var(--border)] px-3 py-2 text-xs font-medium text-white hover:bg-[var(--border)]/40 md:text-sm"
+                className="apgard-btn-secondary px-3 py-2 text-xs md:text-sm"
               >
                 Sign out
               </button>
             </>
           ) : (
-            <Link
-              href={loginHref}
-              className="rounded-lg bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-white hover:opacity-90"
-            >
+            <Link href={loginHref} className="apgard-btn-primary">
               Sign in
             </Link>
           )}

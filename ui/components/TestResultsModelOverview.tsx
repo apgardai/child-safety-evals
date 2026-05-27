@@ -13,7 +13,7 @@ function Fact({
   return (
     <div className="min-w-0">
       <dt className="text-[10px] uppercase tracking-wide text-[var(--muted)]">{label}</dt>
-      <dd className="mt-1 text-sm leading-snug text-white/95">{value}</dd>
+      <dd className="mt-1 text-sm leading-snug text-[var(--text)]">{value}</dd>
     </div>
   );
 }
@@ -35,7 +35,7 @@ export function TestResultsModelOverview({ data }: { data: ViewerData }) {
       <p className="text-[11px] font-medium uppercase tracking-wide text-[var(--muted)] mb-2">
         Test results
       </p>
-      <h1 className="text-2xl font-bold text-white tracking-tight md:text-3xl">{title}</h1>
+      <h1 className="text-2xl font-bold text-[var(--text)] tracking-tight md:text-3xl">{title}</h1>
       {subtitle ? (
         <p className="mt-1 text-sm text-[var(--muted)]">{subtitle}</p>
       ) : null}
@@ -73,7 +73,7 @@ export function TestResultsModelOverview({ data }: { data: ViewerData }) {
       ) : (
         <p className="mt-6 border-t border-[var(--border)] pt-6 text-sm text-[var(--muted)] leading-relaxed">
           No curated model card matches this registry slug. Evaluation metrics below still reflect
-          this run&apos;s <code className="text-white/80">target</code> entry.
+          this run&apos;s <code className="text-[var(--muted)]">target</code> entry.
         </p>
       )}
     </header>

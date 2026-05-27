@@ -88,7 +88,7 @@ export function EvaluationRunTracker({
                   : meta.label}
             </span>
             {run?.target_model && (
-              <span className="text-sm text-white truncate">
+              <span className="text-sm text-[var(--text)] truncate">
                 Target: <span className="font-medium">{run.target_model}</span>
               </span>
             )}
@@ -116,7 +116,7 @@ export function EvaluationRunTracker({
               <button
                 type="button"
                 onClick={() => onRefresh()}
-                className="text-xs px-2 py-1 rounded border border-[var(--border)] text-[var(--muted)] hover:text-white hover:bg-black/30"
+                className="text-xs px-2 py-1 rounded border border-[var(--border)] text-[var(--muted)] hover:text-[var(--color-accent-nav)] hover:bg-white"
               >
                 Refresh
               </button>
@@ -124,7 +124,7 @@ export function EvaluationRunTracker({
             {run?.status === "completed" && run.id && (
               <Link
                 href={`/benchmark/runs/${encodeURIComponent(run.id)}`}
-                className="text-xs px-3 py-1 rounded-lg border border-[var(--border)] bg-black/30 text-white hover:bg-[var(--border)]"
+                className="text-xs px-3 py-1 rounded-lg border border-[var(--border)] bg-white text-[var(--text)] hover:bg-[var(--gray-100)]"
               >
                 View results
               </Link>
@@ -140,14 +140,14 @@ export function EvaluationRunTracker({
         )}
         {showScenarioProgress && (
           <div className="mt-3 space-y-2">
-            <p className="text-sm text-white tabular-nums">
+            <p className="text-sm text-[var(--text)] tabular-nums">
               <span className="font-semibold">{scenariosCompleted}</span>
               <span className="text-[var(--muted)]"> / </span>
               <span className="font-semibold">{scenariosTotal}</span>
               <span className="text-[var(--muted)]"> scenarios tested</span>
             </p>
             {status === "running" && !cancelling && (
-              <div className="h-1.5 w-full overflow-hidden rounded-full bg-black/30">
+              <div className="h-1.5 w-full overflow-hidden rounded-full bg-white">
                 <div
                   className="h-full rounded-full bg-[var(--accent)] transition-all duration-500"
                   style={{
@@ -169,14 +169,14 @@ export function EvaluationRunTracker({
         </div>
       )}
 
-      <div className="px-4 py-2 border-b border-[var(--border)] bg-black/20">
+      <div className="px-4 py-2 border-b border-[var(--border)] bg-[var(--gray-100)]">
         <span className="text-sm font-medium text-[var(--muted)]">Logs</span>
         <p className="text-[10px] text-[var(--muted)] mt-0.5">
           Live output from the benchmark worker. Persists if you leave and return
           to this page.
         </p>
       </div>
-      <pre className="p-4 text-sm text-[var(--text)] overflow-auto max-h-[420px] min-h-[120px] font-mono whitespace-pre-wrap break-words bg-black/25">
+      <pre className="p-4 text-sm text-[var(--text)] overflow-auto max-h-[420px] min-h-[120px] font-mono whitespace-pre-wrap break-words bg-[var(--gray-100)]">
         {run?.progress_log?.trim() ||
           (starting
             ? "Starting evaluation…"

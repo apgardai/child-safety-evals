@@ -56,10 +56,10 @@ function ModelCard({ row }: { row: EnrichedRow }) {
     <>
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h3 className="font-semibold text-white">{row.provider}</h3>
-          <p className="text-white/90 mt-0.5">{row.model}</p>
+          <h3 className="font-semibold text-[var(--text)]">{row.provider}</h3>
+          <p className="text-[var(--text)]/90 mt-0.5">{row.model}</p>
         </div>
-        <div className="shrink-0 rounded-lg border border-[var(--border)] bg-black/25 px-3 py-1.5 text-center text-sm font-medium text-[var(--warning)]">
+        <div className="shrink-0 rounded-lg border border-[var(--border)] bg-[var(--gray-100)] px-3 py-1.5 text-center text-sm font-medium text-[var(--warning)]">
           Overall: {headerScore}
         </div>
       </div>
@@ -104,7 +104,7 @@ function ModelCard({ row }: { row: EnrichedRow }) {
       {detailHref ? (
         <Link
           href={detailHref}
-          className="block p-4 md:p-5 space-y-3 hover:bg-white/[0.03] transition-colors"
+          className="block space-y-3 p-4 transition-colors hover:bg-[var(--gray-100)] md:p-5"
         >
           {cardInner}
         </Link>
@@ -118,7 +118,7 @@ function ModelCard({ row }: { row: EnrichedRow }) {
         ) : null}
         {row.notes ? (
           <p className="text-sm text-[var(--muted)]">
-            <span className="text-white/70">Note: </span>
+            <span className="text-[var(--muted)]">Note: </span>
             {row.notes}
           </p>
         ) : null}
@@ -196,9 +196,9 @@ export function ModelLeaderboard() {
   }, [runs]);
 
   return (
-    <section className="w-full max-w-4xl space-y-6" aria-labelledby="leaderboard-heading">
+    <section className="w-full space-y-6" aria-labelledby="leaderboard-heading">
       <div className="text-center space-y-2">
-        <h2 id="leaderboard-heading" className="text-xl font-semibold text-white md:text-2xl">
+        <h2 id="leaderboard-heading" className="text-xl font-semibold text-[var(--text)] md:text-2xl">
           Youth Mental Wellbeing Leaderboard
         </h2>
         <p className="text-sm text-[var(--muted)] max-w-xl mx-auto">

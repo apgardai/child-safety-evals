@@ -4,6 +4,7 @@ import Link from "next/link";
 import { use, useMemo } from "react";
 
 import { ModelBenchmarkResults } from "components/ModelBenchmarkResults";
+import { PageContainer } from "components/PageContainer";
 import {
   findLeaderboardRowByModelId,
   leaderboardModelPath,
@@ -21,29 +22,31 @@ export default function LeaderboardModelPage({
   const scenariosHref = `${leaderboardModelPath(modelId)}#scenarios`;
 
   return (
-    <div className="min-h-screen p-6 md:p-10 max-w-7xl mx-auto space-y-6">
-      <div className="flex flex-wrap items-center gap-3 text-sm">
-        <Link href="/leaderboard" className="text-[var(--accent)] hover:underline">
-          ← Leaderboard
+    <PageContainer className="space-y-6">
+      <header className="flex flex-wrap items-start justify-between gap-4">
+        <div className="space-y-1 min-w-0">
+          {row ? (
+            <>
+              <h1 className="text-2xl font-semibold text-[var(--text)]">{row.provider}</h1>
+              <p className="text-[var(--text)]/90">{row.model}</p>
+            </>
+          ) : (
+            <h1 className="text-2xl font-semibold text-[var(--text)]">{modelId}</h1>
+          )}
+          <p className="text-sm text-[var(--muted)]">
+            Results from{" "}
+            <code className="text-[var(--muted)]">benchmark/data/model-results/{modelId}/</code>
+          </p>
+        </div>
+        <Link
+          href="/leaderboard"
+          className="shrink-0 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-sm font-medium text-[var(--text)] hover:bg-[var(--gray-100)]"
+        >
+          Leaderboard
         </Link>
-      </div>
-
-      <header className="space-y-1">
-        {row ? (
-          <>
-            <h1 className="text-2xl font-semibold text-white">{row.provider}</h1>
-            <p className="text-white/90">{row.model}</p>
-          </>
-        ) : (
-          <h1 className="text-2xl font-semibold text-white">{modelId}</h1>
-        )}
-        <p className="text-sm text-[var(--muted)]">
-          Results from{" "}
-          <code className="text-white/80">benchmark/data/model-results/{modelId}/</code>
-        </p>
       </header>
 
       <ModelBenchmarkResults modelId={modelId} scenariosHref={scenariosHref} />
-    </div>
+    </PageContainer>
   );
 }

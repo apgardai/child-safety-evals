@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { PageContainer } from "components/PageContainer";
 import { ViewerDataExplorer } from "components/ViewerDataExplorer";
 import requestsClient from "lib/requests-client";
 import type { ViewerData } from "lib/viewerDataFromZip";
@@ -58,21 +59,21 @@ export default function ScenariosPage() {
   }, [selectedZipFile]);
 
   return (
-    <div className="min-h-screen p-6 md:p-10 max-w-7xl mx-auto">
+    <PageContainer>
       <header className="mb-6 flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-white">Scenarios</h1>
+          <h1 className="text-2xl font-bold text-[var(--text)]">Scenarios</h1>
           <p className="text-sm text-[var(--muted)]">
-            Loads the latest <span className="text-white/90">results zip file</span> from the
+            Loads the latest <span className="text-[var(--text)]/90">results zip file</span> from the
             benchmark data directory. Upload a different{" "}
-            <span className="text-white/90">results zip file</span> from the benchmark page to
+            <span className="text-[var(--text)]/90">results zip file</span> from the benchmark page to
             update the scenarios.
           </p>
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2">
           <Link
             href="/benchmark"
-            className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--border)]"
+            className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-sm font-medium text-[var(--text)] hover:bg-[var(--gray-100)]"
           >
             Back
           </Link>
@@ -80,7 +81,7 @@ export default function ScenariosPage() {
       </header>
 
       {selectedZipFile && (
-        <div className="mb-4 rounded-lg border border-[var(--accent)]/30 bg-[var(--accent)]/10 px-3 py-2 text-sm text-white">
+        <div className="mb-4 rounded-lg border border-[var(--accent)]/30 bg-[var(--accent)]/10 px-3 py-2 text-sm text-[var(--text)]">
           Viewing selected archive:{" "}
           <span className="font-medium text-[var(--accent)]">{selectedZipFile}</span>
         </div>
@@ -102,14 +103,14 @@ export default function ScenariosPage() {
         <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4 text-[var(--muted)] space-y-2">
           <p>
             No results archive found under{" "}
-            <code className="text-white/90">benchmark/data/results-*.zip</code> and no{" "}
-            <code className="text-white/90">viewer-data.json</code>. Run a benchmark from the
-            benchmark page, or upload a results <code className="text-white/90">.zip</code>.
+            <code className="text-[var(--text)]/90">benchmark/data/results-*.zip</code> and no{" "}
+            <code className="text-[var(--text)]/90">viewer-data.json</code>. Run a benchmark from the
+            benchmark page, or upload a results <code className="text-[var(--text)]/90">.zip</code>.
           </p>
         </div>
       )}
 
       {data && <ViewerDataExplorer data={data} />}
-    </div>
+    </PageContainer>
   );
 }
