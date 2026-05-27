@@ -180,6 +180,38 @@ def get_active_evaluation_run_for_account(
     )
 
 
+def is_evaluation_run_resumable(run: EvaluationRun) -> bool:
+    """Cancelled run with partial scenario progress (resume not implemented yet)."""
+    if (run.status or "") != "cancelled":
+        return False
+    completed = run.scenarios_completed
+    total = run.scenarios_total
+    if completed is None or total is None or total <= 0:
+        return False
+    return completed > 0 and completed < total
+
+
+def get_resumable_cancelled_evaluation_run_for_account(
+    db: Session,
+    *,
+    account_id: UUID,
+) -> EvaluationRun | None:
+    candidates = (
+        db.query(EvaluationRun)
+        .filter(
+            EvaluationRun.account_id == account_id,
+            EvaluationRun.status == "cancelled",
+        )
+        .order_by(EvaluationRun.created_at.desc())
+        .limit(20)
+        .all()
+    )
+    for run in candidates:
+        if is_evaluation_run_resumable(run):
+            return run
+    return None
+
+
 def evaluation_run_detail_dict(run: EvaluationRun) -> dict[str, Any]:
     payload = run.results_json if isinstance(run.results_json, dict) else None
     prompts = run.prompts

@@ -69,6 +69,13 @@ class EvaluationRunDetailOut(BaseModel):
     results: dict[str, Any] | None = None
 
 
+class EvaluationRunBenchmarkContextOut(BaseModel):
+    """In-flight and resumable runs for the benchmark page (account-scoped)."""
+
+    in_flight: EvaluationRunDetailOut | None = None
+    resumable: EvaluationRunDetailOut | None = None
+
+
 class EvaluationRunActiveOut(BaseModel):
     active: bool
     id: UUID | None = None

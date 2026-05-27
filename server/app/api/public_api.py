@@ -19,6 +19,7 @@ from app.crud.evaluation_runs import (
     create_pending_evaluation_run,
     evaluation_run_detail_dict,
     get_active_evaluation_run_for_account,
+    get_resumable_cancelled_evaluation_run_for_account,
     get_evaluation_run_for_account,
     list_evaluation_runs_for_account,
     set_evaluation_run_scenario_total,
@@ -35,6 +36,7 @@ from app.services.local_benchmark_results import (
 from app.services.evaluation_cancel import revoke_evaluation_celery_task
 from app.schemas.evaluation_runs import (
     EvaluationRunActiveOut,
+    EvaluationRunBenchmarkContextOut,
     EvaluationRunDetailOut,
     EvaluationRunStart,
     EvaluationRunStartOut,
@@ -364,6 +366,44 @@ def get_active_evaluation_run_public(
         return EvaluationRunActiveOut(active=False)
     detail = evaluation_run_detail_dict(run)
     return EvaluationRunActiveOut(active=True, **detail)
+
+
+@router.get(
+    "/evaluation-runs/benchmark-context",
+    response_model=EvaluationRunBenchmarkContextOut,
+)
+def get_evaluation_benchmark_context_public(
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    """Return in-flight and/or latest resumable cancelled run for the signed-in account."""
+    email = require_session_email(request)
+    user = get_user_by_email(db, email)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    account_id = user.account_id
+
+    in_flight_run = get_active_evaluation_run_for_account(db, account_id=account_id)
+    in_flight = (
+        EvaluationRunDetailOut(**evaluation_run_detail_dict(in_flight_run))
+        if in_flight_run
+        else None
+    )
+
+    resumable = None
+    if not in_flight_run:
+        resumable_run = get_resumable_cancelled_evaluation_run_for_account(
+            db, account_id=account_id
+        )
+        if resumable_run:
+            resumable = EvaluationRunDetailOut(
+                **evaluation_run_detail_dict(resumable_run)
+            )
+
+    return EvaluationRunBenchmarkContextOut(
+        in_flight=in_flight,
+        resumable=resumable,
+    )
 
 
 @router.post("/evaluation-runs/{evaluation_run_id}/cancel", response_model=EvaluationRunDetailOut)
