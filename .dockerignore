@@ -1,0 +1,17 @@
+# Docker build context is child-safety-evals/ (see server/Dockerfile).
+.git
+**/__pycache__
+**/*.py[cod]
+**/.pytest_cache
+**/.coverage
+server/venv
+server/.env
+server/.env.*
+benchmark/node_modules
+benchmark/**/node_modules
+benchmark/data/.benchmark-*-tmp
+benchmark/data/results
+benchmark/data/results.zip
+benchmark/data/results.json
+benchmark/.env
+benchmark/.env.*
