@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import json
+import random
 from typing import Any
 
 from app.schemas.benchmark_preview import BenchmarkScenarioPreviewRow, BenchmarkScenariosPreviewOut
 from app.services.benchmark_progress import count_scenario_test_tasks, resolve_scenarios_path
 
 _PREVIEW_MESSAGE_LEN = 160
+_PREVIEW_ROW_LIMIT = 50
 
 
 def _preview_text(value: Any, *, max_len: int = _PREVIEW_MESSAGE_LEN) -> str:
@@ -27,6 +29,16 @@ def _motivation_label(seed: dict[str, Any]) -> str:
     if isinstance(motivation, str) and motivation.strip():
         return motivation.strip()
     return ""
+
+
+def _sample_preview_rows(
+    rows: list[BenchmarkScenarioPreviewRow],
+    limit: int = _PREVIEW_ROW_LIMIT,
+) -> list[BenchmarkScenarioPreviewRow]:
+    if len(rows) <= limit:
+        return rows
+    sample = random.sample(rows, limit)
+    return sorted(sample, key=lambda row: row.index)
 
 
 def load_benchmark_scenarios_preview(
@@ -71,5 +83,5 @@ def load_benchmark_scenarios_preview(
         scenario_count=len(rows),
         test_count=test_count,
         prompt_variants=prompt_list,
-        scenarios=rows,
+        scenarios=_sample_preview_rows(rows),
     )

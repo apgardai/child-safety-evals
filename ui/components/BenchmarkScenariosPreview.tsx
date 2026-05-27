@@ -36,11 +36,14 @@ function formatAgeRange(value: string): string {
 type Props = {
   prompts: string[];
   scenariosInput?: string;
+  /** When true, omit outer card chrome (for nesting inside another panel). */
+  embedded?: boolean;
 };
 
 export default function BenchmarkScenariosPreview({
   prompts,
   scenariosInput = "data/scenarios.jsonl",
+  embedded = false,
 }: Props) {
   const [expanded, setExpanded] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -99,27 +102,24 @@ export default function BenchmarkScenariosPreview({
 
   const promptLabel = prompts.length ? prompts.join(", ") : "default";
 
+  const rootClass = embedded
+    ? "mt-3"
+    : "mt-6 rounded-xl border border-[var(--border)] bg-black/20 p-4 md:p-5";
+
   return (
-    <section className="mt-6 rounded-xl border border-[var(--border)] bg-black/20 p-4 md:p-5">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h3 className="text-sm font-semibold text-white">Expanded scenarios preview</h3>
-          <p className="mt-1 max-w-3xl text-xs text-[var(--muted)] leading-relaxed">
-            Each row is one scenario from{" "}
-            <code className="text-white/90">{scenariosInput}</code>. The benchmark runs a
-            multi-turn test per scenario for each selected prompt variant against your target
-            model (turn 1 uses the fixed first user message below; later turns are generated
-            live).
-          </p>
-        </div>
+    <section className={rootClass}>
+      <div className="flex flex-wrap items-center gap-3">
         <button
           type="button"
           onClick={() => setExpanded((v) => !v)}
           disabled={loading || !!error || !data?.scenarios.length}
           className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-xs font-medium text-white hover:bg-[var(--border)] disabled:opacity-50"
         >
-          {expanded ? "Hide table" : "Show table"}
+          {expanded ? "Hide table" : "Preview Scenarios"}
         </button>
+        {!embedded && (
+          <h3 className="text-sm font-semibold text-white">Expanded scenarios preview</h3>
+        )}
       </div>
 
       {loading && (
@@ -128,20 +128,16 @@ export default function BenchmarkScenariosPreview({
       {error && (
         <p className="mt-3 text-xs text-[var(--error)]">{error}</p>
       )}
-      {!loading && !error && data && (
-        <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-[var(--muted)]">
-          <span>
-            <span className="text-white font-medium">{data.scenario_count}</span> scenarios
-          </span>
-          <span>
-            <span className="text-white font-medium">{testCount ?? data.test_count}</span> tests
-            <span className="text-[var(--muted)]"> ({promptLabel} prompts)</span>
-          </span>
-        </div>
-      )}
 
       {expanded && data && data.scenarios.length > 0 && (
-        <div className="mt-4 max-h-[28rem] overflow-auto rounded-lg border border-[var(--border)]">
+        <>
+          {data.scenario_count > data.scenarios.length && (
+            <p className="mt-3 text-xs text-[var(--muted)]">
+              Showing {data.scenarios.length} randomly selected of {data.scenario_count}{" "}
+              scenarios.
+            </p>
+          )}
+        <div className="mt-2 max-h-[28rem] overflow-auto rounded-lg border border-[var(--border)]">
           <table className="w-full min-w-[56rem] border-collapse text-left text-xs">
             <thead className="sticky top-0 z-10 bg-[var(--surface)] text-[var(--muted)]">
               <tr>
@@ -185,6 +181,7 @@ export default function BenchmarkScenariosPreview({
             </tbody>
           </table>
         </div>
+        </>
       )}
     </section>
   );

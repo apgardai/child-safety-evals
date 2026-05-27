@@ -199,7 +199,7 @@ export function ModelLeaderboard() {
     <section className="w-full max-w-4xl space-y-6" aria-labelledby="leaderboard-heading">
       <div className="text-center space-y-2">
         <h2 id="leaderboard-heading" className="text-xl font-semibold text-white md:text-2xl">
-          Model leaderboard
+          Youth Mental Wellbeing Leaderboard
         </h2>
         <p className="text-sm text-[var(--muted)] max-w-xl mx-auto">
           Models are ranked by highest overall benchmark score. Select a model to view risk
