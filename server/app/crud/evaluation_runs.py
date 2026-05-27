@@ -346,6 +346,174 @@ def set_evaluation_run_status(
     return run
 
 
+def scenario_external_id(seed_id: str, prompt: str) -> str:
+    return f"{seed_id}:{prompt}"
+
+
+def upsert_scenario_from_test_result(
+    db: Session,
+    *,
+    run: EvaluationRun,
+    user: User,
+    test_result: dict[str, Any],
+) -> bool:
+    """Insert or update one scenario (+ conversation, assessment) from a CLI testResult JSON."""
+    scenario_obj = test_result.get("scenario")
+    if not isinstance(scenario_obj, dict):
+        return False
+    seed = scenario_obj.get("seed")
+    if not isinstance(seed, dict):
+        return False
+    seed_id = seed.get("id")
+    if not isinstance(seed_id, str) or not seed_id.strip():
+        return False
+    prompt_raw = test_result.get("prompt")
+    prompt_variant = prompt_raw if isinstance(prompt_raw, str) else "default"
+
+    risk_category = seed.get("riskCategoryId") if isinstance(seed.get("riskCategoryId"), str) else None
+    sub_risk = seed.get("riskId") if isinstance(seed.get("riskId"), str) else None
+    age_range = seed.get("ageRange") if isinstance(seed.get("ageRange"), str) else None
+    scenario_title = (
+        scenario_obj.get("shortTitle")
+        if isinstance(scenario_obj.get("shortTitle"), str)
+        else None
+    ) or (seed.get("shortTitle") if isinstance(seed.get("shortTitle"), str) else None)
+    narrative = scenario_obj.get("narrative") if isinstance(scenario_obj.get("narrative"), str) else None
+
+    assessment_obj = test_result.get("assessment")
+    assessment_obj = assessment_obj if isinstance(assessment_obj, dict) else {}
+    safety_grade = normalize_safety_outcome(
+        assessment_obj.get("grade") if isinstance(assessment_obj.get("grade"), str) else None
+    )
+    assessment_reasons = (
+        assessment_obj.get("reasons") if isinstance(assessment_obj.get("reasons"), str) else None
+    )
+
+    external_id = scenario_external_id(seed_id.strip(), prompt_variant)
+    existing = (
+        db.query(EvaluationScenario)
+        .filter(
+            EvaluationScenario.evaluation_run_id == run.id,
+            EvaluationScenario.scenario_external_id == external_id,
+        )
+        .first()
+    )
+
+    user_persona_model_id: UUID | None = None
+    if run.user_model:
+        user_model_entry = (
+            db.query(ModelRegistryEntry)
+            .filter(
+                (ModelRegistryEntry.alias == run.user_model)
+                | (ModelRegistryEntry.model_id == run.user_model)
+            )
+            .first()
+        )
+        if user_model_entry:
+            user_persona_model_id = user_model_entry.id
+
+    messages_raw = test_result.get("messages")
+    messages: list[tuple[str, str]] = []
+    if isinstance(messages_raw, list):
+        for m in messages_raw:
+            if not isinstance(m, dict):
+                continue
+            role = m.get("role")
+            content = m.get("content")
+            if role not in {"user", "assistant"} or not isinstance(content, str):
+                continue
+            messages.append((role, content))
+
+    title = scenario_title or f"Scenario {external_id}"
+
+    if existing and existing.conversation_id and existing.assessment_id:
+        conv_id = existing.conversation_id
+        db.query(ConversationMessage).filter(
+            ConversationMessage.conversation_id == conv_id
+        ).delete(synchronize_session=False)
+        for turn, (role, content) in enumerate(messages):
+            db.add(
+                ConversationMessage(
+                    conversation_id=conv_id,
+                    turn_index=turn,
+                    role=role,
+                    content=content,
+                )
+            )
+        assessment = db.get(Assessment, existing.assessment_id)
+        if assessment:
+            assessment.safety_grade = safety_grade
+            assessment.assessment_reasons = assessment_reasons
+            assessment.age_range = age_range
+            assessment.prompt_variant = prompt_variant
+            assessment.status = "completed"
+            db.add(assessment)
+        existing.scenario_title = scenario_title
+        existing.narrative = (
+            narrative
+            or scenario_title
+            or f"Scenario: {risk_category or 'unknown'} / {sub_risk or 'unknown'}"
+        )
+        existing.safety_grade = safety_grade
+        existing.assessment_reasons = assessment_reasons
+        existing.risk_category = risk_category
+        existing.sub_risk = sub_risk
+        existing.age_range = age_range
+        existing.prompt_variant = prompt_variant
+        db.add(existing)
+        db.commit()
+        return True
+
+    conv = Conversation(evaluation_run_id=run.id, title=title)
+    db.add(conv)
+    db.flush()
+    for turn, (role, content) in enumerate(messages):
+        db.add(
+            ConversationMessage(
+                conversation_id=conv.id,
+                turn_index=turn,
+                role=role,
+                content=content,
+            )
+        )
+
+    assessment = Assessment(
+        evaluation_run_id=run.id,
+        conversation_id=conv.id,
+        status="completed",
+        age_range=age_range,
+        prompt_variant=prompt_variant,
+        safety_grade=safety_grade,
+        assessment_reasons=assessment_reasons,
+    )
+    db.add(assessment)
+    db.flush()
+
+    db.add(
+        EvaluationScenario(
+            evaluation_run_id=run.id,
+            assessment_id=assessment.id,
+            conversation_id=conv.id,
+            user_persona_model_id=user_persona_model_id,
+            scenario_external_id=external_id,
+            scenario_title=scenario_title,
+            prompt_variant=prompt_variant,
+            age_range=age_range,
+            safety_grade=safety_grade,
+            assessment_reasons=assessment_reasons,
+            narrative=(
+                narrative
+                or scenario_title
+                or f"Scenario: {risk_category or 'unknown'} / {sub_risk or 'unknown'}"
+            ),
+            sub_risk=sub_risk,
+            risk_category=risk_category,
+        )
+    )
+    db.commit()
+    return True
+
+
 def _persist_run_details(
     db: Session,
     *,
@@ -408,7 +576,13 @@ def _persist_run_details(
     has_viewer_scenarios = isinstance(viewer_data, dict) and isinstance(
         viewer_data.get("scenarios"), list
     )
-    if has_viewer_scenarios:
+    already_has_scenarios = (
+        db.query(EvaluationScenario.id)
+        .filter(EvaluationScenario.evaluation_run_id == run.id)
+        .first()
+        is not None
+    )
+    if has_viewer_scenarios and not already_has_scenarios:
         for idx, row in enumerate(viewer_data["scenarios"]):
             if not isinstance(row, dict):
                 continue
@@ -502,7 +676,7 @@ def _persist_run_details(
                 results = {**results, "scores": aggregated}
                 run.results_json = results
                 db.add(run)
-    else:
+    elif not already_has_scenarios:
         scores = results.get("scores")
         if isinstance(scores, list):
             for row in scores:

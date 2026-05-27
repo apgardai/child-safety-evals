@@ -46,8 +46,9 @@ services:
       redis:
         condition: service_healthy
     restart: unless-stopped
-    mem_limit: 512m
+    # ~5 concurrent Node benchmark subprocesses (each run uses a separate evaluation workspace).
+    mem_limit: 3072m
     command: >
       celery -A app.services.celery_app worker
       --loglevel=info
-      --concurrency=1
+      --concurrency=5

@@ -15,7 +15,11 @@ BENCHMARK_CANCELLED_MESSAGE = "Evaluation cancelled."
 from dataclasses import dataclass
 from pathlib import Path
 
-from app.services.benchmark_paths import benchmark_root, cli_js_path
+from app.services.benchmark_paths import (
+    benchmark_root,
+    cli_js_path,
+    evaluation_workspace_dir,
+)
 from app.services.viewer_data import (
     build_viewer_data_from_results_zip,
     extract_results_document_from_zip,
@@ -113,6 +117,7 @@ def run_benchmark_evaluation(
     user_model: str,
     scenarios_input: str = "data/scenarios.jsonl",
     prompts: list[str] | None = None,
+    run_id: str | None = None,
     ai_gateway_api_key: str | None = None,
     custom_api_key: str | None = None,
     custom_api_endpoint: str | None = None,
@@ -135,8 +140,13 @@ def run_benchmark_evaluation(
         return BenchmarkRunOutput(success=False, log="", error=str(e))
 
     prompt_list = prompts if prompts else ["default"]
-    output_name = f"cse-results-{uuid.uuid4().hex}.json"
-    output_path = Path(tempfile.gettempdir()) / output_name
+    if run_id:
+        work_dir = evaluation_workspace_dir(run_id)
+        work_dir.mkdir(parents=True, exist_ok=True)
+        output_path = work_dir / "results.json"
+    else:
+        output_name = f"cse-results-{uuid.uuid4().hex}.json"
+        output_path = Path(tempfile.gettempdir()) / output_name
 
     args = [
         cli_path.as_posix(),

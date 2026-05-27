@@ -70,6 +70,15 @@ def _ensure_backwards_compatible_schema() -> None:
         conn.execute(
             text(
                 """
+                CREATE UNIQUE INDEX IF NOT EXISTS ix_cse_evaluation_runs_one_active_per_account
+                ON cse_evaluation_runs (account_id)
+                WHERE status IN ('pending', 'running')
+                """
+            )
+        )
+        conn.execute(
+            text(
+                """
                 DO $$
                 DECLARE
                   fk_name text;

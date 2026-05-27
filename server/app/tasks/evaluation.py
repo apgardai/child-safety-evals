@@ -54,7 +54,7 @@ def run_evaluation(
         if run.status == "cancelled":
             return {"run_id": run_id, "status": "cancelled"}
 
-        log_writer = RunLogWriter(db, run_uuid)
+        log_writer = RunLogWriter(db, run_uuid, user_id=user_uuid)
         append_evaluation_run_log(db, run, "Worker picked up the evaluation task.\n")
         set_evaluation_run_status(
             db,
@@ -97,6 +97,7 @@ def run_evaluation(
             user_model=user_model,
             scenarios_input=scenarios_input,
             prompts=prompts,
+            run_id=run_id,
             ai_gateway_api_key=api_key,
             custom_api_key=custom_api_key,
             custom_api_endpoint=custom_api_endpoint,
@@ -116,6 +117,7 @@ def run_evaluation(
             sync_evaluation_run_scenario_progress(db, run)
 
         if run.status == "cancelled" or output.error == BENCHMARK_CANCELLED_MESSAGE:
+            sync_evaluation_run_scenario_progress(db, run)
             return {"run_id": run_id, "status": "cancelled"}
 
         if not output.success or not output.results:

@@ -8,6 +8,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from firebase_admin import auth as firebase_auth
 from pydantic import BaseModel, Field
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.api.deps import verify_session_or_secret
@@ -309,15 +310,35 @@ def start_evaluation_run_public(
             detail="AI Gateway API key is required. Save it on your account before running evaluations.",
         )
 
+    active = get_active_evaluation_run_for_account(db, account_id=user.account_id)
+    if active is not None:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "An evaluation is already in progress for this account. "
+                "Cancel it or wait for it to finish before starting another."
+            ),
+        )
+
     prompts = body.prompts if body.prompts else ["default"]
-    run = create_pending_evaluation_run(
-        db,
-        user=user,
-        target_model=target_model,
-        judge_model=body.judge_model,
-        user_model=body.user_model,
-        prompts=prompts,
-    )
+    try:
+        run = create_pending_evaluation_run(
+            db,
+            user=user,
+            target_model=target_model,
+            judge_model=body.judge_model,
+            user_model=body.user_model,
+            prompts=prompts,
+        )
+    except IntegrityError as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "An evaluation is already in progress for this account. "
+                "Cancel it or wait for it to finish before starting another."
+            ),
+        ) from exc
 
     try:
         scenarios_total = count_scenario_test_tasks(body.input, prompts)
