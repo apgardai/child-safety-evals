@@ -9,12 +9,11 @@ import { ResumableEvaluationBanner } from "components/ResumableEvaluationBanner"
 import BenchmarkScenariosPreview from "components/BenchmarkScenariosPreview";
 import { ResultsOverview } from "components/ResultsOverview";
 import { useActiveEvaluationRun } from "hooks/useActiveEvaluationRun";
+import { uniqueCustomModelSlug } from "lib/customModel";
 import type { ViewerData } from "lib/viewerDataFromZip";
 
 const PROMPTS = ["default", "child"];
 
-/** Slug for HTTP custom backend (see benchmark runCommand custom-* routing) */
-const CUSTOM_MODEL_SLUG = "custom-my-model";
 const ADD_CUSTOM_TARGET_OPTION = "__add_custom_target_model__";
 
 function ModelField({
@@ -193,7 +192,26 @@ function PipelineChecklist({
 export default function Home() {
   const [modelList, setModelList] = useState<string[]>([]);
   const [customModelList, setCustomModelList] = useState<string[]>([]);
+  const [customModelLabels, setCustomModelLabels] = useState<Record<string, string>>({});
   const [overviewData, setOverviewData] = useState<ViewerData | null>(null);
+
+  const loadModels = useCallback(async () => {
+    try {
+      const r = await requestsClient.get<{
+        models?: string[];
+        customModels?: string[];
+        customModelLabels?: Record<string, string>;
+      }>("/api/models", { validateStatus: () => true });
+      const data = r.data ?? {};
+      setModelList(data.models ?? []);
+      setCustomModelList(data.customModels ?? []);
+      setCustomModelLabels(data.customModelLabels ?? {});
+    } catch {
+      setModelList([]);
+      setCustomModelList([]);
+      setCustomModelLabels({});
+    }
+  }, []);
 
   const refreshOverviewFromRun = useCallback(async (runId?: string | null) => {
     try {
@@ -233,18 +251,8 @@ export default function Home() {
   const flowPhase: FlowPhase = isInFlight ? "running" : "idle";
 
   useEffect(() => {
-    requestsClient
-      .get<{ models?: string[]; customModels?: string[] }>("/api/models", { validateStatus: () => true })
-      .then((r) => {
-        const data = r.data ?? {};
-        setModelList(data.models ?? []);
-        setCustomModelList(data.customModels ?? []);
-      })
-      .catch(() => {
-        setModelList([]);
-        setCustomModelList([]);
-      });
-  }, []);
+    void loadModels();
+  }, [loadModels]);
 
   return (
     <div className="min-h-screen p-6 md:p-10 max-w-7xl mx-auto">
@@ -275,6 +283,8 @@ export default function Home() {
         disabled={isInFlight}
         modelList={modelList}
         customModelList={customModelList}
+        customModelLabels={customModelLabels}
+        onModelsRefresh={loadModels}
         flowPhase={flowPhase}
       />
 
@@ -315,6 +325,8 @@ function PipelineForm({
   disabled,
   modelList,
   customModelList,
+  customModelLabels,
+  onModelsRefresh,
   flowPhase,
 }: {
   onRun: (payload: {
@@ -326,23 +338,18 @@ function PipelineForm({
     judgeModel?: string;
     userModel?: string;
     prompts?: string[];
-  }) => void;
+  }) => void | Promise<void>;
   disabled: boolean;
   modelList: string[];
   customModelList: string[];
+  customModelLabels: Record<string, string>;
+  onModelsRefresh: () => Promise<void>;
   flowPhase: FlowPhase;
 }) {
-  const shouldShowSyntheticCustomTarget =
-    customModelList.length === 0 && !modelList.includes(CUSTOM_MODEL_SLUG);
-
-  const targetModelOptions = useMemo(() => {
-    const list = [...modelList];
-    // Show one-click custom option only if no saved custom models exist yet.
-    if (shouldShowSyntheticCustomTarget) {
-      list.unshift(ADD_CUSTOM_TARGET_OPTION);
-    }
-    return list;
-  }, [modelList, shouldShowSyntheticCustomTarget]);
+  const targetModelOptions = useMemo(
+    () => [...modelList, ADD_CUSTOM_TARGET_OPTION],
+    [modelList]
+  );
 
   const nonCustomModelOptions = useMemo(
     () => modelList.filter((m) => !customModelList.includes(m)),
@@ -359,9 +366,12 @@ function PipelineForm({
   const [judgeModel, setJudgeModel] = useState("gpt-5.2:high:limited");
   const [userModel, setUserModel] = useState("deepseek-v3.2");
   const [prompts, setPrompts] = useState<string[]>(["default"]);
+  const [customDisplayName, setCustomDisplayName] = useState("");
   const [customApiEndpoint, setCustomApiEndpoint] = useState("");
   const [customApiKey, setCustomApiKey] = useState("");
   const [customParsingKey, setCustomParsingKey] = useState("message");
+  const [savingCustomModel, setSavingCustomModel] = useState(false);
+  const [customModelMessage, setCustomModelMessage] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -392,11 +402,14 @@ function PipelineForm({
   const apiKeySectionOpen = apiKeyStatusLoading || !hasSavedApiKey || apiKeyExpanded;
 
   const targetOptionLabels = useMemo(() => {
-    if (!shouldShowSyntheticCustomTarget) return undefined;
-    return {
-      [ADD_CUSTOM_TARGET_OPTION]: "Add custom target model",
+    const labels: Record<string, string> = {
+      [ADD_CUSTOM_TARGET_OPTION]: "Add custom model…",
     };
-  }, [shouldShowSyntheticCustomTarget]);
+    for (const slug of customModelList) {
+      labels[slug] = customModelLabels[slug] ?? slug;
+    }
+    return labels;
+  }, [customModelList, customModelLabels]);
 
   const isCustomTarget = targetModel === ADD_CUSTOM_TARGET_OPTION;
   const isCustomTargetModel =
@@ -415,21 +428,74 @@ function PipelineForm({
     );
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onRun({
-      apiKey: apiKey.trim(),
-      ...(isCustomTarget
-        ? {
-            customApiKey: customApiKey.trim(),
+  const saveCustomModelToAccount = useCallback(async (): Promise<string | null> => {
+    const displayName = customDisplayName.trim();
+    if (!displayName) {
+      setCustomModelMessage("Enter a display name for this model.");
+      return null;
+    }
+    if (!customApiEndpoint.trim() || !customApiKey.trim()) {
+      setCustomModelMessage("Custom API endpoint and API key are required.");
+      return null;
+    }
+    const slug = uniqueCustomModelSlug(displayName, modelList);
+    setSavingCustomModel(true);
+    setCustomModelMessage(null);
+    try {
+      const res = await requestsClient.put<{ error?: string }>(
+        "/api/models",
+        {
+          slug,
+          config: {
+            model: slug,
+            displayName,
             customApiEndpoint: customApiEndpoint.trim(),
-            customParsingKey: customParsingKey.trim() || "message",
-          }
-        : {}),
-      targetModel: isCustomTarget ? CUSTOM_MODEL_SLUG : targetModel.trim(),
+            customApiKey: customApiKey.trim(),
+            parsingKey: customParsingKey.trim() || "message",
+          },
+        },
+        { validateStatus: () => true }
+      );
+      const data = res.data ?? {};
+      if (res.status < 200 || res.status >= 300) {
+        setCustomModelMessage(data.error ?? "Could not save custom model.");
+        return null;
+      }
+      await onModelsRefresh();
+      setTargetModel(slug);
+      setCustomModelMessage(`Saved "${displayName}" to your account.`);
+      return slug;
+    } catch (e) {
+      setCustomModelMessage((e as Error).message);
+      return null;
+    } finally {
+      setSavingCustomModel(false);
+    }
+  }, [
+    customApiEndpoint,
+    customApiKey,
+    customDisplayName,
+    customParsingKey,
+    modelList,
+    onModelsRefresh,
+  ]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    let resolvedTarget = targetModel.trim();
+    if (isCustomTarget) {
+      const slug = await saveCustomModelToAccount();
+      if (!slug) return;
+      resolvedTarget = slug;
+    }
+    const runUsesCustomTarget =
+      resolvedTarget.startsWith("custom-") || customModelList.includes(resolvedTarget);
+    await onRun({
+      apiKey: apiKey.trim(),
+      targetModel: resolvedTarget,
       judgeModel: judgeModel || undefined,
       userModel: userModel || undefined,
-      prompts: isCustomTargetModel
+      prompts: runUsesCustomTarget
         ? ["default"]
         : prompts.length
           ? prompts
@@ -471,7 +537,9 @@ function PipelineForm({
     (apiKey.trim() || hasSavedApiKey) &&
     targetModel.trim() &&
     (!isCustomTarget ||
-      (customApiEndpoint.trim().length > 0 && customApiKey.trim().length > 0));
+      (customDisplayName.trim().length > 0 &&
+        customApiEndpoint.trim().length > 0 &&
+        customApiKey.trim().length > 0));
 
   const pipelinePhase: FlowPhase =
     flowPhase === "complete" ? "complete" : flowPhase === "running" ? "running" : "idle";
@@ -553,10 +621,22 @@ function PipelineForm({
         {isCustomTarget && (
           <div className="space-y-3 rounded-lg border border-[var(--border)] bg-black/25 p-3">
             <p className="text-xs text-[var(--muted)] leading-relaxed">
-              Custom calls use <code className="text-white">CUSTOM_API_KEY</code> and{" "}
-              <code className="text-white">CUSTOM_MODEL_API_ENDPOINT</code> for this run only (not
-              saved).
+              Add a custom HTTP target. Credentials are saved to your account so you can reuse this
+              model in future runs.
             </p>
+            <div>
+              <label className="block text-sm font-medium text-[var(--muted)] mb-1">
+                Display name <span className="text-[var(--error)]">*</span>
+              </label>
+              <input
+                type="text"
+                value={customDisplayName}
+                onChange={(e) => setCustomDisplayName(e.target.value)}
+                placeholder="E.g. My AI Tutor, Companion Chatbot"
+                className="w-full rounded-lg border border-[var(--border)] bg-black/30 px-3 py-2 text-sm text-white placeholder-[var(--muted)] focus:border-[var(--accent)] focus:outline-none"
+                autoComplete="off"
+              />
+            </div>
             <div>
               <label className="block text-sm font-medium text-[var(--muted)] mb-1">
                 Custom API endpoint <span className="text-[var(--error)]">*</span>
@@ -598,6 +678,19 @@ function PipelineForm({
                 <code className="text-white">data.message</code>).
               </p>
             </div>
+            <div className="flex flex-wrap items-center gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => void saveCustomModelToAccount()}
+                disabled={savingCustomModel || disabled}
+                className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--border)] disabled:opacity-50"
+              >
+                {savingCustomModel ? "Saving…" : "Save custom model"}
+              </button>
+            </div>
+            {customModelMessage && (
+              <p className="text-xs text-[var(--muted)]">{customModelMessage}</p>
+            )}
           </div>
         )}
         <ModelField
@@ -648,7 +741,7 @@ function PipelineForm({
 
       <button
         type="submit"
-        disabled={disabled || !canSubmit}
+        disabled={disabled || !canSubmit || savingCustomModel}
         className="rounded-lg bg-[var(--accent)] px-6 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
       >
         Run benchmark
@@ -661,7 +754,7 @@ function PipelineForm({
       <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5">
         <h2 className="text-lg font-semibold text-white mb-1">Evaluation Pipeline</h2>
         <p className="text-sm text-[var(--muted)] mb-4">
-        Run youth mental wellbeing evaluations against the target AI model using pre-generated test scenarios. Configure the target model below.
+        Run youth mental wellbeing evaluations against a target model using pre-generated test scenarios. Configure the target model below.
         </p>
 
         <PipelineChecklist phase={pipelinePhase} prompts={prompts} runStep={runStep} />

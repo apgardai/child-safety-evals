@@ -48,6 +48,7 @@ from app.tasks.evaluation import run_evaluation
 from app.crud.model_registry import (
     delete_model_registry_entry,
     get_custom_runtime_config,
+    get_model_registry_entry_for_account,
     list_model_registry_entries,
     upsert_model_registry_entry,
 )
@@ -141,19 +142,27 @@ def list_models_public(request: Request, db: Session = Depends(get_db)):
     )
     registry: dict[str, dict] = {}
     custom_models: list[str] = []
+    custom_model_labels: dict[str, str] = {}
     for row in rows:
         optional = row.optional_parameters or {}
-        registry[row.alias] = {
+        entry: dict = {
             "model": row.model_id,
             **({"maxTokens": optional.get("maxTokens")} if isinstance(optional.get("maxTokens"), (int, float)) else {}),
             **({"temperature": optional.get("temperature")} if isinstance(optional.get("temperature"), (int, float)) else {}),
             **({"providerOptions": optional.get("providerOptions")} if isinstance(optional.get("providerOptions"), dict) else {}),
         }
+        display_name = optional.get("displayName")
+        if isinstance(display_name, str) and display_name.strip():
+            entry["displayName"] = display_name.strip()
+        registry[row.alias] = entry
         if row.is_custom:
             custom_models.append(row.alias)
+            if isinstance(display_name, str) and display_name.strip():
+                custom_model_labels[row.alias] = display_name.strip()
     return {
         "models": sorted(registry.keys()),
         "customModels": sorted(custom_models),
+        "customModelLabels": custom_model_labels,
         "registry": registry,
     }
 
@@ -179,7 +188,7 @@ def upsert_model_public(
         optional_parameters["temperature"] = config["temperature"]
     if "providerOptions" in config and isinstance(config["providerOptions"], dict):
         optional_parameters["providerOptions"] = config["providerOptions"]
-    for key in ("customApiEndpoint", "customApiKey", "parsingKey"):
+    for key in ("customApiEndpoint", "customApiKey", "parsingKey", "displayName"):
         if key in config and config[key] is not None:
             optional_parameters[key] = config[key]
     if slug.startswith("custom-"):
@@ -263,7 +272,12 @@ def _prepare_custom_model_for_run(
                 ),
             )
         return
+    existing = get_model_registry_entry_for_account(
+        db, alias=target_model, account_id=user.account_id
+    )
+    existing_optional = (existing.optional_parameters or {}) if existing else {}
     optional_parameters: dict = {
+        **existing_optional,
         "customApiEndpoint": endpoint,
         "customApiKey": key,
         "parsingKey": (custom_parsing_key or "").strip() or "message",
