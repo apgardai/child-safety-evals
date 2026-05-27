@@ -199,26 +199,21 @@ export function useActiveEvaluationRun(options?: {
   }, []);
 
   const handleTerminalSnapshot = useCallback(
-    (snapshot: EvaluationRunSnapshot, acctId: string) => {
+    async (snapshot: EvaluationRunSnapshot, acctId: string) => {
       if (snapshot.status === "completed" && snapshot.id) {
         onCompletedRef.current?.(snapshot.id);
       }
       clearStoredEvaluationRunId(acctId);
       setRun(null);
 
-      if (
-        snapshot.status === "cancelled" &&
-        snapshot.scenarios_completed != null &&
-        snapshot.scenarios_total != null &&
-        snapshot.scenarios_total > 0 &&
-        snapshot.scenarios_completed > 0 &&
-        snapshot.scenarios_completed < snapshot.scenarios_total &&
-        !isResumableDismissed(acctId, snapshot.id)
-      ) {
-        setResumableRun(snapshot);
+      try {
+        const context = await fetchBenchmarkContext(abortRef.current?.signal);
+        applyBenchmarkContext(context, acctId);
+      } catch {
+        setResumableRun(null);
       }
     },
-    []
+    [applyBenchmarkContext, fetchBenchmarkContext]
   );
 
   const refreshRun = useCallback(
@@ -228,7 +223,7 @@ export function useActiveEvaluationRun(options?: {
         const snapshot = await fetchRun(runId, abortRef.current?.signal);
         if (!isInFlightStatus(snapshot.status)) {
           if (acctId) {
-            handleTerminalSnapshot(snapshot, acctId);
+            await handleTerminalSnapshot(snapshot, acctId);
           } else {
             setRun(null);
           }

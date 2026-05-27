@@ -376,7 +376,11 @@ def get_evaluation_benchmark_context_public(
     request: Request,
     db: Session = Depends(get_db),
 ):
-    """Return in-flight and/or latest resumable cancelled run for the signed-in account."""
+    """Return in-flight and/or the latest cancelled run when it is still resumable.
+
+    A cancelled run is resumable only with partial progress and when no evaluation run
+    was created after it (e.g. a later completed run disqualifies an earlier cancel).
+    """
     email = require_session_email(request)
     user = get_user_by_email(db, email)
     if not user:

@@ -191,25 +191,58 @@ def is_evaluation_run_resumable(run: EvaluationRun) -> bool:
     return completed > 0 and completed < total
 
 
-def get_resumable_cancelled_evaluation_run_for_account(
+def get_latest_cancelled_evaluation_run_for_account(
     db: Session,
     *,
     account_id: UUID,
 ) -> EvaluationRun | None:
-    candidates = (
+    return (
         db.query(EvaluationRun)
         .filter(
             EvaluationRun.account_id == account_id,
             EvaluationRun.status == "cancelled",
         )
         .order_by(EvaluationRun.created_at.desc())
-        .limit(20)
-        .all()
+        .first()
     )
-    for run in candidates:
-        if is_evaluation_run_resumable(run):
-            return run
-    return None
+
+
+def account_has_evaluation_run_after(
+    db: Session,
+    *,
+    account_id: UUID,
+    after_created_at,
+) -> bool:
+    """True if any evaluation run for the account was created strictly after ``after_created_at``."""
+    return (
+        db.query(EvaluationRun.id)
+        .filter(
+            EvaluationRun.account_id == account_id,
+            EvaluationRun.created_at > after_created_at,
+        )
+        .limit(1)
+        .first()
+        is not None
+    )
+
+
+def get_resumable_cancelled_evaluation_run_for_account(
+    db: Session,
+    *,
+    account_id: UUID,
+) -> EvaluationRun | None:
+    """
+    Latest cancelled run with partial progress, only if no newer evaluation run exists
+    for this account (e.g. a completed run after cancel makes the cancel not resumable).
+    """
+    run = get_latest_cancelled_evaluation_run_for_account(db, account_id=account_id)
+    if not run or not is_evaluation_run_resumable(run):
+        return None
+    if account_has_evaluation_run_after(
+        db, account_id=account_id, after_created_at=run.created_at
+    ):
+        return None
+    return run
 
 
 def evaluation_run_detail_dict(run: EvaluationRun) -> dict[str, Any]:
