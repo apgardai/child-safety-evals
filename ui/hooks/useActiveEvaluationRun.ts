@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import requestsClient from "lib/requests-client";
 import {
+  clearAllStoredEvaluationRunIds,
   clearStoredEvaluationRunId,
   readStoredEvaluationRunId,
   writeStoredEvaluationRunId,
@@ -30,8 +31,15 @@ export type EvaluationRunSnapshot = {
   scenarios_total?: number | null;
 };
 
-const TERMINAL: EvaluationRunStatus[] = ["completed", "failed", "cancelled"];
+type BenchmarkContextResponse = {
+  in_flight?: Record<string, unknown> | null;
+  resumable?: Record<string, unknown> | null;
+};
+
+const IN_FLIGHT: EvaluationRunStatus[] = ["pending", "running"];
 const POLL_MS = 2500;
+
+const DISMISSED_RESUMABLE_PREFIX = "cse_dismissed_resumable:";
 
 function mapDetail(data: Record<string, unknown>): EvaluationRunSnapshot {
   return {
@@ -65,6 +73,43 @@ function mapDetail(data: Record<string, unknown>): EvaluationRunSnapshot {
   };
 }
 
+function isInFlightStatus(status: EvaluationRunStatus): boolean {
+  return IN_FLIGHT.includes(status);
+}
+
+function dismissedResumableKey(accountId: string): string {
+  return `${DISMISSED_RESUMABLE_PREFIX}${accountId}`;
+}
+
+function isResumableDismissed(accountId: string, runId: string): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return (
+      sessionStorage.getItem(dismissedResumableKey(accountId)) === runId
+    );
+  } catch {
+    return false;
+  }
+}
+
+function dismissResumableRun(accountId: string, runId: string): void {
+  if (typeof window === "undefined") return;
+  try {
+    sessionStorage.setItem(dismissedResumableKey(accountId), runId);
+  } catch {
+    /* ignore */
+  }
+}
+
+async function fetchAccountId(signal?: AbortSignal): Promise<string | null> {
+  const res = await requestsClient.get<{
+    user?: { account_id?: string };
+  }>("/api/auth/me", { signal, validateStatus: () => true });
+  if (res.status < 200 || res.status >= 300) return null;
+  const id = res.data.user?.account_id?.trim();
+  return id || null;
+}
+
 export type StartEvaluationPayload = {
   apiKey: string;
   customApiKey?: string;
@@ -79,14 +124,69 @@ export type StartEvaluationPayload = {
 export function useActiveEvaluationRun(options?: {
   onCompleted?: (runId: string) => void;
 }) {
+  const [accountId, setAccountId] = useState<string | null>(null);
   const [run, setRun] = useState<EvaluationRunSnapshot | null>(null);
+  const [resumableRun, setResumableRun] = useState<EvaluationRunSnapshot | null>(
+    null
+  );
   const [loading, setLoading] = useState(true);
   const [starting, setStarting] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [pollError, setPollError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const accountIdRef = useRef<string | null>(null);
   const onCompletedRef = useRef(options?.onCompleted);
   onCompletedRef.current = options?.onCompleted;
+
+  accountIdRef.current = accountId;
+
+  const applyBenchmarkContext = useCallback(
+    (data: BenchmarkContextResponse, acctId: string) => {
+      const inFlight = data.in_flight
+        ? mapDetail(data.in_flight)
+        : null;
+      const resumable = data.resumable
+        ? mapDetail(data.resumable)
+        : null;
+
+      if (inFlight && isInFlightStatus(inFlight.status)) {
+        setRun(inFlight);
+        setResumableRun(null);
+        writeStoredEvaluationRunId(acctId, inFlight.id);
+        return;
+      }
+
+      setRun(null);
+      clearStoredEvaluationRunId(acctId);
+
+      if (
+        resumable &&
+        resumable.status === "cancelled" &&
+        !isResumableDismissed(acctId, resumable.id)
+      ) {
+        setResumableRun(resumable);
+      } else {
+        setResumableRun(null);
+      }
+    },
+    []
+  );
+
+  const fetchBenchmarkContext = useCallback(
+    async (signal?: AbortSignal) => {
+      const res = await requestsClient.get<BenchmarkContextResponse>(
+        "/api/evaluation-runs/benchmark-context",
+        { signal, validateStatus: () => true }
+      );
+      if (res.status < 200 || res.status >= 300) {
+        throw new Error(
+          `Could not load evaluation context (HTTP ${res.status})`
+        );
+      }
+      return res.data ?? {};
+    },
+    []
+  );
 
   const fetchRun = useCallback(async (runId: string, signal?: AbortSignal) => {
     const res = await requestsClient.get<Record<string, unknown>>(
@@ -99,13 +199,48 @@ export function useActiveEvaluationRun(options?: {
     return mapDetail(res.data ?? {});
   }, []);
 
+  const handleTerminalSnapshot = useCallback(
+    (snapshot: EvaluationRunSnapshot, acctId: string) => {
+      if (snapshot.status === "completed" && snapshot.id) {
+        onCompletedRef.current?.(snapshot.id);
+      }
+      clearStoredEvaluationRunId(acctId);
+      setRun(null);
+
+      if (
+        snapshot.status === "cancelled" &&
+        snapshot.scenarios_completed != null &&
+        snapshot.scenarios_total != null &&
+        snapshot.scenarios_total > 0 &&
+        snapshot.scenarios_completed > 0 &&
+        snapshot.scenarios_completed < snapshot.scenarios_total &&
+        !isResumableDismissed(acctId, snapshot.id)
+      ) {
+        setResumableRun(snapshot);
+      }
+    },
+    []
+  );
+
   const refreshRun = useCallback(
     async (runId: string) => {
+      const acctId = accountIdRef.current;
       try {
         const snapshot = await fetchRun(runId, abortRef.current?.signal);
+        if (!isInFlightStatus(snapshot.status)) {
+          if (acctId) {
+            handleTerminalSnapshot(snapshot, acctId);
+          } else {
+            setRun(null);
+          }
+          return snapshot;
+        }
         setRun(snapshot);
+        setResumableRun(null);
         setPollError(null);
-        writeStoredEvaluationRunId(runId);
+        if (acctId) {
+          writeStoredEvaluationRunId(acctId, runId);
+        }
         return snapshot;
       } catch (e) {
         if ((e as Error).name !== "AbortError") {
@@ -114,69 +249,54 @@ export function useActiveEvaluationRun(options?: {
         return null;
       }
     },
-    [fetchRun]
+    [fetchRun, handleTerminalSnapshot]
   );
 
   const resolveInitialRun = useCallback(async () => {
     setLoading(true);
     setPollError(null);
     try {
-      const storedId = readStoredEvaluationRunId();
-      if (storedId) {
-        const snapshot = await fetchRun(storedId);
-        setRun(snapshot);
+      const acctId = await fetchAccountId(abortRef.current?.signal);
+      setAccountId(acctId);
+      if (!acctId) {
+        setRun(null);
+        setResumableRun(null);
         return;
       }
 
-      const activeRes = await requestsClient.get<{
-        active?: boolean;
-        id?: string;
-        status?: string;
-        progress_log?: string;
-        error_message?: string;
-        target_model?: string;
-        judge_model?: string;
-        user_model?: string;
-        created_at?: string;
-        celery_task_id?: string;
-        prompts?: string[];
-      }>("/api/evaluation-runs/active", { validateStatus: () => true });
+      const context = await fetchBenchmarkContext(abortRef.current?.signal);
+      applyBenchmarkContext(context, acctId);
 
-      if (
-        activeRes.status >= 200 &&
-        activeRes.status < 300 &&
-        activeRes.data?.active &&
-        activeRes.data.id
-      ) {
-        const snapshot = mapDetail(
-          activeRes.data as Record<string, unknown>
-        );
-        setRun(snapshot);
-        writeStoredEvaluationRunId(snapshot.id);
-      } else {
-        setRun(null);
+      const storedId = readStoredEvaluationRunId(acctId);
+      if (storedId && !context.in_flight) {
+        try {
+          const snapshot = await fetchRun(storedId, abortRef.current?.signal);
+          if (isInFlightStatus(snapshot.status)) {
+            setRun(snapshot);
+            setResumableRun(null);
+            writeStoredEvaluationRunId(acctId, snapshot.id);
+          } else {
+            clearStoredEvaluationRunId(acctId);
+          }
+        } catch {
+          clearStoredEvaluationRunId(acctId);
+        }
       }
     } catch (e) {
       setPollError((e as Error).message);
-      const storedId = readStoredEvaluationRunId();
-      if (storedId) {
-        setRun({
-          id: storedId,
-          status: "pending",
-          progress_log: "Reconnecting to evaluation status…\n",
-        });
-      }
+      setRun(null);
+      setResumableRun(null);
     } finally {
       setLoading(false);
     }
-  }, [fetchRun]);
+  }, [applyBenchmarkContext, fetchBenchmarkContext, fetchRun]);
 
   useEffect(() => {
     void resolveInitialRun();
   }, [resolveInitialRun]);
 
   useEffect(() => {
-    if (!run || TERMINAL.includes(run.status)) {
+    if (!run || !isInFlightStatus(run.status)) {
       return undefined;
     }
 
@@ -187,12 +307,6 @@ export function useActiveEvaluationRun(options?: {
     return () => window.clearInterval(interval);
   }, [run?.id, run?.status, refreshRun]);
 
-  useEffect(() => {
-    if (run?.status === "completed" && run.id) {
-      onCompletedRef.current?.(run.id);
-    }
-  }, [run?.status, run?.id]);
-
   const startEvaluation = useCallback(
     async (payload: StartEvaluationPayload) => {
       abortRef.current?.abort();
@@ -201,8 +315,13 @@ export function useActiveEvaluationRun(options?: {
 
       setStarting(true);
       setPollError(null);
-      clearStoredEvaluationRunId();
+      const acctId = accountIdRef.current ?? (await fetchAccountId(signal));
+      if (acctId) {
+        setAccountId(acctId);
+        clearStoredEvaluationRunId(acctId);
+      }
       setRun(null);
+      setResumableRun(null);
 
       try {
         if (payload.apiKey.trim()) {
@@ -240,9 +359,13 @@ export function useActiveEvaluationRun(options?: {
         }
 
         const runId = startRes.data.id;
-        writeStoredEvaluationRunId(runId);
+        if (acctId) {
+          writeStoredEvaluationRunId(acctId, runId);
+        }
         const snapshot = await fetchRun(runId, signal);
-        setRun(snapshot);
+        if (isInFlightStatus(snapshot.status)) {
+          setRun(snapshot);
+        }
       } catch (e) {
         if ((e as Error).name !== "AbortError") {
           setPollError((e as Error).message);
@@ -270,9 +393,13 @@ export function useActiveEvaluationRun(options?: {
           (res.data as { detail?: string })?.detail ?? res.statusText;
         throw new Error(detail || `HTTP ${res.status}`);
       }
-      const snapshot = mapDetail(res.data ?? {});
-      setRun(snapshot);
-      writeStoredEvaluationRunId(snapshot.id);
+      const acctId = accountIdRef.current;
+      setRun(null);
+      if (acctId) {
+        clearStoredEvaluationRunId(acctId);
+        const context = await fetchBenchmarkContext();
+        applyBenchmarkContext(context, acctId);
+      }
     } catch (e) {
       if ((e as Error).name !== "AbortError") {
         setPollError((e as Error).message);
@@ -280,12 +407,18 @@ export function useActiveEvaluationRun(options?: {
     } finally {
       setCancelling(false);
     }
-  }, [run?.id]);
+  }, [applyBenchmarkContext, fetchBenchmarkContext, run?.id]);
+
+  const dismissResumable = useCallback(() => {
+    if (!resumableRun?.id || !accountId) return;
+    dismissResumableRun(accountId, resumableRun.id);
+    setResumableRun(null);
+  }, [accountId, resumableRun?.id]);
 
   const isInFlight =
     starting ||
     cancelling ||
-    (run != null && !TERMINAL.includes(run.status));
+    (run != null && isInFlightStatus(run.status));
 
   const canCancel =
     !starting &&
@@ -295,6 +428,7 @@ export function useActiveEvaluationRun(options?: {
 
   return {
     run,
+    resumableRun,
     loading,
     starting,
     cancelling,
@@ -303,6 +437,9 @@ export function useActiveEvaluationRun(options?: {
     pollError,
     startEvaluation,
     cancelEvaluation: canCancel ? cancelEvaluation : undefined,
+    dismissResumable: resumableRun ? dismissResumable : undefined,
     refreshRun: run ? () => refreshRun(run.id) : undefined,
   };
 }
+
+export { clearAllStoredEvaluationRunIds };
