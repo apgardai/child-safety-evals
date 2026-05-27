@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import requestsClient from "lib/requests-client";
 import { viewerDataRequest } from "lib/viewerDataApi";
 import { EvaluationRunTracker } from "components/EvaluationRunTracker";
+import { ResumableEvaluationBanner } from "components/ResumableEvaluationBanner";
 import { ResultsOverview } from "components/ResultsOverview";
 import { useActiveEvaluationRun } from "hooks/useActiveEvaluationRun";
 import type { ViewerData } from "lib/viewerDataFromZip";
@@ -155,6 +156,7 @@ export default function Home() {
 
   const {
     run: activeRun,
+    resumableRun,
     loading: runLoading,
     starting,
     cancelling,
@@ -162,6 +164,7 @@ export default function Home() {
     pollError,
     startEvaluation,
     cancelEvaluation,
+    dismissResumable,
     refreshRun,
   } = useActiveEvaluationRun({
     onCompleted: (runId) => {
@@ -169,12 +172,7 @@ export default function Home() {
     },
   });
 
-  const flowPhase: FlowPhase =
-    activeRun?.status === "completed"
-      ? "complete"
-      : isInFlight
-        ? "running"
-        : "idle";
+  const flowPhase: FlowPhase = isInFlight ? "running" : "idle";
 
   useEffect(() => {
     requestsClient
@@ -189,12 +187,6 @@ export default function Home() {
         setCustomModelList([]);
       });
   }, []);
-
-  useEffect(() => {
-    if (activeRun?.status === "completed" && activeRun.id) {
-      void refreshOverviewFromRun(activeRun.id);
-    }
-  }, [activeRun?.status, activeRun?.id, refreshOverviewFromRun]);
 
   return (
     <div className="min-h-screen p-6 md:p-10 max-w-7xl mx-auto">
@@ -236,6 +228,13 @@ export default function Home() {
         customModelList={customModelList}
         flowPhase={flowPhase}
       />
+
+      {resumableRun && (
+        <ResumableEvaluationBanner
+          run={resumableRun}
+          onDismiss={dismissResumable}
+        />
+      )}
 
       {(activeRun || starting || pollError || runLoading) && (
         <EvaluationRunTracker

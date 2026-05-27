@@ -3,9 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import requestsClient from "lib/requests-client";
 import {
-  clearAllStoredEvaluationRunIds,
+  clearLegacyStoredEvaluationRunId,
   clearStoredEvaluationRunId,
-  readStoredEvaluationRunId,
   writeStoredEvaluationRunId,
 } from "lib/active-evaluation-run-storage";
 
@@ -258,6 +257,7 @@ export function useActiveEvaluationRun(options?: {
     try {
       const acctId = await fetchAccountId(abortRef.current?.signal);
       setAccountId(acctId);
+      clearLegacyStoredEvaluationRunId();
       if (!acctId) {
         setRun(null);
         setResumableRun(null);
@@ -266,22 +266,6 @@ export function useActiveEvaluationRun(options?: {
 
       const context = await fetchBenchmarkContext(abortRef.current?.signal);
       applyBenchmarkContext(context, acctId);
-
-      const storedId = readStoredEvaluationRunId(acctId);
-      if (storedId && !context.in_flight) {
-        try {
-          const snapshot = await fetchRun(storedId, abortRef.current?.signal);
-          if (isInFlightStatus(snapshot.status)) {
-            setRun(snapshot);
-            setResumableRun(null);
-            writeStoredEvaluationRunId(acctId, snapshot.id);
-          } else {
-            clearStoredEvaluationRunId(acctId);
-          }
-        } catch {
-          clearStoredEvaluationRunId(acctId);
-        }
-      }
     } catch (e) {
       setPollError((e as Error).message);
       setRun(null);
@@ -441,5 +425,3 @@ export function useActiveEvaluationRun(options?: {
     refreshRun: run ? () => refreshRun(run.id) : undefined,
   };
 }
-
-export { clearAllStoredEvaluationRunIds };

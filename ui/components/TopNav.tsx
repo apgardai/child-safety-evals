@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
 import { requiresAuthPathname } from "lib/auth-paths";
+import { clearAllStoredEvaluationRunIds } from "lib/active-evaluation-run-storage";
 import requestsClient from "lib/requests-client";
 
 const baseTabs = [
@@ -56,6 +57,7 @@ export function TopNav() {
     } catch {
       /* still clear UI */
     }
+    clearAllStoredEvaluationRunIds();
     setUserEmail(null);
     router.refresh();
     if (requiresAuthPathname(pathname)) {

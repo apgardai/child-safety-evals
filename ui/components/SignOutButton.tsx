@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 
+import { clearAllStoredEvaluationRunIds } from "lib/active-evaluation-run-storage";
 import requestsClient from "lib/requests-client";
 
 export function SignOutButton() {
@@ -11,6 +12,7 @@ export function SignOutButton() {
     setBusy(true);
     try {
       await requestsClient.post("/api/auth/logout", null, { validateStatus: () => true });
+      clearAllStoredEvaluationRunIds();
       window.location.assign("/");
     } finally {
       setBusy(false);
