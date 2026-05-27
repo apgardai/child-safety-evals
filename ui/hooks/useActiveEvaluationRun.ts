@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import requestsClient, { sameOriginApiUrl } from "lib/requests-client";
+import requestsClient from "lib/requests-client";
 import {
   clearStoredEvaluationRunId,
   readStoredEvaluationRunId,
@@ -261,9 +261,7 @@ export function useActiveEvaluationRun(options?: {
     setPollError(null);
     try {
       const res = await requestsClient.post<Record<string, unknown>>(
-        sameOriginApiUrl(
-          `/api/evaluation-runs/${encodeURIComponent(run.id)}/cancel`
-        ),
+        `/api/evaluation-runs/${encodeURIComponent(run.id)}/cancel`,
         {},
         { validateStatus: () => true }
       );
