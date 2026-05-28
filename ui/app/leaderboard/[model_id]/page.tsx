@@ -39,7 +39,7 @@ export default function LeaderboardModelPage({
           </p>
         </div>
         <Link
-          href="/leaderboard"
+          href="/"
           className="shrink-0 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-sm font-medium text-[var(--text)] hover:bg-[var(--gray-100)]"
         >
           Leaderboard

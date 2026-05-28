@@ -8,17 +8,22 @@ import { getFirebaseAuth } from "lib/firebase-client";
 import { postSessionLogin } from "lib/session-login-client";
 
 type Props = {
+  /** When set, overrides the `?next=` search param. */
+  nextPath?: string;
   /** Called when Firebase succeeded but `/api/auth/session-login` failed; use stored token to retry. */
   onSessionFailure?: (pending: { idToken: string; name?: string }) => void;
   onSessionSuccess?: () => void;
 };
 
-export function GoogleSignInButton({ onSessionFailure, onSessionSuccess }: Props) {
+export function GoogleSignInButton({ nextPath: nextPathProp, onSessionFailure, onSessionSuccess }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
-  const nextPath = searchParams.get("next")?.startsWith("/") ? searchParams.get("next")! : "/benchmark";
+  const nextFromQuery = searchParams.get("next");
+  const nextPath =
+    nextPathProp ??
+    (nextFromQuery?.startsWith("/") ? nextFromQuery : "/benchmark");
 
   async function signIn() {
     const provider = new GoogleAuthProvider();

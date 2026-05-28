@@ -1,7 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { SignInForm } from "components/SignInForm";
+import { useSession } from "hooks/useSession";
+import { notifySessionUpdated } from "lib/session-events";
 import requestsClient from "lib/requests-client";
 import { viewerDataRequest } from "lib/viewerDataApi";
 import { EvaluationRunTracker } from "components/EvaluationRunTracker";
@@ -190,7 +193,26 @@ function PipelineChecklist({
   );
 }
 
-export default function Home() {
+function BenchmarkSignedOut() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center text-sm text-[var(--muted)]">
+          Loading…
+        </div>
+      }
+    >
+      <SignInForm
+        nextPath="/benchmark"
+        onAuthenticated={() => {
+          notifySessionUpdated();
+        }}
+      />
+    </Suspense>
+  );
+}
+
+function BenchmarkAuthenticated() {
   const [modelList, setModelList] = useState<string[]>([]);
   const [customModelList, setCustomModelList] = useState<string[]>([]);
   const [customModelLabels, setCustomModelLabels] = useState<Record<string, string>>({});
@@ -319,6 +341,24 @@ export default function Home() {
       )}
     </PageContainer>
   );
+}
+
+export default function Home() {
+  const { authReady, isSignedIn } = useSession();
+
+  if (!authReady) {
+    return (
+      <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center text-sm text-[var(--muted)]">
+        Loading…
+      </div>
+    );
+  }
+
+  if (!isSignedIn) {
+    return <BenchmarkSignedOut />;
+  }
+
+  return <BenchmarkAuthenticated />;
 }
 
 function PipelineForm({

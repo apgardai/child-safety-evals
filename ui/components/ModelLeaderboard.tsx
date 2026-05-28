@@ -1,11 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
-import type { DocLink, LeaderboardRow } from "data/leaderboardModels";
+import type { LeaderboardRow } from "data/leaderboardModels";
 import { mainLeaderboardModels, otherLeaderboardModels } from "data/leaderboardModels";
-import { leaderboardModelPath, modelIdForLeaderboardRow } from "lib/leaderboardRoutes";
 import requestsClient from "lib/requests-client";
 import { resolveLeaderboardRowForTarget } from "lib/resolveLeaderboardProfile";
 
@@ -21,101 +19,79 @@ type EvaluationRunRow = {
 type EnrichedRow = LeaderboardRow & {
   runs: EvaluationRunRow[];
   bestScore: number | null;
-  bestRun: EvaluationRunRow | null;
-  modelId: string | null;
 };
 
-function LinkList({ title, links }: { title: string; links: DocLink[] }) {
-  if (links.length === 0) return null;
+function ScoreBar({ score }: { score: number | null }) {
+  const pct = typeof score === "number" ? Math.round(score) : null;
+  const width = pct != null ? Math.min(100, Math.max(0, pct)) : 0;
+
   return (
-    <div className="text-sm">
-      <span className="text-[var(--muted)]">{title}: </span>
-      <span className="inline-flex flex-wrap gap-x-3 gap-y-1">
-        {links.map((l) => (
-          <a
-            key={l.href}
-            href={l.href}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-[var(--accent)] hover:underline"
-          >
-            {l.label}
-          </a>
-        ))}
-      </span>
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between gap-3 text-sm">
+        <span className="text-[var(--muted)]">Overall score</span>
+        <span className="shrink-0 font-semibold tabular-nums text-[var(--text)]">
+          {pct != null ? `${pct}%` : "No runs yet"}
+        </span>
+      </div>
+      <div
+        className="h-2.5 w-full overflow-hidden rounded-full bg-[var(--gray-100)]"
+        role="progressbar"
+        aria-valuenow={pct ?? 0}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-label={pct != null ? `Overall score ${pct} percent` : "No benchmark runs yet"}
+      >
+        <div
+          className={[
+            "h-full rounded-full transition-[width] duration-300",
+            pct != null ? "bg-[var(--accent)]" : "bg-transparent",
+          ].join(" ")}
+          style={{ width: `${width}%` }}
+        />
+      </div>
     </div>
   );
 }
 
 function ModelCard({ row }: { row: EnrichedRow }) {
-  const headerScore =
-    typeof row.bestScore === "number" ? `${Math.round(row.bestScore)}%` : "No runs yet";
-  const detailHref = row.modelId ? leaderboardModelPath(row.modelId) : null;
-
-  const cardInner = (
-    <>
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+  return (
+    <article className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 md:p-5">
+      <div className="space-y-3">
         <div>
           <h3 className="font-semibold text-[var(--text)]">{row.provider}</h3>
-          <p className="text-[var(--text)]/90 mt-0.5">{row.model}</p>
+          <p className="mt-0.5 text-[var(--text)]/90">{row.model}</p>
         </div>
-        <div className="shrink-0 rounded-lg border border-[var(--border)] bg-[var(--gray-100)] px-3 py-1.5 text-center text-sm font-medium text-[var(--warning)]">
-          Overall: {headerScore}
-        </div>
-      </div>
-      <dl className="grid gap-1 text-sm text-[var(--muted)] sm:grid-cols-3">
-        <div>
-          <dt className="sr-only">Date</dt>
-          <dd>
-            <span className="text-[var(--muted)]">Date: </span>
-            {row.date}
-          </dd>
-        </div>
-        <div>
-          <dt className="sr-only">Size</dt>
-          <dd>
-            <span className="text-[var(--muted)]">Size: </span>
-            {row.size}
-          </dd>
-        </div>
-        <div>
-          <dt className="sr-only">License</dt>
-          <dd>
-            <span className="text-[var(--muted)]">License: </span>
-            {row.license}
-          </dd>
-        </div>
-      </dl>
-      <div className="text-xs text-[var(--muted)]">
-        {row.runs.length} benchmark run{row.runs.length === 1 ? "" : "s"} linked
-      </div>
-      {detailHref ? (
-        <span className="inline-block text-sm font-medium text-[var(--accent)]">
-          View results →
-        </span>
-      ) : (
-        <p className="text-sm text-[var(--muted)]">No benchmark results on disk yet.</p>
-      )}
-    </>
-  );
 
-  return (
-    <article className="rounded-xl border border-[var(--border)] bg-[var(--surface)]">
-      {detailHref ? (
-        <Link
-          href={detailHref}
-          className="block space-y-3 p-4 transition-colors hover:bg-[var(--gray-100)] md:p-5"
-        >
-          {cardInner}
-        </Link>
-      ) : (
-        <div className="p-4 md:p-5 space-y-3">{cardInner}</div>
-      )}
-      <div className="border-t border-[var(--border)] px-4 pb-4 pt-3 md:px-5 md:pb-5 space-y-1.5">
-        <LinkList title="API" links={row.apiLinks} />
-        {row.inferenceLinks && row.inferenceLinks.length > 0 ? (
-          <LinkList title="Inference" links={row.inferenceLinks} />
-        ) : null}
+        <ScoreBar score={row.bestScore} />
+
+        <dl className="grid gap-1 text-sm text-[var(--muted)] sm:grid-cols-3">
+          <div>
+            <dt className="sr-only">Date</dt>
+            <dd>
+              <span className="text-[var(--muted)]">Date: </span>
+              {row.date}
+            </dd>
+          </div>
+          <div>
+            <dt className="sr-only">Size</dt>
+            <dd>
+              <span className="text-[var(--muted)]">Size: </span>
+              {row.size}
+            </dd>
+          </div>
+          <div>
+            <dt className="sr-only">License</dt>
+            <dd>
+              <span className="text-[var(--muted)]">License: </span>
+              {row.license}
+            </dd>
+          </div>
+        </dl>
+
+        <p className="text-xs text-[var(--muted)]">
+          {row.runs.length} benchmark run{row.runs.length === 1 ? "" : "s"} linked
+        </p>
+
         {row.notes ? (
           <p className="text-sm text-[var(--muted)]">
             <span className="text-[var(--muted)]">Note: </span>
@@ -183,8 +159,6 @@ export function ModelLeaderboard() {
             typeof bestRun?.overall_score_pct === "number"
               ? bestRun.overall_score_pct
               : null,
-          bestRun,
-          modelId: modelIdForLeaderboardRow(row, bestRun),
         };
       })
       .sort((a, b) => {
@@ -196,21 +170,10 @@ export function ModelLeaderboard() {
   }, [runs]);
 
   return (
-    <section className="w-full space-y-6" aria-labelledby="leaderboard-heading">
-      <div className="text-center space-y-2">
-        <h2 id="leaderboard-heading" className="text-xl font-semibold text-[var(--text)] md:text-2xl">
-          Youth Mental Wellbeing Leaderboard
-        </h2>
-        <p className="text-sm text-[var(--muted)] max-w-xl mx-auto">
-          Models are ranked by highest overall benchmark score. Select a model to view risk
-          breakdown and scenario assessments.
-        </p>
-      </div>
-      <div className="space-y-3">
-        {leaderboardRows.map((row) => (
-          <ModelCard key={`${row.provider}-${row.model}`} row={row} />
-        ))}
-      </div>
+    <section className="w-full space-y-3" aria-label="Model results">
+      {leaderboardRows.map((row) => (
+        <ModelCard key={`${row.provider}-${row.model}`} row={row} />
+      ))}
     </section>
   );
 }

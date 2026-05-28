@@ -2,16 +2,16 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
 
 import { ApgardLogo } from "components/ApgardLogo";
+import { useSession } from "hooks/useSession";
 import { requiresAuthPathname } from "lib/auth-paths";
 import { clearAllStoredEvaluationRunIds } from "lib/active-evaluation-run-storage";
 import requestsClient from "lib/requests-client";
 
 const baseTabs = [
-  { href: "/", label: "Home" },
-  { href: "/leaderboard", label: "Leaderboard" },
+  { href: "/about", label: "About" },
+  { href: "/", label: "Leaderboard" },
 ] as const;
 
 const benchmarkTab = { href: "/benchmark", label: "Run Evaluations" } as const;
@@ -28,29 +28,8 @@ function tabClassName(active: boolean) {
 export function TopNav() {
   const pathname = usePathname();
   const router = useRouter();
-  const [userEmail, setUserEmail] = useState<string | null>(null);
-  const [authReady, setAuthReady] = useState(false);
-
-  const loadSession = useCallback(async () => {
-    try {
-      const res = await requestsClient.get<{ user?: { email?: string } }>("/api/auth/me", {
-        validateStatus: () => true,
-      });
-      if (res.status === 200) {
-        setUserEmail(res.data.user?.email ?? null);
-      } else {
-        setUserEmail(null);
-      }
-    } catch {
-      setUserEmail(null);
-    } finally {
-      setAuthReady(true);
-    }
-  }, []);
-
-  useEffect(() => {
-    void loadSession();
-  }, [loadSession, pathname]);
+  const onBenchmark = pathname === "/benchmark";
+  const { userEmail, authReady } = useSession({ enabled: !onBenchmark });
 
   async function handleSignOut() {
     try {
@@ -59,7 +38,6 @@ export function TopNav() {
       /* still clear UI */
     }
     clearAllStoredEvaluationRunIds();
-    setUserEmail(null);
     router.refresh();
     if (requiresAuthPathname(pathname)) {
       router.push(`/sign-in?next=${encodeURIComponent(pathname)}`);
@@ -71,13 +49,7 @@ export function TopNav() {
       ? `/sign-in?next=${encodeURIComponent(pathname)}`
       : "/sign-in";
 
-  const navTabs = userEmail
-    ? [
-        baseTabs[0],
-        ...baseTabs.slice(1),
-        benchmarkTab,
-      ]
-    : [...baseTabs];
+  const navTabs = [...baseTabs, benchmarkTab];
 
   return (
     <header className="sticky top-0 z-50 border-b border-[var(--border)] bg-[var(--bg)]/90 backdrop-blur-md">
@@ -91,7 +63,7 @@ export function TopNav() {
           {navTabs.map((tab) => {
             const active =
               tab.href === "/"
-                ? pathname === "/"
+                ? pathname === "/" || pathname.startsWith("/leaderboard/")
                 : pathname === tab.href || pathname.startsWith(`${tab.href}/`);
             return (
               <Link key={tab.href} href={tab.href} className={tabClassName(active)}>

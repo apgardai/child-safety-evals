@@ -1,11 +1,10 @@
 /**
  * Whether a pathname requires a session cookie. Keep matcher entries in `middleware.ts`
  * in sync (every path that returns true here should be listed there).
- * `/leaderboard` is public (curated model list; detail pages load public API model-results).
+ * `/` (leaderboard) and `/leaderboard/*` are public (detail pages load public API model-results).
  */
 export function requiresAuthPathname(pathname: string): boolean {
   if (
-    pathname === "/benchmark" ||
     (pathname.startsWith("/benchmark/") &&
       !pathname.startsWith("/benchmark/runs") &&
       !pathname.startsWith("/benchmark/testResults/")) ||
