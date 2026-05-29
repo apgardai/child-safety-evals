@@ -1,4 +1,4 @@
-/** Dispatched after sign-in so TopNav can refresh without polling on /benchmark. */
+/** Dispatched after sign-in or sign-out so TopNav re-fetches `/api/auth/me`. */
 export const SESSION_UPDATED_EVENT = "apgard-session-updated";
 
 export function notifySessionUpdated(): void {

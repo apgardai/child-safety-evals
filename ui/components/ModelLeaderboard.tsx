@@ -1,9 +1,14 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 import type { LeaderboardRow } from "data/leaderboardModels";
 import { mainLeaderboardModels, otherLeaderboardModels } from "data/leaderboardModels";
+import {
+  leaderboardModelPath,
+  modelIdForLeaderboardRow,
+} from "lib/leaderboardRoutes";
 import requestsClient from "lib/requests-client";
 import { resolveLeaderboardRowForTarget } from "lib/resolveLeaderboardProfile";
 
@@ -53,53 +58,86 @@ function ScoreBar({ score }: { score: number | null }) {
   );
 }
 
-function ModelCard({ row }: { row: EnrichedRow }) {
+function ModelCardContent({ row }: { row: EnrichedRow }) {
   return (
-    <article className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 md:p-5">
-      <div className="space-y-3">
-        <div>
-          <h3 className="font-semibold text-[var(--text)]">{row.provider}</h3>
-          <p className="mt-0.5 text-[var(--text)]/90">{row.model}</p>
-        </div>
-
-        <ScoreBar score={row.bestScore} />
-
-        <dl className="grid gap-1 text-sm text-[var(--muted)] sm:grid-cols-3">
-          <div>
-            <dt className="sr-only">Date</dt>
-            <dd>
-              <span className="text-[var(--muted)]">Date: </span>
-              {row.date}
-            </dd>
-          </div>
-          <div>
-            <dt className="sr-only">Size</dt>
-            <dd>
-              <span className="text-[var(--muted)]">Size: </span>
-              {row.size}
-            </dd>
-          </div>
-          <div>
-            <dt className="sr-only">License</dt>
-            <dd>
-              <span className="text-[var(--muted)]">License: </span>
-              {row.license}
-            </dd>
-          </div>
-        </dl>
-
-        <p className="text-xs text-[var(--muted)]">
-          {row.runs.length} benchmark run{row.runs.length === 1 ? "" : "s"} linked
-        </p>
-
-        {row.notes ? (
-          <p className="text-sm text-[var(--muted)]">
-            <span className="text-[var(--muted)]">Note: </span>
-            {row.notes}
-          </p>
-        ) : null}
+    <div className="space-y-3">
+      <div>
+        <h3 className="font-semibold text-[var(--text)]">{row.provider}</h3>
+        <p className="mt-0.5 text-[var(--text)]/90">{row.model}</p>
       </div>
-    </article>
+
+      <ScoreBar score={row.bestScore} />
+
+      <dl className="grid gap-1 text-sm text-[var(--muted)] sm:grid-cols-3">
+        <div>
+          <dt className="sr-only">Date</dt>
+          <dd>
+            <span className="text-[var(--muted)]">Date: </span>
+            {row.date}
+          </dd>
+        </div>
+        <div>
+          <dt className="sr-only">Size</dt>
+          <dd>
+            <span className="text-[var(--muted)]">Size: </span>
+            {row.size}
+          </dd>
+        </div>
+        <div>
+          <dt className="sr-only">License</dt>
+          <dd>
+            <span className="text-[var(--muted)]">License: </span>
+            {row.license}
+          </dd>
+        </div>
+      </dl>
+
+      <p className="text-xs text-[var(--muted)]">
+        {row.runs.length} benchmark run{row.runs.length === 1 ? "" : "s"} linked
+      </p>
+
+      {row.notes ? (
+        <p className="text-sm text-[var(--muted)]">
+          <span className="text-[var(--muted)]">Note: </span>
+          {row.notes}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+const modelCardClassName =
+  "block rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 transition-colors md:p-5";
+
+function ModelCard({ row }: { row: EnrichedRow }) {
+  const bestRun = row.runs[0] ?? null;
+  const modelId = modelIdForLeaderboardRow(row, bestRun);
+
+  if (!modelId) {
+    return (
+      <article className={modelCardClassName}>
+        <ModelCardContent row={row} />
+      </article>
+    );
+  }
+
+  const href = leaderboardModelPath(modelId);
+  const label = `${row.provider} — ${row.model}`;
+
+  return (
+    <Link
+      href={href}
+      aria-label={`View benchmark results for ${label}`}
+      className={[
+        modelCardClassName,
+        "cursor-pointer hover:border-[var(--accent)]/40 hover:bg-[var(--gray-100)]",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]/50",
+      ].join(" ")}
+    >
+      <article>
+        <ModelCardContent row={row} />
+      </article>
+    </Link>
   );
 }
 

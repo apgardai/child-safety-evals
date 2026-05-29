@@ -8,6 +8,7 @@ import { useSession } from "hooks/useSession";
 import { requiresAuthPathname } from "lib/auth-paths";
 import { clearAllStoredEvaluationRunIds } from "lib/active-evaluation-run-storage";
 import requestsClient from "lib/requests-client";
+import { notifySessionUpdated } from "lib/session-events";
 
 const baseTabs = [
   { href: "/about", label: "About" },
@@ -38,6 +39,7 @@ export function TopNav() {
       /* still clear UI */
     }
     clearAllStoredEvaluationRunIds();
+    notifySessionUpdated();
     router.refresh();
     if (requiresAuthPathname(pathname)) {
       router.push(`/sign-in?next=${encodeURIComponent(pathname)}`);

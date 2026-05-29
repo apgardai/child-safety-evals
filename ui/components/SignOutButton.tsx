@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import { clearAllStoredEvaluationRunIds } from "lib/active-evaluation-run-storage";
 import requestsClient from "lib/requests-client";
+import { notifySessionUpdated } from "lib/session-events";
 
 export function SignOutButton() {
   const [busy, setBusy] = useState(false);
@@ -13,6 +14,7 @@ export function SignOutButton() {
     try {
       await requestsClient.post("/api/auth/logout", null, { validateStatus: () => true });
       clearAllStoredEvaluationRunIds();
+      notifySessionUpdated();
       window.location.assign("/");
     } finally {
       setBusy(false);

@@ -1,6 +1,7 @@
 import axios from "axios";
 
 import requestsClient from "lib/requests-client";
+import { notifySessionUpdated } from "lib/session-events";
 
 export type SessionLoginErrorBody = {
   error?: string;
@@ -26,6 +27,7 @@ export async function postSessionLogin(body: {
     await requestsClient.post("/api/auth/session-login", body, {
       headers: { "Content-Type": "application/json" },
     });
+    notifySessionUpdated();
     return { ok: true };
   } catch (error: unknown) {
     if (!axios.isAxiosError<SessionLoginErrorBody>(error)) {
