@@ -15,7 +15,7 @@ export const metadata: Metadata = {
   title: "apgard — Youth Mental Wellbeing Evaluations",
   description: "Benchmark tooling and scenario review for youth mental wellbeing evaluations",
   icons: {
-    icon: "/apgard_without_name.png",
+    icon: "/favicon-32x32.png",
   },
 };
 
