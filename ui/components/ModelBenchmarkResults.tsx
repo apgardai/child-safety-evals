@@ -105,6 +105,15 @@ export function ModelBenchmarkResults({ modelId, scenariosHref }: ModelBenchmark
 
   return (
     <div className="space-y-10">
+      {data.inProgress ? (
+        <div
+          className="rounded-lg border border-[var(--warning)]/40 bg-[var(--warning)]/10 px-4 py-3 text-sm text-[var(--text)]"
+          role="status"
+        >
+          Benchmark in progress — showing completed tests from the live run. Refresh to see
+          new results.
+        </div>
+      ) : null}
       <TestResultsModelOverview data={data} />
       <ResultsOverview
         data={data}

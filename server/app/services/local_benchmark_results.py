@@ -15,6 +15,9 @@ from app.services.benchmark_paths import benchmark_root
 _MODEL_DIR_RE = re.compile(r"^[a-z0-9._-]+$")
 LOCAL_MODEL_RUN_ID_PREFIX = "local-model-"
 
+# While ``yarn run:model`` / ``cs-bench run`` is in progress, per-test JSON is written here.
+_BENCHMARK_RUN_TMP_DIRNAME = ".benchmark-run-tmp"
+
 
 def model_results_root() -> Path:
     return benchmark_root() / "data" / "model-results"
@@ -58,37 +61,52 @@ def _run_summary_from_bundle(
     *,
     run_id: str,
     model_dir: str | None = None,
+    run_dir: Path | None = None,
 ) -> dict[str, Any] | None:
     results_json = bundle_dir / "results.json"
     doc = _read_results_document(results_json)
-    if not doc:
+    meta = _read_run_meta(run_dir) if run_dir is not None else None
+    if not doc and not meta:
         return None
-    scores = doc.get("scores") if isinstance(doc.get("scores"), list) else []
+
+    scores = doc.get("scores") if isinstance(doc, dict) and isinstance(doc.get("scores"), list) else []
     try:
         mtime = datetime.fromtimestamp(
             results_json.stat().st_mtime, tz=timezone.utc
         ).isoformat()
     except OSError:
-        mtime = datetime.now(timezone.utc).isoformat()
-    target = (
-        str(doc.get("target")) if isinstance(doc.get("target"), str) else None
-    )
+        if meta and isinstance(meta.get("started_at"), str):
+            mtime = meta["started_at"]
+        else:
+            mtime = datetime.now(timezone.utc).isoformat()
+
+    judge_model, user_model = _resolve_run_models(doc, meta)
+    target = _resolve_target_model(doc, meta)
+    overall = _overall_score_pct(doc) if doc else None
+    risk_scores = _risk_scores(scores)
+    risk_items = _risk_items(scores)
+
+    if overall is None and run_dir is not None and _has_benchmark_run_tmp(run_dir):
+        partial_scores = _aggregate_scores_from_tmp(run_dir)
+        if partial_scores:
+            partial_doc = {"scores": partial_scores}
+            overall = _overall_score_pct(partial_doc)
+            risk_scores = _risk_scores(partial_scores)
+            risk_items = _risk_items(partial_scores)
+
     return {
         "id": run_id,
         "created_at": mtime,
         "target_model": target,
-        "judge_model": (
-            str(doc.get("judge")) if isinstance(doc.get("judge"), str) else None
-        ),
-        "user_model": (
-            str(doc.get("user")) if isinstance(doc.get("user"), str) else None
-        ),
-        "overall_score_pct": _overall_score_pct(doc),
-        "risk_scores": _risk_scores(scores),
-        "risk_items": _risk_items(scores),
+        "judge_model": judge_model,
+        "user_model": user_model,
+        "overall_score_pct": overall,
+        "risk_scores": risk_scores,
+        "risk_items": risk_items,
         "source": "local-file",
         "model_dir": model_dir,
         "file_path": str(results_json),
+        "in_progress": bool(run_dir is not None and _has_benchmark_run_tmp(run_dir)),
     }
 
 
@@ -163,11 +181,53 @@ def _risk_items(scores: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
 def _read_results_document(results_json_path: Path) -> dict[str, Any] | None:
     try:
-        raw = results_json_path.read_text(encoding="utf-8")
+        raw = results_json_path.read_text(encoding="utf-8").strip()
+        if not raw:
+            return None
         parsed = json.loads(raw)
     except (OSError, json.JSONDecodeError):
         return None
     return parsed if isinstance(parsed, dict) else None
+
+
+def _read_run_meta(run_dir: Path) -> dict[str, Any] | None:
+    """``run-meta.json`` written by ``yarn run:model`` before the CLI starts."""
+    path = run_dir / "run-meta.json"
+    try:
+        parsed = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    return parsed if isinstance(parsed, dict) else None
+
+
+def _resolve_run_models(
+    doc: dict[str, Any] | None,
+    meta: dict[str, Any] | None,
+) -> tuple[str | None, str | None]:
+    judge: str | None = None
+    user: str | None = None
+    if doc:
+        if isinstance(doc.get("judge"), str):
+            judge = doc["judge"]
+        if isinstance(doc.get("user"), str):
+            user = doc["user"]
+    if meta:
+        if not judge and isinstance(meta.get("judge_model"), str):
+            judge = meta["judge_model"]
+        if not user and isinstance(meta.get("user_model"), str):
+            user = meta["user_model"]
+    return judge, user
+
+
+def _resolve_target_model(
+    doc: dict[str, Any] | None,
+    meta: dict[str, Any] | None,
+) -> str | None:
+    if doc and isinstance(doc.get("target"), str):
+        return doc["target"]
+    if meta and isinstance(meta.get("target_model"), str):
+        return meta["target_model"]
+    return None
 
 
 def _load_risk_taxonomy() -> list[dict[str, Any]]:
@@ -252,6 +312,123 @@ def _normalize_scenario_record(
     }
 
 
+def _benchmark_run_tmp_dir(run_dir: Path) -> Path:
+    return run_dir / _BENCHMARK_RUN_TMP_DIRNAME
+
+
+def _has_benchmark_run_tmp(run_dir: Path) -> bool:
+    tmp_dir = _benchmark_run_tmp_dir(run_dir)
+    if not tmp_dir.is_dir():
+        return False
+    return any(tmp_dir.glob("*.json"))
+
+
+def _read_test_records_from_dir(results_dir: Path) -> list[dict[str, Any]]:
+    records: list[dict[str, Any]] = []
+    if not results_dir.is_dir():
+        return records
+    for path in sorted(results_dir.glob("*.json")):
+        try:
+            parsed = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        if isinstance(parsed, dict):
+            records.append(parsed)
+    return records
+
+
+def _grade_counts(grade: str | None) -> tuple[int, int, int]:
+    g = (grade or "").strip().lower()
+    return (
+        1 if g == "failing" else 0,
+        1 if g == "adequate" else 0,
+        1 if g == "exemplary" else 0,
+    )
+
+
+def _behavior_counts(grade: str | None, occurrence_count: Any) -> list[int]:
+    f, a, e = _grade_counts(grade)
+    count = occurrence_count if isinstance(occurrence_count, int) else 0
+    return [f, a, e, count]
+
+
+def _score_row_from_test_record(record: dict[str, Any]) -> dict[str, Any] | None:
+    scenario = record.get("scenario") if isinstance(record.get("scenario"), dict) else {}
+    seed = scenario.get("seed") if isinstance(scenario.get("seed"), dict) else {}
+    risk_category_id = seed.get("riskCategoryId")
+    risk_id = seed.get("riskId")
+    age_range = seed.get("ageRange")
+    if not all(isinstance(x, str) and x for x in (risk_category_id, risk_id, age_range)):
+        return None
+
+    assessment = (
+        record.get("assessment") if isinstance(record.get("assessment"), dict) else {}
+    )
+    behavior = (
+        record.get("behaviorAssessment")
+        if isinstance(record.get("behaviorAssessment"), dict)
+        else {}
+    )
+
+    def behavior_field(name: str) -> list[int]:
+        field = behavior.get(name) if isinstance(behavior.get(name), dict) else {}
+        return _behavior_counts(
+            field.get("grade") if isinstance(field.get("grade"), str) else None,
+            field.get("occurrenceCount"),
+        )
+
+    return {
+        "riskCategoryId": risk_category_id,
+        "riskId": risk_id,
+        "ageRange": age_range,
+        "prompt": str(record.get("prompt") or "default"),
+        "sums": {
+            "al": 1,
+            "as": list(_grade_counts(
+                assessment.get("grade") if isinstance(assessment.get("grade"), str) else None
+            )),
+            "an": behavior_field("anthropomorphism"),
+            "eh": behavior_field("epistemicHumility"),
+            "hr": behavior_field("humanRedirection"),
+        },
+    }
+
+
+def _aggregate_scores_from_test_records(
+    records: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    grouped: dict[str, dict[str, Any]] = {}
+    for record in records:
+        row = _score_row_from_test_record(record)
+        if not row:
+            continue
+        key = (
+            f"{row['riskCategoryId']}:{row['riskId']}:"
+            f"{row['ageRange']}:{row['prompt']}"
+        )
+        existing = grouped.get(key)
+        if existing is None:
+            grouped[key] = row
+            continue
+        sums = existing["sums"]
+        other = row["sums"]
+        sums["al"] = int(sums.get("al", 0)) + int(other.get("al", 0))
+        for field in ("as", "an", "eh", "hr"):
+            a = sums.get(field)
+            b = other.get(field)
+            if isinstance(a, list) and isinstance(b, list) and len(a) == len(b):
+                sums[field] = [int(x) + int(y) for x, y in zip(a, b)]
+        grouped[key] = existing
+    return list(grouped.values())
+
+
+def _aggregate_scores_from_tmp(run_dir: Path) -> list[dict[str, Any]]:
+    tmp_dir = _benchmark_run_tmp_dir(run_dir)
+    if not tmp_dir.is_dir():
+        return []
+    return _aggregate_scores_from_test_records(_read_test_records_from_dir(tmp_dir))
+
+
 def _scenarios_from_test_results_dir(
     test_results_dir: Path,
     category_by_id: dict[str, str],
@@ -323,6 +500,7 @@ def list_model_result_runs() -> list[dict[str, Any]]:
                 bundle,
                 run_id=model_results_run_id(entry.name),
                 model_dir=entry.name,
+                run_dir=entry,
             )
             if summary:
                 runs.append(summary)
@@ -347,19 +525,30 @@ def _artifact_roots(bundle_dir: Path, run_dir: Path) -> list[Path]:
 def _load_viewer_from_bundle(bundle_dir: Path, *, run_dir: Path) -> dict[str, Any]:
     results_json = bundle_dir / "results.json"
     doc = _read_results_document(results_json)
-    if not doc:
+    meta = _read_run_meta(run_dir)
+    if not doc and not meta:
         raise ValueError(f"Invalid results.json in {bundle_dir}")
 
     risks = _load_risk_taxonomy()
     category_by_id, risk_by_key = _risk_label_maps(risks)
+    in_progress = False
 
     scenarios: list[dict[str, Any]] = []
-    for root in _artifact_roots(bundle_dir, run_dir):
-        zip_path = root / "results.zip"
-        if zip_path.is_file():
-            scenarios = _scenarios_from_zip(zip_path, category_by_id, risk_by_key)
-            if scenarios:
-                break
+    if _has_benchmark_run_tmp(run_dir):
+        tmp_dir = _benchmark_run_tmp_dir(run_dir)
+        scenarios = _scenarios_from_test_results_dir(
+            tmp_dir, category_by_id, risk_by_key
+        )
+        if scenarios:
+            in_progress = True
+
+    if not scenarios:
+        for root in _artifact_roots(bundle_dir, run_dir):
+            zip_path = root / "results.zip"
+            if zip_path.is_file():
+                scenarios = _scenarios_from_zip(zip_path, category_by_id, risk_by_key)
+                if scenarios:
+                    break
     if not scenarios:
         for root in _artifact_roots(bundle_dir, run_dir):
             test_results_dir = root / "testResults"
@@ -372,7 +561,8 @@ def _load_viewer_from_bundle(bundle_dir: Path, *, run_dir: Path) -> dict[str, An
         raise FileNotFoundError(
             f"No scenario results under {run_dir} "
             "(expected results.zip or testResults/*.json under the model dir, "
-            "a nested results/ folder, or results/testResults/)"
+            "a nested results/ folder, results/testResults/, or "
+            f"{_BENCHMARK_RUN_TMP_DIRNAME}/ while the benchmark CLI is running)"
         )
 
     try:
@@ -382,18 +572,28 @@ def _load_viewer_from_bundle(bundle_dir: Path, *, run_dir: Path) -> dict[str, An
     except OSError:
         generated_at = datetime.now(timezone.utc).isoformat()
 
-    scores = doc.get("scores") if isinstance(doc.get("scores"), list) else []
+    scores = (
+        doc.get("scores")
+        if isinstance(doc, dict) and isinstance(doc.get("scores"), list)
+        else []
+    )
+    if in_progress and not scores:
+        scores = _aggregate_scores_from_tmp(run_dir)
+    judge_model, user_model = _resolve_run_models(doc, meta)
+    prompts: list[str] = []
+    if isinstance(doc, dict) and isinstance(doc.get("prompts"), list):
+        prompts = [str(p) for p in doc["prompts"]]
+    elif meta and isinstance(meta.get("prompts"), list):
+        prompts = [str(p) for p in meta["prompts"]]
+
     return {
         "generatedAt": generated_at,
+        "inProgress": in_progress,
         "summary": {
-            "target": str(doc.get("target") or ""),
-            "judge": str(doc.get("judge") or ""),
-            "user": str(doc.get("user") or ""),
-            "prompts": (
-                [str(p) for p in doc["prompts"]]
-                if isinstance(doc.get("prompts"), list)
-                else []
-            ),
+            "target": str(_resolve_target_model(doc, meta) or ""),
+            "judge": judge_model or "",
+            "user": user_model or "",
+            "prompts": prompts,
             "scores": scores,
         },
         "risks": risks,

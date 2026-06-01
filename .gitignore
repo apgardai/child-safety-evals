@@ -85,6 +85,8 @@ benchmark/data/**
 !benchmark/data/model-results/
 !benchmark/data/model-results/**
 benchmark/data/.benchmark-*-tmp/**
+!benchmark/data/model-results/**/.benchmark-run-tmp/
+!benchmark/data/model-results/**/.benchmark-run-tmp/**
 benchmark/**/*.zip
 !benchmark/data/model-results/**/*.zip
 

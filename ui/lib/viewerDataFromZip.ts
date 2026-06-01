@@ -44,6 +44,8 @@ export type BenchmarkScoreRow = {
 
 export type ViewerData = {
   generatedAt?: string;
+  /** True when viewer data is built from in-progress CLI temp files. */
+  inProgress?: boolean;
   summary?: {
     target?: string;
     judge?: string;

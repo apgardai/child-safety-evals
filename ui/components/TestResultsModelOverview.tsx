@@ -22,6 +22,8 @@ function Fact({
 
 export function TestResultsModelOverview({ data }: { data: ViewerData }) {
   const target = data.summary?.target?.trim() ?? "";
+  const judge = data.summary?.judge?.trim() ?? "";
+  const user = data.summary?.user?.trim() ?? "";
   const profile = resolveLeaderboardRowForTarget(target);
 
   const slugHead = target.split(/[:]/)[0]?.trim() ?? target;
@@ -39,11 +41,13 @@ export function TestResultsModelOverview({ data }: { data: ViewerData }) {
       ) : null}
 
       <div className="mt-6 border-t border-[var(--border)] pt-6 space-y-5">
-        <dl className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+        <dl className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
           <Fact label="Provider" value={profile?.provider ?? MISSING_MODEL_FIELD} />
           <Fact label="Size" value={profile?.size ?? MISSING_MODEL_FIELD} />
           <Fact label="License" value={profile?.license ?? MISSING_MODEL_FIELD} />
           <Fact label="Reference dates" value={profile?.date ?? MISSING_MODEL_FIELD} />
+          <Fact label="Judge model" value={judge || MISSING_MODEL_FIELD} />
+          <Fact label="User model" value={user || MISSING_MODEL_FIELD} />
         </dl>
       </div>
     </header>
