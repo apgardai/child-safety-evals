@@ -138,6 +138,17 @@ export const mainLeaderboardModels: LeaderboardRow[] = [
     ],
   },
   {
+    provider: "xAI",
+    model: "Grok 4.3",
+    benchmarkTargets: ["grok-4.3"],
+    date: "04/30/26",
+    size: "Undisclosed (1M context)",
+    license: "Proprietary",
+    apiLinks: [
+      { label: "Models and pricing — xAI", href: "https://docs.x.ai/docs/models-and-pricing" },
+    ],
+  },
+  {
     provider: "Mistral",
     model: "Mistral Large 3",
     benchmarkTargets: ["mistral-large-3"],
