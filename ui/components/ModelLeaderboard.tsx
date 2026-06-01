@@ -95,13 +95,6 @@ function ModelCardContent({ row }: { row: EnrichedRow }) {
       <p className="text-xs text-[var(--muted)]">
         {row.runs.length} benchmark run{row.runs.length === 1 ? "" : "s"} linked
       </p>
-
-      {row.notes ? (
-        <p className="text-sm text-[var(--muted)]">
-          <span className="text-[var(--muted)]">Note: </span>
-          {row.notes}
-        </p>
-      ) : null}
     </div>
   );
 }

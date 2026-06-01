@@ -196,8 +196,8 @@ export function ResultsOverview({
         </div>
       )}
 
-      <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 md:p-5">
-        <h3 className="text-lg font-semibold text-[var(--text)] mb-1">Risk breakdown</h3>
+      <section>
+        <h2 className="text-2xl font-semibold text-[var(--text)] mb-4">Risk breakdown</h2>
         <p className="text-xs text-[var(--muted)] mb-4">
           Overall score and every mid-level risk listed under its high-level category.{" "}
           {onSelectRisk ? (
@@ -205,7 +205,7 @@ export function ResultsOverview({
           ) : null}
         </p>
 
-        <div className="overflow-x-auto -mx-1 px-1">
+        <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 md:p-5 overflow-x-auto -mx-1 px-1">
           <table className="w-full min-w-[36rem] border-collapse text-sm">
             <thead>
               <tr className="border-b border-[var(--border)] text-[10px] uppercase tracking-wide text-[var(--muted)]">

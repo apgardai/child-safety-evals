@@ -10,7 +10,6 @@ export type LeaderboardRow = {
   license: string;
   apiLinks: DocLink[];
   inferenceLinks?: DocLink[];
-  notes?: string;
 };
 
 export const mainLeaderboardModels: LeaderboardRow[] = [
@@ -31,14 +30,24 @@ export const mainLeaderboardModels: LeaderboardRow[] = [
   {
     provider: "OpenAI",
     model: "GPT 5.2",
-    benchmarkTargets: ["gpt-5.2", "gpt-5.2:high", "gpt-5.2:high:limited", "gpt-4o"],
+    benchmarkTargets: ["gpt-5.2", "gpt-5.2:high", "gpt-5.2:high:limited"],
     date: "12/11/25",
     size: "Undisclosed (400k context)",
     license: "Proprietary",
     apiLinks: [
       { label: "Models — OpenAI API", href: "https://platform.openai.com/docs/models" },
     ],
-    notes: "GPT 5.3 coming soon",
+  },
+  {
+    provider: "OpenAI",
+    model: "GPT-4o",
+    benchmarkTargets: ["gpt-4o", "gpt-4o-mini"],
+    date: "05/13/24",
+    size: "Undisclosed (128k context)",
+    license: "Proprietary",
+    apiLinks: [
+      { label: "Models — OpenAI API", href: "https://platform.openai.com/docs/models" },
+    ],
   },
   {
     provider: "Z.ai",
@@ -127,7 +136,6 @@ export const mainLeaderboardModels: LeaderboardRow[] = [
     apiLinks: [
       { label: "Models and pricing — xAI", href: "https://docs.x.ai/docs/models-and-pricing" },
     ],
-    notes: "Grok 4.2 releasing soon",
   },
   {
     provider: "Mistral",

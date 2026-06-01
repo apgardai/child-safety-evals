@@ -65,11 +65,26 @@ export function resolveLeaderboardRowForTarget(
     },
     {
       match: slug =>
-        slug.includes("gpt") ||
+        slug === "gpt-4o" ||
+        slug === "gpt-4o-mini" ||
+        slug.startsWith("gpt-4o-") ||
+        slug.includes("gpt-4o"),
+      row: byBenchmarkTarget("gpt-4o"),
+    },
+    {
+      match: slug =>
+        slug.includes("gpt-5") ||
+        slug.includes("gpt-5.2") ||
+        slug.startsWith("gpt-5.2"),
+      row: byBenchmarkTarget("gpt-5.2"),
+    },
+    {
+      match: slug =>
+        (slug.includes("gpt") && !slug.includes("gpt-4o")) ||
         slug.includes("openai/") ||
         /^o\d/i.test(slug) ||
         slug.includes("chatgpt"),
-      row: byProvider("OpenAI"),
+      row: byBenchmarkTarget("gpt-5.2"),
     },
   ];
 

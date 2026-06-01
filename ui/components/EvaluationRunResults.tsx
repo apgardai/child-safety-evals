@@ -7,15 +7,14 @@ import { TestResultsModelOverview } from "components/TestResultsModelOverview";
 import { ViewerDataExplorer } from "components/ViewerDataExplorer";
 import { humanizeSlug } from "lib/humanizeSlug";
 import requestsClient from "lib/requests-client";
-import { viewerDataRequestForModelId } from "lib/viewerDataApi";
+import { viewerDataRequest } from "lib/viewerDataApi";
 import type { ViewerData } from "lib/viewerDataFromZip";
 
-type ModelBenchmarkResultsProps = {
-  modelId: string;
-  scenariosHref: string;
+type EvaluationRunResultsProps = {
+  evaluationRunId: string;
 };
 
-export function ModelBenchmarkResults({ modelId, scenariosHref }: ModelBenchmarkResultsProps) {
+export function EvaluationRunResults({ evaluationRunId }: EvaluationRunResultsProps) {
   const [data, setData] = useState<ViewerData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -25,13 +24,14 @@ export function ModelBenchmarkResults({ modelId, scenariosHref }: ModelBenchmark
   } | null>(null);
 
   useEffect(() => {
+    if (!evaluationRunId) return;
     let cancelled = false;
     setLoading(true);
     setError(null);
     setData(null);
     setSelectedRisk(null);
 
-    const { url, params } = viewerDataRequestForModelId(modelId);
+    const { url, params } = viewerDataRequest(evaluationRunId);
     void requestsClient
       .get<ViewerData>(url, { params, validateStatus: () => true })
       .then((res) => {
@@ -40,9 +40,9 @@ export function ModelBenchmarkResults({ modelId, scenariosHref }: ModelBenchmark
           const detail =
             typeof res.data === "object" &&
             res.data !== null &&
-            "detail" in res.data &&
-            typeof (res.data as { detail?: unknown }).detail === "string"
-              ? (res.data as { detail: string }).detail
+            "error" in res.data &&
+            typeof (res.data as { error?: unknown }).error === "string"
+              ? (res.data as { error: string }).error
               : `Failed with ${res.status}`;
           throw new Error(detail);
         }
@@ -58,7 +58,7 @@ export function ModelBenchmarkResults({ modelId, scenariosHref }: ModelBenchmark
     return () => {
       cancelled = true;
     };
-  }, [modelId]);
+  }, [evaluationRunId]);
 
   const blockingError = !data && error;
 
@@ -101,14 +101,20 @@ export function ModelBenchmarkResults({ modelId, scenariosHref }: ModelBenchmark
     );
   }
 
-  if (!data) return null;
+  if (!data) {
+    return (
+      <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4 text-[var(--muted)]">
+        No scenarios found for this evaluation run.
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-10">
       <TestResultsModelOverview data={data} />
       <ResultsOverview
         data={data}
-        scenariosHref={scenariosHref}
+        scenariosHref="#scenarios"
         showScenariosCta={false}
         onSelectRisk={handleSelectRisk}
       />
