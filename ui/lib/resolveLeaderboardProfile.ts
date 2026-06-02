@@ -116,13 +116,12 @@ export function resolveLeaderboardRowForTarget(
       slug: "claude-sonnet-4.6",
     },
     {
-      match: (slug) =>
-        slug.includes("opus") || slug.includes("anthropic-claude-opus"),
-      slug: "anthropic/claude-opus-4",
+      match: (slug) => slug.includes("opus") || slug.includes("anthropic-claude-opus"),
+      slug: "claude-opus-4",
     },
     {
       match: (slug) => slug.includes("claude") || slug.includes("anthropic/"),
-      slug: "anthropic/claude-opus-4",
+      slug: "claude-opus-4",
     },
     {
       match: (slug) =>

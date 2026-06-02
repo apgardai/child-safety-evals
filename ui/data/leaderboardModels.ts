@@ -55,12 +55,9 @@ export const mainLeaderboardModels: LeaderboardRow[] = [
     provider: "Anthropic",
     model: "Claude Opus 4",
     benchmarkTargets: [
-      "anthropic/claude-opus-4",
-      "anthropic-claude-opus-4",
       "claude-opus-4",
       "claude-opus-4.7",
       "claude-opus-4.7:limited",
-      "anthropic/claude-opus-4.7",
     ],
     date: "—",
     size: "Undisclosed (200k–1m context)",

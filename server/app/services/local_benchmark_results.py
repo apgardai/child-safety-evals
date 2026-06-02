@@ -18,6 +18,9 @@ LOCAL_MODEL_RUN_ID_PREFIX = "local-model-"
 # While ``yarn run:model`` / ``cs-bench run`` is in progress, per-test JSON is written here.
 _BENCHMARK_RUN_TMP_DIRNAME = ".benchmark-run-tmp"
 
+# Completed runs with ``results/testResults/`` — do not prefer in-progress temp checkpoints.
+_SKIP_RUN_TMP_MODEL_DIRS = frozenset({"llama-4-scout"})
+
 
 def model_results_root() -> Path:
     return benchmark_root() / "data" / "model-results"
@@ -317,6 +320,8 @@ def _benchmark_run_tmp_dir(run_dir: Path) -> Path:
 
 
 def _has_benchmark_run_tmp(run_dir: Path) -> bool:
+    if run_dir.name in _SKIP_RUN_TMP_MODEL_DIRS:
+        return False
     tmp_dir = _benchmark_run_tmp_dir(run_dir)
     if not tmp_dir.is_dir():
         return False
@@ -534,22 +539,9 @@ def _load_viewer_from_bundle(bundle_dir: Path, *, run_dir: Path) -> dict[str, An
     in_progress = False
 
     scenarios: list[dict[str, Any]] = []
-    if _has_benchmark_run_tmp(run_dir):
-        tmp_dir = _benchmark_run_tmp_dir(run_dir)
-        scenarios = _scenarios_from_test_results_dir(
-            tmp_dir, category_by_id, risk_by_key
-        )
-        if scenarios:
-            in_progress = True
+    prefer_test_results = run_dir.name in _SKIP_RUN_TMP_MODEL_DIRS
 
-    if not scenarios:
-        for root in _artifact_roots(bundle_dir, run_dir):
-            zip_path = root / "results.zip"
-            if zip_path.is_file():
-                scenarios = _scenarios_from_zip(zip_path, category_by_id, risk_by_key)
-                if scenarios:
-                    break
-    if not scenarios:
+    if prefer_test_results:
         for root in _artifact_roots(bundle_dir, run_dir):
             test_results_dir = root / "testResults"
             scenarios = _scenarios_from_test_results_dir(
@@ -557,6 +549,41 @@ def _load_viewer_from_bundle(bundle_dir: Path, *, run_dir: Path) -> dict[str, An
             )
             if scenarios:
                 break
+        if not scenarios:
+            for root in _artifact_roots(bundle_dir, run_dir):
+                zip_path = root / "results.zip"
+                if zip_path.is_file():
+                    scenarios = _scenarios_from_zip(
+                        zip_path, category_by_id, risk_by_key
+                    )
+                    if scenarios:
+                        break
+    else:
+        if _has_benchmark_run_tmp(run_dir):
+            tmp_dir = _benchmark_run_tmp_dir(run_dir)
+            scenarios = _scenarios_from_test_results_dir(
+                tmp_dir, category_by_id, risk_by_key
+            )
+            if scenarios:
+                in_progress = True
+
+        if not scenarios:
+            for root in _artifact_roots(bundle_dir, run_dir):
+                zip_path = root / "results.zip"
+                if zip_path.is_file():
+                    scenarios = _scenarios_from_zip(
+                        zip_path, category_by_id, risk_by_key
+                    )
+                    if scenarios:
+                        break
+        if not scenarios:
+            for root in _artifact_roots(bundle_dir, run_dir):
+                test_results_dir = root / "testResults"
+                scenarios = _scenarios_from_test_results_dir(
+                    test_results_dir, category_by_id, risk_by_key
+                )
+                if scenarios:
+                    break
     if not scenarios:
         raise FileNotFoundError(
             f"No scenario results under {run_dir} "
