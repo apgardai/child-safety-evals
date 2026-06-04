@@ -263,6 +263,7 @@ export function ViewerDataExplorer({
   selectedRiskCategoryId,
   urlRiskCategory,
   onSubRiskSelectNavigateToCategory,
+  promptFilter,
 }: {
   data: ViewerData;
   selectedRisk?: { riskCategoryId: string; riskId: string } | null;
@@ -271,13 +272,19 @@ export function ViewerDataExplorer({
   urlRiskCategory?: string;
   /** Sync URL `[risk_category]`: concrete category id, or `"all"` for `/scenarios/all`. */
   onSubRiskSelectNavigateToCategory?: (riskCategoryId: string | "all") => void;
+  /** When set, syncs the prompt dropdown to the overview score view. */
+  promptFilter?: "all" | "default" | "child";
 }) {
   const [selected, setSelected] = useState<Scenario | null>(null);
   const [ageRange, setAgeRange] = useState("all");
   const [risk, setRisk] = useState("all");
-  const [prompt, setPrompt] = useState("all");
+  const [prompt, setPrompt] = useState<string>(promptFilter ?? "all");
   const [grade, setGrade] = useState("all");
   const [query, setQuery] = useState("");
+
+  useEffect(() => {
+    if (promptFilter) setPrompt(promptFilter);
+  }, [promptFilter]);
 
   useEffect(() => {
     if (!selectedRisk) return;

@@ -31,7 +31,7 @@ export function TestResultsModelOverview({ data }: { data: ViewerData }) {
   const subtitle = profile?.provider ?? (target ? "Benchmark target" : "");
 
   return (
-    <header className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-6 md:p-8 mb-8">
+    <header className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-6 md:p-8">
       <p className="text-[11px] font-medium uppercase tracking-wide text-[var(--muted)] mb-2">
         Test results
       </p>

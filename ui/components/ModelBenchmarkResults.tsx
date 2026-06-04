@@ -5,6 +5,11 @@ import { useEffect, useMemo, useState } from "react";
 import { ResultsOverview } from "components/ResultsOverview";
 import { TestResultsModelOverview } from "components/TestResultsModelOverview";
 import { ViewerDataExplorer } from "components/ViewerDataExplorer";
+import {
+  hasChildBenchmarkScores,
+  scoreViewPromptFilter,
+  type ScoreViewMode,
+} from "lib/benchmarkScoreViews";
 import { humanizeSlug } from "lib/humanizeSlug";
 import requestsClient from "lib/requests-client";
 import { viewerDataRequestForModelId } from "lib/viewerDataApi";
@@ -23,6 +28,7 @@ export function ModelBenchmarkResults({ modelId, scenariosHref }: ModelBenchmark
     riskCategoryId: string;
     riskId: string;
   } | null>(null);
+  const [scoreView, setScoreView] = useState<ScoreViewMode>("composite");
 
   useEffect(() => {
     let cancelled = false;
@@ -103,8 +109,19 @@ export function ModelBenchmarkResults({ modelId, scenariosHref }: ModelBenchmark
 
   if (!data) return null;
 
+  const hasChildScores = hasChildBenchmarkScores(
+    data.summary?.scores ?? [],
+    data.summary?.prompts
+  );
+  const activeScoreView: ScoreViewMode = hasChildScores
+    ? scoreView
+    : scoreView === "child"
+      ? "default"
+      : scoreView;
+  const scenarioPromptFilter = scoreViewPromptFilter(activeScoreView);
+
   return (
-    <div className="space-y-10">
+    <div className="space-y-6">
       {data.inProgress ? (
         <div
           className="rounded-lg border border-[var(--warning)]/40 bg-[var(--warning)]/10 px-4 py-3 text-sm text-[var(--text)]"
@@ -120,8 +137,11 @@ export function ModelBenchmarkResults({ modelId, scenariosHref }: ModelBenchmark
         scenariosHref={scenariosHref}
         showScenariosCta={false}
         onSelectRisk={handleSelectRisk}
+        scoreView={activeScoreView}
+        onScoreViewChange={setScoreView}
+        showScoreToggles
       />
-      <section id="scenarios" className="scroll-mt-24">
+      <section id="scenarios" className="scroll-mt-24 pt-4">
         <h2 className="text-2xl font-semibold text-[var(--text)] mb-4">Scenarios</h2>
         {selectedRisk && selectedRiskDescription ? (
           <p className="mb-3 text-xs text-[var(--muted)]">
@@ -129,7 +149,11 @@ export function ModelBenchmarkResults({ modelId, scenariosHref }: ModelBenchmark
             <span className="text-[var(--text)]/90">{selectedRiskDescription}</span>
           </p>
         ) : null}
-        <ViewerDataExplorer data={data} selectedRisk={selectedRisk} />
+        <ViewerDataExplorer
+          data={data}
+          selectedRisk={selectedRisk}
+          promptFilter={scenarioPromptFilter}
+        />
       </section>
     </div>
   );
