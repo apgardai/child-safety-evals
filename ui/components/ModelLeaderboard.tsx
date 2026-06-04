@@ -31,15 +31,9 @@ function ScoreBar({ score }: { score: number | null }) {
   const width = pct != null ? Math.min(100, Math.max(0, pct)) : 0;
 
   return (
-    <div className="space-y-1.5">
-      <div className="flex items-center justify-between gap-3 text-sm">
-        <span className="text-[var(--muted)]">Overall score</span>
-        <span className="shrink-0 font-semibold tabular-nums text-[var(--text)]">
-          {pct != null ? `${pct}%` : "No runs yet"}
-        </span>
-      </div>
+    <div className="flex items-center gap-3">
       <div
-        className="h-2.5 w-full overflow-hidden rounded-full bg-[var(--gray-100)]"
+        className="h-2.5 min-w-0 flex-1 overflow-hidden rounded-full bg-[var(--gray-100)]"
         role="progressbar"
         aria-valuenow={pct ?? 0}
         aria-valuemin={0}
@@ -54,47 +48,22 @@ function ScoreBar({ score }: { score: number | null }) {
           style={{ width: `${width}%` }}
         />
       </div>
+      <span className="shrink-0 text-sm font-semibold tabular-nums text-[var(--text)]">
+        {pct != null ? `${pct}%` : "—"}
+      </span>
     </div>
   );
 }
 
 function ModelCardContent({ row }: { row: EnrichedRow }) {
   return (
-    <div className="space-y-3">
-      <div>
-        <h3 className="font-semibold text-[var(--text)]">{row.provider}</h3>
-        <p className="mt-0.5 text-[var(--text)]/90">{row.model}</p>
-      </div>
-
+    <div className="space-y-2">
+      <h3 className="font-semibold text-[var(--text)]">
+        <span>{row.provider}</span>
+        <span className="font-normal text-[var(--muted)]"> / </span>
+        <span className="font-medium text-[var(--text)]/90">{row.model}</span>
+      </h3>
       <ScoreBar score={row.bestScore} />
-
-      <dl className="grid gap-1 text-sm text-[var(--muted)] sm:grid-cols-3">
-        <div>
-          <dt className="sr-only">Date</dt>
-          <dd>
-            <span className="text-[var(--muted)]">Date: </span>
-            {row.date}
-          </dd>
-        </div>
-        <div>
-          <dt className="sr-only">Size</dt>
-          <dd>
-            <span className="text-[var(--muted)]">Size: </span>
-            {row.size}
-          </dd>
-        </div>
-        <div>
-          <dt className="sr-only">License</dt>
-          <dd>
-            <span className="text-[var(--muted)]">License: </span>
-            {row.license}
-          </dd>
-        </div>
-      </dl>
-
-      <p className="text-xs text-[var(--muted)]">
-        {row.runs.length} benchmark run{row.runs.length === 1 ? "" : "s"} linked
-      </p>
     </div>
   );
 }
@@ -115,7 +84,7 @@ function ModelCard({ row }: { row: EnrichedRow }) {
   }
 
   const href = leaderboardModelPath(modelId);
-  const label = `${row.provider} — ${row.model}`;
+  const label = `${row.provider} / ${row.model}`;
 
   return (
     <Link

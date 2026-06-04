@@ -7,6 +7,7 @@ import {
   type ReactNode,
 } from "react";
 import { humanizeSlug } from "lib/humanizeSlug";
+import { formatPromptVariantLabel } from "lib/promptVariantLabel";
 import type { Scenario, ViewerData } from "lib/viewerDataFromZip";
 
 type SafetyGradeKind = "failing" | "adequate" | "exemplary" | "unknown";
@@ -63,14 +64,6 @@ function formatAgeRangeLabel(ageRange: string | undefined): string {
   const m = /^(\d+)to(\d+)$/i.exec(raw.replace(/\s/g, ""));
   if (m) return `Age ${m[1]} to ${m[2]}`;
   return raw;
-}
-
-function formatPromptVariantLabel(prompt: string | undefined): string {
-  const p = (prompt ?? "").trim().toLowerCase();
-  if (p === "child") return "Child-aware";
-  if (p === "default") return "Assistant";
-  if (!p) return "—";
-  return p.charAt(0).toUpperCase() + p.slice(1);
 }
 
 function scenarioRiskCell(s: Scenario): { primary: string; secondary?: string } {
@@ -430,7 +423,7 @@ export function ViewerDataExplorer({
               <option value="all">All Prompts</option>
               {prompts.map((v) => (
                 <option key={v} value={v}>
-                  {v}
+                  {formatPromptVariantLabel(v)}
                 </option>
               ))}
             </select>

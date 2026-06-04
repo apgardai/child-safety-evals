@@ -14,6 +14,7 @@ import BenchmarkScenariosPreview from "components/BenchmarkScenariosPreview";
 import { ResultsOverview } from "components/ResultsOverview";
 import { useActiveEvaluationRun } from "hooks/useActiveEvaluationRun";
 import { uniqueCustomModelSlug } from "lib/customModel";
+import { formatPromptVariantLabel } from "lib/promptVariantLabel";
 import type { ViewerData } from "lib/viewerDataFromZip";
 
 const PROMPTS = ["default", "child"];
@@ -754,7 +755,7 @@ function PipelineForm({
           <label className="block text-sm font-medium text-[var(--muted)] mb-2">Prompt variants</label>
           {isCustomTargetModel && (
             <p className="mb-2 text-xs text-[var(--muted)]">
-              Custom target models use the default prompt only.
+              Custom target models use the Assistant prompt only.
             </p>
           )}
           <div className="flex flex-wrap gap-2">
@@ -773,7 +774,7 @@ function PipelineForm({
                   disabled={isCustomTargetModel}
                   className="rounded border-[var(--border)] text-[var(--accent)] focus:ring-[var(--accent)] disabled:cursor-not-allowed"
                 />
-                <span className="text-sm text-[var(--text)]">{p}</span>
+                <span className="text-sm text-[var(--text)]">{formatPromptVariantLabel(p)}</span>
               </label>
             ))}
           </div>

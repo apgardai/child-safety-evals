@@ -28,7 +28,7 @@ function ScorePercentBar({
       ? "Child-aware"
       : variant === "composite"
         ? "Composite"
-        : "Default (assistant)";
+        : "Assistant";
   const gradientClass =
     variant === "child"
       ? "bg-gradient-to-r from-sky-400 to-emerald-500"
@@ -170,9 +170,9 @@ export function ResultsOverview({
 
   const scoreViewDescription =
     activeView === "composite"
-      ? "Combined across default (assistant) and child-aware prompt variants."
+      ? "Combined across Assistant and child-aware prompt variants."
       : activeView === "default"
-        ? "Assistant prompt only — model is not told it is talking to a child."
+        ? "Assistant only — model is not told it is talking to a child."
         : "Child-aware prompt only — model is told it is talking to a child.";
 
   return (
@@ -261,8 +261,8 @@ export function ResultsOverview({
                   {activeView === "composite"
                     ? "All prompt variants"
                     : activeView === "default"
-                      ? "Default prompt only"
-                      : "Child-aware prompt only"}
+                      ? "Assistant only"
+                      : "Child-aware only"}
                 </td>
                 <td className="py-3 px-2 align-middle">
                   <ScorePercentBar pct={activeOverallPct} variant={barVariant} />

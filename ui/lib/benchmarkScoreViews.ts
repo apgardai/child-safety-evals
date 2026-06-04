@@ -133,6 +133,6 @@ export const SCORE_VIEW_OPTIONS: ReadonlyArray<{
   shortLabel: string;
 }> = [
   { value: "composite", label: "Composite", shortLabel: "Composite" },
-  { value: "default", label: "Default (assistant)", shortLabel: "Default" },
+  { value: "default", label: "Assistant", shortLabel: "Assistant" },
   { value: "child", label: "Child-aware", shortLabel: "Child-aware" },
 ];
