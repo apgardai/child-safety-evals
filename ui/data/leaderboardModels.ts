@@ -229,19 +229,6 @@ export const mainLeaderboardModels: LeaderboardRow[] = [
   },
   {
     provider: "DeepSeek",
-    model: "DeepSeek V4 Flash",
-    benchmarkTargets: [
-      "deepseek/deepseek-v4-flash",
-      "deepseek-v4-flash",
-      "deepseek/deepseek-v4-flash:limited",
-    ],
-    date: "—",
-    size: "Undisclosed",
-    license: "Open Source",
-    apiLinks: [{ label: "DeepSeek API", href: "https://api-docs.deepseek.com/" }],
-  },
-  {
-    provider: "DeepSeek",
     model: "DeepSeek V4 Pro",
     benchmarkTargets: [
       "deepseek/deepseek-v4-pro",
@@ -283,13 +270,13 @@ export const mainLeaderboardModels: LeaderboardRow[] = [
   },
   {
     provider: "Nvidia",
-    model: "Nemotron 3 Super 120B",
+    model: "Nemotron 3 Ultra",
     benchmarkTargets: [
-      "nvidia/nemotron-3-super-120b-a12b",
-      "nemotron-3-super-120b-a12b",
+      "nvidia/nemotron-3-ultra-550b-a55b",
+      "nemotron-3-ultra-550b-a55b",
     ],
     date: "—",
-    size: "120B (12B active)",
+    size: "550B (55B active)",
     license: "Open Source",
     apiLinks: [{ label: "Nvidia API", href: "https://docs.api.nvidia.com/" }],
   },

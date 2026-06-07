@@ -35,7 +35,7 @@ export function resolveLeaderboardRowForTarget(
   const rules: Array<{ match: (slug: string) => boolean; slug: string }> = [
     {
       match: (slug) => slug.includes("nemotron"),
-      slug: "nvidia/nemotron-3-super-120b-a12b",
+      slug: "nvidia/nemotron-3-ultra-550b-a55b",
     },
     {
       match: (slug) => slug.includes("minimax"),
@@ -52,10 +52,6 @@ export function resolveLeaderboardRowForTarget(
     {
       match: (slug) => slug.includes("glm"),
       slug: "zai/glm-5v-turbo",
-    },
-    {
-      match: (slug) => slug.includes("deepseek") && slug.includes("flash"),
-      slug: "deepseek/deepseek-v4-flash",
     },
     {
       match: (slug) => slug.includes("deepseek"),
