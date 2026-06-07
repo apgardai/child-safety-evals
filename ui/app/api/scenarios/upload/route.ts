@@ -4,12 +4,18 @@ import * as path from "node:path";
 import { NextRequest, NextResponse } from "next/server";
 
 import { requireApiAuth } from "lib/auth-server";
+import {
+  localBenchmarkApiEnabled,
+  localBenchmarkApiUnavailable,
+} from "lib/localBenchmarkApi";
 
 function getBenchmarkPath(): string {
   return path.resolve(process.cwd(), "..", "benchmark");
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
+  if (!localBenchmarkApiEnabled()) return localBenchmarkApiUnavailable();
+
   const auth = await requireApiAuth(request);
   if (!auth.ok) return auth.response;
 

@@ -4,6 +4,7 @@ import {
   loadLocalModelViewerViaPython,
   shouldTryPythonViewerFallback,
 } from "lib/loadLocalModelViewerPython";
+import { localBenchmarkApiEnabled } from "lib/localBenchmarkApi";
 import { fastApiForward } from "lib/server-fastapi";
 
 /** Proxy ``GET /api/model-results/{model_id}/viewer-data`` to FastAPI (filesystem model-results). */
@@ -24,7 +25,7 @@ export async function GET(
       cookieHeader
     );
 
-    if (shouldTryPythonViewerFallback(status, body)) {
+    if (localBenchmarkApiEnabled() && shouldTryPythonViewerFallback(status, body)) {
       const fallback = await loadLocalModelViewerViaPython(modelId);
       if (fallback) {
         return NextResponse.json(fallback);

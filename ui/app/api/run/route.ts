@@ -5,6 +5,10 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { requireApiAuth } from "lib/auth-server";
 import { fastApiFetchJson } from "lib/server-fastapi";
+import {
+  localBenchmarkApiEnabled,
+  localBenchmarkApiUnavailable,
+} from "lib/localBenchmarkApi";
 
 function parseEnvFile(envPath: string): Record<string, string> {
   if (!existsSync(envPath)) return {};
@@ -261,6 +265,10 @@ export async function POST(request: NextRequest) {
         { status: 502 }
       );
     }
+  }
+
+  if (!localBenchmarkApiEnabled()) {
+    return localBenchmarkApiUnavailable();
   }
 
   const benchmarkPath = getBenchmarkPath();

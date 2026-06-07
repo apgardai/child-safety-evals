@@ -4,6 +4,10 @@ import * as path from "node:path";
 import { type NextRequest, NextResponse } from "next/server";
 
 import { requireApiAuth } from "lib/auth-server";
+import {
+  localBenchmarkApiEnabled,
+  localBenchmarkApiUnavailable,
+} from "lib/localBenchmarkApi";
 
 function getBenchmarkPath(): string {
   const uiRoot = process.cwd();
@@ -16,6 +20,8 @@ function getCustomModelPath(): string {
 }
 
 export async function GET(request: NextRequest) {
+  if (!localBenchmarkApiEnabled()) return localBenchmarkApiUnavailable();
+
   const auth = await requireApiAuth(request);
   if (!auth.ok) return auth.response;
 
@@ -32,6 +38,8 @@ export async function GET(request: NextRequest) {
 }
 
 export async function PUT(request: NextRequest) {
+  if (!localBenchmarkApiEnabled()) return localBenchmarkApiUnavailable();
+
   const auth = await requireApiAuth(request);
   if (!auth.ok) return auth.response;
 
