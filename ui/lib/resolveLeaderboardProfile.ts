@@ -3,6 +3,7 @@ import {
   otherLeaderboardModels,
   type LeaderboardRow,
 } from "data/leaderboardModels";
+import { humanizeSlug } from "lib/humanizeSlug";
 
 const allRows: LeaderboardRow[] = [
   ...mainLeaderboardModels,
@@ -113,11 +114,11 @@ export function resolveLeaderboardRowForTarget(
     },
     {
       match: (slug) => slug.includes("opus") || slug.includes("anthropic-claude-opus"),
-      slug: "claude-opus-4",
+      slug: "claude-opus-4.8",
     },
     {
       match: (slug) => slug.includes("claude") || slug.includes("anthropic/"),
-      slug: "claude-opus-4",
+      slug: "claude-opus-4.8",
     },
     {
       match: (slug) =>
@@ -157,4 +158,14 @@ export function resolveLeaderboardRowForTarget(
     }
   }
   return null;
+}
+
+/** User-facing model title; prefers curated leaderboard names over raw benchmark slugs. */
+export function displayModelLabel(slug: string | undefined): string {
+  const s = (slug ?? "").trim();
+  if (!s) return "—";
+  const profile = resolveLeaderboardRowForTarget(s);
+  if (profile?.model) return profile.model;
+  const slugHead = s.split(/[:]/)[0]?.trim() ?? s;
+  return slugHead ? humanizeSlug(slugHead) : "Unknown target";
 }

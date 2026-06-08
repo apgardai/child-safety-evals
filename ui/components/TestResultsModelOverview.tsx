@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
-import { humanizeSlug } from "lib/humanizeSlug";
-import { resolveLeaderboardRowForTarget } from "lib/resolveLeaderboardProfile";
+import {
+  displayModelLabel,
+  resolveLeaderboardRowForTarget,
+} from "lib/resolveLeaderboardProfile";
 import type { ViewerData } from "lib/viewerDataFromZip";
 
 const MISSING_MODEL_FIELD = "—";
@@ -26,8 +28,7 @@ export function TestResultsModelOverview({ data }: { data: ViewerData }) {
   const user = data.summary?.user?.trim() ?? "";
   const profile = resolveLeaderboardRowForTarget(target);
 
-  const slugHead = target.split(/[:]/)[0]?.trim() ?? target;
-  const title = profile?.model ?? (slugHead ? humanizeSlug(slugHead) : "Unknown target");
+  const title = displayModelLabel(target);
   const subtitle = profile?.provider ?? (target ? "Benchmark target" : "");
 
   return (

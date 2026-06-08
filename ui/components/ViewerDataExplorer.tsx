@@ -7,6 +7,7 @@ import {
   type ReactNode,
 } from "react";
 import { humanizeSlug } from "lib/humanizeSlug";
+import { displayModelLabel } from "lib/resolveLeaderboardProfile";
 import { formatPromptVariantLabel } from "lib/promptVariantLabel";
 import type { Scenario, ViewerData } from "lib/viewerDataFromZip";
 
@@ -95,27 +96,6 @@ function inferModelMaker(slug: string | undefined): string {
   return "Unknown provider";
 }
 
-function formatTargetModelLabel(slug: string | undefined): string {
-  const s = (slug ?? "").trim();
-  if (!s) return "—";
-  return s
-    .split(/[:]+/)
-    .map((segment) =>
-      segment
-        .split(/[-_\s.]+/)
-        .filter(Boolean)
-        .map((part) => {
-          const lower = part.toLowerCase();
-          if (lower === "gpt") return "GPT";
-          if (lower === "api") return "API";
-          if (/^v?\d+(\.\d+)*[a-z]?$/i.test(part)) return part.toUpperCase();
-          return lower.charAt(0).toUpperCase() + lower.slice(1);
-        })
-        .join(" ")
-    )
-    .join(" · ");
-}
-
 function AiMark() {
   return (
     <span
@@ -143,7 +123,7 @@ function ScenarioDetailMeta({
     humanizeSlug(scenario.riskId) ||
     "—";
   const maker = inferModelMaker(targetModelSlug);
-  const modelLabel = formatTargetModelLabel(targetModelSlug);
+  const modelLabel = displayModelLabel(targetModelSlug);
 
   const fields: { label: string; value: ReactNode }[] = [
     { label: "Risk category", value: riskCategory },

@@ -42,6 +42,7 @@ export const mainLeaderboardModels: LeaderboardRow[] = [
       "gpt-5.5",
       "gpt-5.5:high",
       "gpt-5.5:high:limited",
+      "gpt-5.5-high-limited",
       "gpt-5.5:medium",
       "gpt-5.5:low",
       "openai/gpt-5.5",
@@ -53,11 +54,10 @@ export const mainLeaderboardModels: LeaderboardRow[] = [
   },
   {
     provider: "Anthropic",
-    model: "Claude Opus 4",
+    model: "Claude Opus 4.8",
     benchmarkTargets: [
-      "claude-opus-4",
-      "claude-opus-4.7",
-      "claude-opus-4.7:limited",
+      "claude-opus-4.8",
+      "anthropic/claude-opus-4.8",
     ],
     date: "—",
     size: "Undisclosed (200k–1m context)",
