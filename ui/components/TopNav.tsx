@@ -56,7 +56,7 @@ export function TopNav() {
   return (
     <header className="sticky top-0 z-50 border-b border-[var(--border)] bg-[var(--bg)]/90 backdrop-blur-md">
       <div className="site-container flex items-center gap-3 py-3 md:gap-6">
-        <ApgardLogo href="/" width={50} height={28} title="YouthSafe AI Benchmark" />
+        <ApgardLogo href="/" width={50} height={28} title="apgard Benchmark" />
 
         <nav
           className="flex min-w-0 flex-1 items-center justify-center gap-2 overflow-x-auto sm:gap-4"

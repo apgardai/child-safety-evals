@@ -4,14 +4,19 @@ import { PageContainer } from "components/PageContainer";
 
 export function LeaderboardPage() {
   return (
-    <PageContainer>
+    <PageContainer className="space-y-8">
+      <header className="space-y-2">
+        <h1 className="text-2xl font-bold tracking-tight text-brand-dark md:text-3xl">
+          Benchmark for AI youth mental well-being.
+        </h1>
+        <p className="max-w-3xl text-sm leading-relaxed text-[var(--muted)] md:text-base">
+          See how frontier models perform on youth mental wellbeing risks, using an expert-informed
+          taxonomy you can run yourself.
+        </p>
+      </header>
       <div className="grid items-start gap-8 lg:grid-cols-2 lg:gap-10 xl:gap-12">
         <LeaderboardSidebar />
         <div className="min-w-0">
-          <h2 className="mb-1 text-lg font-semibold text-[var(--text)] md:text-xl">Model results</h2>
-          <p className="mb-4 text-sm text-[var(--muted)]">
-            Ranked by composite score across assistant and child-aware prompt variants.
-          </p>
           <ModelLeaderboard />
         </div>
       </div>
