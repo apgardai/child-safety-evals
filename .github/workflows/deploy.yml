@@ -113,8 +113,7 @@ jobs:
         run: |
           set -e
           SCOUT_JSON="${CSE_ROOT}/benchmark/data/model-results/llama-4-scout/results.json"
-          SCOUT_NESTED="${CSE_ROOT}/benchmark/data/model-results/llama-4-scout/results/results.json"
-          if [ ! -f "$SCOUT_JSON" ] && [ ! -f "$SCOUT_NESTED" ]; then
+          if [ ! -f "$SCOUT_JSON" ]; then
             echo "::error::benchmark/data/model-results/ is not in this commit (gitignored or not added)."
             echo "Force-add and push before deploy, e.g.:"
             echo "  git add -f benchmark/data/model-results/ benchmark/data/scenarioSeeds.jsonl benchmark/data/scenarios.jsonl"
@@ -125,7 +124,7 @@ jobs:
       - name: Sync benchmark assets to EC2
         run: |
           set -e
-          # Do not use --delete: absent gitignored paths would wipe existing EC2 data.
+          # Do not use --delete on the full tree: gitignored / runtime paths on EC2 must survive.
           rsync -az \
             -e "ssh $SSH_OPTS -i key.pem" \
             --exclude node_modules \
@@ -140,6 +139,55 @@ jobs:
             --exclude 'data/scenarioSeeds_kora.jsonl' \
             "${CSE_ROOT}/benchmark/" \
             ${EC2_USER}@${{ secrets.CSE_EC2_HOST }}:${{ env.EC2_DEPLOY_DIR }}/benchmark/
+
+      - name: Prune stale model-results layout on EC2
+        run: |
+          ssh $SSH_OPTS -i key.pem ${EC2_USER}@${{ secrets.CSE_EC2_HOST }} bash -s << 'EOF'
+            set -euo pipefail
+            MODEL_RESULTS="${{ env.EC2_DEPLOY_DIR }}/benchmark/data/model-results"
+            if [ ! -d "$MODEL_RESULTS" ]; then
+              echo "No model-results directory on EC2; skip prune."
+              exit 0
+            fi
+
+            pruned_nested=0
+            pruned_staging=0
+
+            for model_dir in "$MODEL_RESULTS"/*/; do
+              [ -d "$model_dir" ] || continue
+              model_name="$(basename "$model_dir")"
+              nested="${model_dir}results"
+
+              if [ -d "$nested" ]; then
+                has_root_test_results=false
+                if [ -d "${model_dir}testResults" ] && \
+                  find "${model_dir}testResults" -maxdepth 1 -name '*.json' -print -quit | grep -q .; then
+                  has_root_test_results=true
+                fi
+                has_root_zip=false
+                if [ -f "${model_dir}results.zip" ]; then
+                  has_root_zip=true
+                fi
+
+                if $has_root_test_results || $has_root_zip; then
+                  echo "Pruning stale nested results/ for ${model_name}"
+                  rm -rf "$nested"
+                  pruned_nested=$((pruned_nested + 1))
+                else
+                  echo "Keeping nested results/ for ${model_name} (no canonical top-level bundle yet)"
+                fi
+              fi
+
+              staging="${model_dir}.merge-staging"
+              if [ -d "$staging" ]; then
+                echo "Pruning stale .merge-staging for ${model_name}"
+                rm -rf "$staging"
+                pruned_staging=$((pruned_staging + 1))
+              fi
+            done
+
+            echo "Prune complete: nested_results=${pruned_nested}, merge_staging=${pruned_staging}"
+          EOF
 
       - name: Create env file (local) and upload
         run: |
