@@ -32,8 +32,7 @@ function ScoreBar({ score }: { score: number | null }) {
 
   return (
     <div className="space-y-1.5">
-      <div className="flex items-center justify-between gap-2 text-xs text-[var(--muted)]">
-        <span>Composite score</span>
+      <div className="flex justify-end text-xs">
         <span className="shrink-0 font-semibold tabular-nums text-[var(--text)]">
           {pct != null ? `${pct}%` : "—"}
         </span>
@@ -44,9 +43,7 @@ function ScoreBar({ score }: { score: number | null }) {
         aria-valuenow={pct ?? 0}
         aria-valuemin={0}
         aria-valuemax={100}
-        aria-label={
-          pct != null ? `Composite score ${pct} percent` : "No benchmark runs yet"
-        }
+        aria-label={pct != null ? `${pct} percent` : "No benchmark runs yet"}
       >
         <div
           className={[

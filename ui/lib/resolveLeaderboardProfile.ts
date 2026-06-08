@@ -44,15 +44,23 @@ export function resolveLeaderboardRowForTarget(
     },
     {
       match: (slug) => slug.includes("mimo"),
-      slug: "xiaomi/mimo-v2.5-pro",
+      slug: "xiaomi/mimo-v2.5",
+    },
+    {
+      match: (slug) => slug.includes("qwen3.7") || slug.includes("qwen-3.7"),
+      slug: "qwen3.7-max",
     },
     {
       match: (slug) => slug.includes("qwen"),
-      slug: "alibaba/qwen3.6-27b",
+      slug: "qwen3.7-max",
+    },
+    {
+      match: (slug) => slug.includes("glm-5.1") || slug.includes("glm5.1"),
+      slug: "glm-5.1",
     },
     {
       match: (slug) => slug.includes("glm"),
-      slug: "zai/glm-5v-turbo",
+      slug: "glm-5.1",
     },
     {
       match: (slug) => slug.includes("deepseek"),
@@ -83,13 +91,6 @@ export function resolveLeaderboardRowForTarget(
       slug: "mistral-large-3",
     },
     {
-      match: (slug) =>
-        slug.includes("nano") ||
-        slug.includes("banana") ||
-        slug.includes("flash-image"),
-      slug: "gemini-3.1-flash-image",
-    },
-    {
       match: (slug) => slug.includes("gemini") && slug.includes("3.5"),
       slug: "gemini-3.5-flash",
     },
@@ -103,10 +104,6 @@ export function resolveLeaderboardRowForTarget(
     {
       match: (slug) => slug.includes("gemini"),
       slug: "gemini-3.1-pro",
-    },
-    {
-      match: (slug) => slug.includes("haiku"),
-      slug: "claude-haiku-4.5",
     },
     {
       match: (slug) => slug.includes("sonnet"),
@@ -143,10 +140,16 @@ export function resolveLeaderboardRowForTarget(
     },
     {
       match: (slug) =>
+        slug.includes("gpt-5.2") ||
+        slug.includes("gpt-5.2-chat") ||
+        slug.includes("chatgpt"),
+      slug: "gpt-5.2-chat-latest",
+    },
+    {
+      match: (slug) =>
         slug.includes("gpt") ||
         slug.includes("openai/") ||
-        /^o\d/i.test(slug) ||
-        slug.includes("chatgpt"),
+        /^o\d/i.test(slug),
       slug: "gpt-5.5",
     },
   ];

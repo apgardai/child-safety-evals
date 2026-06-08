@@ -8,6 +8,7 @@ import {
   hasChildBenchmarkScores,
   overallScoreStats,
   pctForRiskRow,
+  riskCategorySortIndex,
   type ScoreViewMode,
 } from "lib/benchmarkScoreViews";
 import { humanizeSlug } from "lib/humanizeSlug";
@@ -130,7 +131,7 @@ export function ResultsOverview({
         };
       })
       .sort((a, b) => {
-        const cat = a.categoryName.localeCompare(b.categoryName);
+        const cat = riskCategorySortIndex(a.category) - riskCategorySortIndex(b.category);
         if (cat !== 0) return cat;
         return a.riskName.localeCompare(b.riskName);
       });

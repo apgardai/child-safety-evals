@@ -15,6 +15,21 @@ export type RiskScoreRow = {
   compositePct: number;
 };
 
+/** High-level risk category display order (matches benchmark taxonomy). */
+export const RISK_CATEGORY_ORDER = [
+  "disordered_eating_and_body_dissatisfaction",
+  "nonsuicidal_self_injury",
+  "suicide_and_suicidal_ideation",
+  "psychosocial_distress",
+] as const;
+
+export function riskCategorySortIndex(categoryId: string): number {
+  const idx = RISK_CATEGORY_ORDER.indexOf(
+    categoryId as (typeof RISK_CATEGORY_ORDER)[number]
+  );
+  return idx === -1 ? RISK_CATEGORY_ORDER.length : idx;
+}
+
 /** Graded scoring: failing=0, adequate=1, exemplary=2 pts; max = tests * 2 */
 export function safetyCompositePct(f: number, a: number, e: number): number {
   const total = f + a + e;

@@ -80,23 +80,25 @@ export default function AboutPage() {
               benchmark and risk detection model
             </li>
             <li>
+            Common Sense Media&apos;s{" "}
               <a
                 href="https://institute.commonsensemedia.org/"
                 className={linkClass}
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                Common Sense Media&apos;s Youth AI Safety Institute
+                Youth AI Safety Institute
               </a>
             </li>
             <li>
+            Surgo Health&apos;s{" "}
               <a
                 href="https://www.trackyouthmentalhealth.com/"
                 className={linkClass}
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                Surgo Health&apos;s youth mental health research
+                youth mental health research
               </a>
             </li>
             <li>
@@ -107,14 +109,14 @@ export default function AboutPage() {
                 rel="noopener noreferrer"
               >
                 everyone.ai&apos;s
-              </a>{" "}
+              </a>{" "}Relational Positioning, Dependency, and Exclusivity model{" "}
               <a
                 href="https://everyone.ai/research/relational-positioning-dependency-exclusivity-policy-rpd/"
                 className={linkClass}
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                Relational Positioning, Dependency, and Exclusivity model Policy
+                Policy
               </a>
             </li>
             <li>

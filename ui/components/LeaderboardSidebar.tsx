@@ -36,23 +36,22 @@ function LeaderboardTabPanel() {
           rel="noopener noreferrer"
         >
           KORA&apos;s
-        </a>{" "}
+        </a>{" "}open-source AI child safety{" "}
         <a
           href="https://github.com/korabench/benchmark"
           className={linkClass}
           target="_blank"
           rel="noopener noreferrer"
         >
-          open-source AI child safety benchmark tool
+          benchmark tool
         </a>{" "}
         and extended with our youth mental wellbeing-specific taxonomy. Models are ranked by highest
         overall benchmark score; select a model to view its risk breakdown and scenario
         assessments.
       </p>
       <p>
-      Run the youth mental wellbeing benchmark{` `}
         <Link href="/benchmark" className={linkClass}>
-          here.
+          Run the youth mental wellbeing benchmark here.
         </Link>
       </p>
       <p>
@@ -116,7 +115,7 @@ function MethodologyTabPanel() {
         <ul className="list-disc space-y-3 pl-5 text-[var(--muted)]">
           <li>
             <span className="font-semibold text-[var(--text)]">
-              <a href="#" className={linkClass}>
+              <a href="https://docs.google.com/spreadsheets/d/1h30gyWQOpKcj-F_h94oHNGWhMuYKlLJfJjapqWz0mWE/edit?usp=sharing" className={linkClass}>
                 Taxonomy
               </a>{" "}
               design:
@@ -131,14 +130,14 @@ function MethodologyTabPanel() {
           <li>
             <span className="font-semibold text-[var(--text)]">
               Built upon{" "}
-              <a href="#" className={linkClass}>
+              <a href="https://korabench.notion.site/methodology" className={linkClass}>
                 KORA
               </a>
               :
             </span>{" "}
-            We applied our taxonomy onto KORA&apos;s expert-informed{" "}
-            <a href="#" className={linkClass}>
-              open-source AI child safety benchmark tool
+            We applied our taxonomy onto KORA&apos;s expert-informed open-source AI child safety{" "}
+            <a href="https://github.com/korabench/benchmark" className={linkClass}>
+              benchmark tool
             </a>{" "}
             to derive this youth mental well-being benchmark.
           </li>
