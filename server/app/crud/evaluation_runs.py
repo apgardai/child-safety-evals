@@ -81,15 +81,8 @@ def aggregate_safety_scores_from_scenarios(rows: list[Any]) -> list[dict[str, An
     return out
 
 
-def _score_row_uses_default_prompt(row: dict[str, Any]) -> bool:
-    """Leaderboard overall score uses the default (assistant) prompt run only."""
-    prompt = row.get("prompt")
-    if prompt is None or prompt == "":
-        return True
-    return str(prompt).strip().lower() == "default"
-
-
 def _overall_score_pct(payload: dict[str, Any]) -> float | None:
+    """Composite score across all prompt variants (assistant + child-aware)."""
     scores = payload.get("scores")
     if not isinstance(scores, list) or not scores:
         return None
@@ -99,8 +92,6 @@ def _overall_score_pct(payload: dict[str, Any]) -> float | None:
     exemplary = 0
     for row in scores:
         if not isinstance(row, dict):
-            continue
-        if not _score_row_uses_default_prompt(row):
             continue
         sums = row.get("sums")
         if not isinstance(sums, dict):

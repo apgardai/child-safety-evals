@@ -28,8 +28,8 @@ function LeaderboardTabPanel() {
       <p className="text-[var(--muted)]">
         Model results on youth mental well-being, built upon KORA&apos;s open-source AI child safety
         benchmark tool and extended with our youth mental wellbeing-specific taxonomy. Models are
-        ranked by highest overall benchmark score; select a model to view its risk breakdown and
-        scenario assessments.
+        ranked by highest composite benchmark score (assistant and child-aware prompt variants
+        combined); select a model to view its risk breakdown and scenario assessments.
       </p>
       <p>
         <Link href="/benchmark" className="font-semibold text-[var(--accent)] hover:underline">

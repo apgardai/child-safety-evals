@@ -31,26 +31,33 @@ function ScoreBar({ score }: { score: number | null }) {
   const width = pct != null ? Math.min(100, Math.max(0, pct)) : 0;
 
   return (
-    <div className="flex items-center gap-3">
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between gap-2 text-xs text-[var(--muted)]">
+        <span>Composite score</span>
+        <span className="shrink-0 font-semibold tabular-nums text-[var(--text)]">
+          {pct != null ? `${pct}%` : "—"}
+        </span>
+      </div>
       <div
-        className="h-2.5 min-w-0 flex-1 overflow-hidden rounded-full bg-[var(--gray-100)]"
+        className="h-2.5 min-w-0 overflow-hidden rounded-full bg-[var(--gray-100)]"
         role="progressbar"
         aria-valuenow={pct ?? 0}
         aria-valuemin={0}
         aria-valuemax={100}
-        aria-label={pct != null ? `Overall score ${pct} percent` : "No benchmark runs yet"}
+        aria-label={
+          pct != null ? `Composite score ${pct} percent` : "No benchmark runs yet"
+        }
       >
         <div
           className={[
             "h-full rounded-full transition-[width] duration-300",
-            pct != null ? "bg-[var(--accent)]" : "bg-transparent",
+            pct != null
+              ? "bg-gradient-to-r from-[var(--error)] via-[var(--warning)] to-[var(--success)]"
+              : "bg-transparent",
           ].join(" ")}
           style={{ width: `${width}%` }}
         />
       </div>
-      <span className="shrink-0 text-sm font-semibold tabular-nums text-[var(--text)]">
-        {pct != null ? `${pct}%` : "—"}
-      </span>
     </div>
   );
 }
