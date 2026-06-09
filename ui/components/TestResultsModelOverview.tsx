@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { MODEL_TYPE_LABELS } from "data/leaderboardModels";
 import {
   displayModelLabel,
   resolveLeaderboardRowForTarget,
@@ -44,9 +45,12 @@ export function TestResultsModelOverview({ data }: { data: ViewerData }) {
       <div className="mt-6 border-t border-[var(--border)] pt-6 space-y-5">
         <dl className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
           <Fact label="Provider" value={profile?.provider ?? MISSING_MODEL_FIELD} />
-          <Fact label="Size" value={profile?.size ?? MISSING_MODEL_FIELD} />
+          <Fact
+            label="Type"
+            value={profile?.type ? MODEL_TYPE_LABELS[profile.type] : MISSING_MODEL_FIELD}
+          />
           <Fact label="License" value={profile?.license ?? MISSING_MODEL_FIELD} />
-          <Fact label="Reference dates" value={profile?.date ?? MISSING_MODEL_FIELD} />
+          <Fact label="Release date" value={profile?.releaseDate ?? MISSING_MODEL_FIELD} />
           <Fact label="Judge model" value={judge || MISSING_MODEL_FIELD} />
           <Fact label="User model" value={user || MISSING_MODEL_FIELD} />
         </dl>

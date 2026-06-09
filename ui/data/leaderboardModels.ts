@@ -1,12 +1,23 @@
 export type DocLink = { label: string; href: string };
 
+/** Primary model capability category (normalized from vendor positioning). */
+export const MODEL_TYPES = ["Text", "Multimodal", "Reasoning", "Agentic"] as const;
+export type ModelType = (typeof MODEL_TYPES)[number];
+
+export const MODEL_TYPE_LABELS: Record<ModelType, string> = {
+  Text: "Text",
+  Multimodal: "Multimodal",
+  Reasoning: "Reasoning",
+  Agentic: "Agentic",
+};
+
 export type LeaderboardRow = {
   provider: string;
   model: string;
   /** Known benchmark target slugs that should map to this leaderboard card. */
   benchmarkTargets?: string[];
-  date: string;
-  size: string;
+  releaseDate: string;
+  type: ModelType;
   license: string;
   apiLinks: DocLink[];
   inferenceLinks?: DocLink[];
@@ -47,8 +58,8 @@ export const mainLeaderboardModels: LeaderboardRow[] = [
       "gpt-5.5:low",
       "openai/gpt-5.5",
     ],
-    date: "—",
-    size: "Undisclosed",
+    releaseDate: "04/23/26",
+    type: "Agentic",
     license: "Proprietary",
     apiLinks: OPENAI_API,
   },
@@ -62,8 +73,8 @@ export const mainLeaderboardModels: LeaderboardRow[] = [
       "gpt-5.2:high",
       "gpt-5.2:high:limited",
     ],
-    date: "—",
-    size: "Undisclosed",
+    releaseDate: "12/11/25",
+    type: "Reasoning",
     license: "Proprietary",
     apiLinks: OPENAI_API,
   },
@@ -74,8 +85,8 @@ export const mainLeaderboardModels: LeaderboardRow[] = [
       "claude-opus-4.8",
       "anthropic/claude-opus-4.8",
     ],
-    date: "—",
-    size: "Undisclosed (200k–1m context)",
+    releaseDate: "05/28/26",
+    type: "Reasoning",
     license: "Proprietary",
     apiLinks: ANTHROPIC_API,
   },
@@ -87,8 +98,8 @@ export const mainLeaderboardModels: LeaderboardRow[] = [
       "claude-sonnet-4.6:limited",
       "anthropic/claude-sonnet-4.6",
     ],
-    date: "02/17/26",
-    size: "Undisclosed (200k–1m context)",
+    releaseDate: "02/17/26",
+    type: "Multimodal",
     license: "Proprietary",
     apiLinks: ANTHROPIC_API,
   },
@@ -100,8 +111,8 @@ export const mainLeaderboardModels: LeaderboardRow[] = [
       "google/gemini-3.1-pro",
       "gemini-3.1-pro-preview",
     ],
-    date: "02/19/26",
-    size: "Undisclosed (1m context)",
+    releaseDate: "02/19/26",
+    type: "Multimodal",
     license: "Proprietary",
     apiLinks: GOOGLE_GEMINI_API,
     inferenceLinks: GOOGLE_AI_STUDIO,
@@ -115,8 +126,8 @@ export const mainLeaderboardModels: LeaderboardRow[] = [
       "gemini-3.1-flash",
       "google/gemini-3.1-flash",
     ],
-    date: "—",
-    size: "Undisclosed (1m context)",
+    releaseDate: "05/19/26",
+    type: "Agentic",
     license: "Proprietary",
     apiLinks: GOOGLE_GEMINI_API,
     inferenceLinks: GOOGLE_AI_STUDIO,
@@ -125,8 +136,8 @@ export const mainLeaderboardModels: LeaderboardRow[] = [
     provider: "Meta",
     model: "Llama 4 Scout",
     benchmarkTargets: ["llama-4-scout", "meta/llama-4-scout"],
-    date: "04/05/25",
-    size: "17B (16E)",
+    releaseDate: "04/05/25",
+    type: "Multimodal",
     license: "Open Source",
     apiLinks: [
       {
@@ -139,8 +150,8 @@ export const mainLeaderboardModels: LeaderboardRow[] = [
     provider: "Meta",
     model: "Llama 4 Maverick",
     benchmarkTargets: ["llama-4-maverick", "meta/llama-4-maverick"],
-    date: "04/05/25",
-    size: "17B (128E)",
+    releaseDate: "04/05/25",
+    type: "Multimodal",
     license: "Open Source",
     apiLinks: [
       {
@@ -153,8 +164,8 @@ export const mainLeaderboardModels: LeaderboardRow[] = [
     provider: "Mistral",
     model: "Mistral Large 3",
     benchmarkTargets: ["mistral-large-3", "mistral/mistral-large-3"],
-    date: "12/02/25",
-    size: "675B",
+    releaseDate: "12/02/25",
+    type: "Multimodal",
     license: "Proprietary",
     apiLinks: [{ label: "Mistral API specs", href: "https://docs.mistral.ai/api/" }],
   },
@@ -166,8 +177,8 @@ export const mainLeaderboardModels: LeaderboardRow[] = [
       "mistral-medium-3",
       "mistral/mistral-medium-3.5",
     ],
-    date: "—",
-    size: "Undisclosed",
+    releaseDate: "04/29/26",
+    type: "Reasoning",
     license: "Proprietary",
     apiLinks: [{ label: "Mistral API specs", href: "https://docs.mistral.ai/api/" }],
   },
@@ -175,8 +186,8 @@ export const mainLeaderboardModels: LeaderboardRow[] = [
     provider: "Mistral",
     model: "Mistral Small 4",
     benchmarkTargets: ["mistral-small-4", "mistral-small", "mistral/mistral-small-4"],
-    date: "—",
-    size: "Undisclosed",
+    releaseDate: "03/16/26",
+    type: "Reasoning",
     license: "Proprietary",
     apiLinks: [{ label: "Mistral API specs", href: "https://docs.mistral.ai/api/" }],
   },
@@ -184,8 +195,8 @@ export const mainLeaderboardModels: LeaderboardRow[] = [
     provider: "Moonshot AI",
     model: "Kimi K2.6",
     benchmarkTargets: ["kimi-k2.6", "moonshot/kimi-k2.6", "kimi-k2.5"],
-    date: "—",
-    size: "Undisclosed",
+    releaseDate: "04/21/26",
+    type: "Agentic",
     license: "Open Source",
     apiLinks: [
       { label: "Kimi API docs", href: "https://platform.moonshot.cn/docs/intro" },
@@ -195,8 +206,8 @@ export const mainLeaderboardModels: LeaderboardRow[] = [
     provider: "xAI",
     model: "Grok 4.3",
     benchmarkTargets: ["grok-4.3", "xai/grok-4.3"],
-    date: "04/30/26",
-    size: "Undisclosed (1M context)",
+    releaseDate: "04/30/26",
+    type: "Reasoning",
     license: "Proprietary",
     apiLinks: [
       { label: "Models and pricing — xAI", href: "https://docs.x.ai/docs/models-and-pricing" },
@@ -211,8 +222,8 @@ export const mainLeaderboardModels: LeaderboardRow[] = [
       "deepseek-v4-pro-thinking:limited",
       "deepseek/deepseek-v4-pro-thinking",
     ],
-    date: "—",
-    size: "Undisclosed",
+    releaseDate: "04/24/26",
+    type: "Reasoning",
     license: "Open Source",
     apiLinks: [{ label: "DeepSeek API", href: "https://api-docs.deepseek.com/" }],
   },
@@ -220,8 +231,8 @@ export const mainLeaderboardModels: LeaderboardRow[] = [
     provider: "Xiaomi",
     model: "MiMo V2.5",
     benchmarkTargets: ["mimo-v2.5", "xiaomi/mimo-v2.5", "xiaomi/mimo-v2.5-pro", "mimo-v2.5-pro"],
-    date: "—",
-    size: "Undisclosed",
+    releaseDate: "04/27/26",
+    type: "Agentic",
     license: "Open Source",
     apiLinks: [{ label: "Xiaomi MiMo", href: "https://github.com/XiaomiMiMo" }],
   },
@@ -229,8 +240,8 @@ export const mainLeaderboardModels: LeaderboardRow[] = [
     provider: "Alibaba",
     model: "Qwen 3.7 Max",
     benchmarkTargets: ["qwen3.7-max", "alibaba/qwen3.7-max"],
-    date: "—",
-    size: "Undisclosed",
+    releaseDate: "05/20/26",
+    type: "Reasoning",
     license: "Open Source",
     apiLinks: [{ label: "Qwen API", href: "https://help.aliyun.com/zh/model-studio/" }],
   },
@@ -238,8 +249,8 @@ export const mainLeaderboardModels: LeaderboardRow[] = [
     provider: "Z.ai",
     model: "GLM 5.1",
     benchmarkTargets: ["glm-5.1", "zai/glm-5.1"],
-    date: "—",
-    size: "Undisclosed",
+    releaseDate: "04/07/26",
+    type: "Reasoning",
     license: "Open Source",
     apiLinks: [{ label: "Z.AI guides", href: "https://docs.z.ai/guides/overview" }],
   },
@@ -250,8 +261,8 @@ export const mainLeaderboardModels: LeaderboardRow[] = [
       "nvidia/nemotron-3-ultra-550b-a55b",
       "nemotron-3-ultra-550b-a55b",
     ],
-    date: "—",
-    size: "550B (55B active)",
+    releaseDate: "06/04/26",
+    type: "Reasoning",
     license: "Open Source",
     apiLinks: [{ label: "Nvidia API", href: "https://docs.api.nvidia.com/" }],
   },
@@ -259,8 +270,8 @@ export const mainLeaderboardModels: LeaderboardRow[] = [
     provider: "MiniMax",
     model: "MiniMax M2.5",
     benchmarkTargets: ["minimax/minimax-m2.5", "minimax-m2.5"],
-    date: "—",
-    size: "Undisclosed",
+    releaseDate: "02/12/26",
+    type: "Agentic",
     license: "Proprietary",
     apiLinks: [{ label: "MiniMax API", href: "https://www.minimaxi.com/en/platform" }],
   },
