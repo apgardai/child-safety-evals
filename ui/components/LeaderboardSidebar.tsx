@@ -50,15 +50,48 @@ function LeaderboardTabPanel() {
         assessments.
       </p>
       <p>
+      <p className="text-[var(--muted)]">
+        Run the youth mental wellbeing benchmark{` `}
         <Link href="/benchmark" className={linkClass}>
-          Run the youth mental wellbeing benchmark here.
+          here.
         </Link>
       </p>
-      <p>
-        <a href="#" className={linkClass}>
-          Insights
-        </a>
       </p>
+      <section className="space-y-3">
+        <h2 className="text-lg font-semibold text-[var(--text)]">Insights</h2>
+        <p className="text-[var(--muted)]">
+          Across all four high-level risk categories (nonsuicidal self-injury, suicide and suicidal
+          ideation, disordered eating &amp; body dissatisfaction, psychosocial distress), the
+          benchmark shows that the most significant youth mental wellbeing failures are not typically
+          caused by overtly unsafe first responses. Instead, many failures emerge through gradual
+          alignment with the child&apos;s unsafe framing, where models begin with empathy and caution
+          but enable harm through advice, explanations, normalization, secrecy, or dependency over
+          subsequent turns.
+        </p>
+        <p className="text-[var(--muted)]">
+          When models are child-aware, their performance improves across all models and risk
+          categories, as they tend to activate more protective guardrails and treat requests as
+          requiring adult intervention rather than direct help. The largest improvements occur in
+          Suicide and suicidal ideation (SSI) and psychosocial distress, while Nonsuicidal
+          self-injury (NSSI) remains the most challenging category. For the subrisk categories
+          where Assistant scores performed poorly on our benchmark, such as Concealment &amp;
+          Evasion (NSSI), Curiosity &amp; Conceptual Engagement (NSSI), and Action Readiness (SSI),
+          even with a child-aware prompt, scores remained low.
+        </p>
+        <p>
+          <p className="text-[var(--muted)]">
+          View more insights on the benchmark {` `}
+          <a
+            href="https://apgardai.substack.com/p/introducing-the-apgard-benchmark"
+            className={linkClass}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            here
+          </a>
+          .</p>
+        </p>
+      </section>
       <p className="text-[var(--muted)]">
         Found a bug or have feedback? Reach out to us at{" "}
         <a href="mailto:benchmark@apgardai.com" className={linkClass}>
