@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Poppins } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 
 import { TopNav } from "components/TopNav";
 import "./globals.css";
@@ -29,6 +30,7 @@ export default function RootLayout({
       <body className="min-h-screen bg-[var(--bg)] font-poppins text-[var(--text)] antialiased">
         <TopNav />
         <main>{children}</main>
+        <Analytics />
       </body>
     </html>
   );
