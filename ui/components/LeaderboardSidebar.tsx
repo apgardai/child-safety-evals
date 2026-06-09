@@ -175,12 +175,13 @@ function MethodologyTabPanel() {
             to derive this youth mental well-being benchmark.
           </li>
           <li>
-            <span className="font-semibold text-[var(--text)]">Benchmarking and scoring:</span> We
-            used various reasoning models (GPT 5.5, GPT 5.4 Mini and Gemini 3.5 Flash) for
-            assessment due to their ability to break down nuanced and complex meaning. Scores are
-            computed based on KORA&apos;s rubric, and the corresponding metrics are shared on our
-            leaderboard. We ran a total of 1380 scenarios across both assistant- and child-aware
-            prompts among 21 frontier models.
+            <span className="font-semibold text-[var(--text)]">Benchmarking and scoring:</span> Each
+            target model was assessed by a single reasoning judge model (GPT 5.4 Mini, GPT 5.5,
+            Claude Sonnet 4.6 or Gemini 3.5 Flash due to their ability to break down nuanced and
+            complex meanings), with the judge always different from the target being evaluated.
+            Scores are computed based on KORA&apos;s rubric, and the corresponding metrics are shared
+            on our leaderboard. We ran a total of 1380 scenarios across both assistant- and
+            child-aware prompts among 18 frontier models.
           </li>
         </ul>
       </section>
