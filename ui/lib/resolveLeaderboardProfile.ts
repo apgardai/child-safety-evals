@@ -63,6 +63,10 @@ export function resolveLeaderboardRowForTarget(
       slug: "glm-5.1",
     },
     {
+      match: (slug) => slug.includes("deepseek") && slug.includes("flash"),
+      slug: "deepseek-v4-flash",
+    },
+    {
       match: (slug) => slug.includes("deepseek"),
       slug: "deepseek/deepseek-v4-pro",
     },
@@ -73,12 +77,6 @@ export function resolveLeaderboardRowForTarget(
     {
       match: (slug) => slug.includes("kimi"),
       slug: "kimi-k2.6",
-    },
-    {
-      match: (slug) =>
-        slug.includes("mistral") &&
-        (slug.includes("small") || slug.includes("small-4")),
-      slug: "mistral-small-4",
     },
     {
       match: (slug) =>

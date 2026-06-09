@@ -7,7 +7,7 @@ export function LeaderboardPage() {
     <PageContainer className="space-y-8">
       <header className="space-y-2">
         <h1 className="text-2xl font-bold tracking-tight text-brand-dark md:text-3xl">
-          Benchmark for AI youth mental well-being.
+          Benchmark for AI youth mental well-being
         </h1>
         <p className="max-w-3xl text-sm leading-relaxed text-[var(--muted)] md:text-base">
           See how frontier models perform on youth mental wellbeing risks, using an expert-informed
