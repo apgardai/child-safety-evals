@@ -376,6 +376,13 @@ export function SignInForm({ nextPath: nextPathProp, onAuthenticated }: SignInFo
               {error}
             </p>
           )}
+          <p className="text-xs leading-relaxed text-[var(--muted)]">
+            By logging in, you agree to our{" "}
+            <Link href="/privacy" className="font-semibold text-[var(--accent)] hover:underline">
+              Privacy Policy
+            </Link>{" "}
+            and may receive occasional emails about benchmark updates and feedback requests.
+          </p>
           <button
             type="submit"
             disabled={loading}
