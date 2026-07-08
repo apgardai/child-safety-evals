@@ -82,16 +82,22 @@ function modelSlugTokenKey(slug: string): string {
     .join("-");
 }
 
+function isKnownBenchmarkTarget(slug: string): boolean {
+  const id = slug.trim().toLowerCase();
+  if (!id) return false;
+  return allLeaderboardRows.some((row) =>
+    (row.benchmarkTargets ?? []).some((t) => t.toLowerCase() === id)
+  );
+}
+
 /**
- * Map a URL or display slug to the canonical filesystem ``model_dir`` when possible.
- * Prefers exact ``benchmarkTargets`` hits, then token-order-insensitive matches.
+ * Best-effort alias for preview URLs (e.g. ``llama-maverick-4`` → ``llama-4-maverick``).
+ * Never rewrites a slug that is already a known benchmark target — that would collapse
+ * ``gpt-5.5-high-limited`` to ``gpt-5.5`` and break filesystem lookups.
  */
 export function resolveFilesystemModelId(modelId: string): string {
   const id = modelId.trim();
-  if (!id) return id;
-
-  const exact = findLeaderboardRowByModelId(id);
-  if (exact?.benchmarkTargets?.[0]) return exact.benchmarkTargets[0];
+  if (!id || isKnownBenchmarkTarget(id)) return id;
 
   const key = modelSlugTokenKey(id);
   for (const row of allLeaderboardRows) {

@@ -658,20 +658,42 @@ def _model_slug_token_key(slug: str) -> str:
     return "-".join(sorted(parts))
 
 
+def _normalize_model_slug(slug: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "-", slug.lower()).strip("-")
+
+
 def _resolve_model_dir_name(model_dir: str, benchmark_id: str) -> str:
-    """Map URL slugs to an on-disk model dir (token-order insensitive)."""
+    """Map URL slugs to an on-disk model dir."""
     name = _validate_model_dir(model_dir)
     root = model_results_root(benchmark_id)
     if (root / name).is_dir():
         return name
+
+    norm = _normalize_model_slug(name)
     key = _model_slug_token_key(name)
-    if not key:
-        return name
+    dir_names: list[str] = []
     for entry in sorted(root.iterdir()):
         if not entry.is_dir():
             continue
+        dir_names.append(entry.name)
         if _model_slug_token_key(entry.name) == key:
             return entry.name
+
+    for dirname in dir_names:
+        norm_dir = _normalize_model_slug(dirname)
+        if norm_dir == norm or norm_dir.startswith(f"{norm}-") or norm.startswith(f"{norm_dir}-"):
+            return dirname
+        try:
+            entry_path = root / dirname
+            bundle = _results_bundle_dir(entry_path)
+            doc = _read_results_document(bundle / "results.json")
+            meta = _read_run_meta(entry_path)
+            target = _normalize_model_slug(_resolve_target_model(doc, meta) or "")
+            if target == norm or target.startswith(norm) or norm in target:
+                return dirname
+        except (FileNotFoundError, ValueError, OSError):
+            continue
+
     return name
 
 

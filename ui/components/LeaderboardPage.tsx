@@ -16,8 +16,8 @@ export function LeaderboardPage() {
           {wellbeingBenchmark.label} Benchmark
         </h1>
         <p className="max-w-3xl text-sm leading-relaxed text-[var(--muted)] md:text-base">
-          {wellbeingBenchmark.description} See how frontier models perform using an
-          expert-informed taxonomy you can run yourself.
+          See how frontier models perform using an expert-informed taxonomy you can run
+          yourself.
         </p>
       </header>
       <div className="grid items-start gap-8 lg:grid-cols-2 lg:gap-10 xl:gap-12">

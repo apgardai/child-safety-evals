@@ -1,41 +1,23 @@
 "use client";
 
 import Link from "next/link";
-import { use, useMemo } from "react";
+import { use } from "react";
 
-import type { BenchmarkId } from "data/benchmarks";
 import { DEFAULT_BENCHMARK_ID, getBenchmarkDefinition } from "data/benchmarks";
 import { ModelBenchmarkResults } from "components/ModelBenchmarkResults";
 import { PageContainer } from "components/PageContainer";
-import {
-  leaderboardModelPath,
-  resolveFilesystemModelId,
-} from "lib/leaderboardRoutes";
-
-function parseBenchmarkId(raw: string | null | undefined): BenchmarkId {
-  const value = raw?.trim();
-  if (value && getBenchmarkDefinition(value)) {
-    return value as BenchmarkId;
-  }
-  return DEFAULT_BENCHMARK_ID;
-}
+import { leaderboardModelPath } from "lib/leaderboardRoutes";
 
 export default function LeaderboardModelPage({
   params,
-  searchParams,
 }: {
   params: Promise<{ model_id: string }>;
-  searchParams: Promise<{ benchmark?: string }>;
 }) {
   const { model_id: modelIdRaw } = use(params);
-  const { benchmark: benchmarkRaw } = use(searchParams);
-  const modelId = resolveFilesystemModelId(
-    decodeURIComponent(modelIdRaw ?? "").trim()
-  );
-  const benchmarkId = useMemo(() => parseBenchmarkId(benchmarkRaw), [benchmarkRaw]);
-  const benchmark = getBenchmarkDefinition(benchmarkId);
+  const modelId = decodeURIComponent(modelIdRaw ?? "").trim();
+  const benchmark = getBenchmarkDefinition(DEFAULT_BENCHMARK_ID);
 
-  const scenariosHref = `${leaderboardModelPath(modelId, benchmarkId)}#scenarios`;
+  const scenariosHref = `${leaderboardModelPath(modelId)}#scenarios`;
 
   return (
     <PageContainer className="space-y-6">
@@ -57,7 +39,7 @@ export default function LeaderboardModelPage({
       <ModelBenchmarkResults
         modelId={modelId}
         scenariosHref={scenariosHref}
-        benchmarkId={benchmarkId}
+        benchmarkId={DEFAULT_BENCHMARK_ID}
       />
     </PageContainer>
   );

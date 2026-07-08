@@ -3,8 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
-import type { BenchmarkId } from "data/benchmarks";
-import { DEFAULT_BENCHMARK_ID, getBenchmarkDefinition } from "data/benchmarks";
+import { DEFAULT_BENCHMARK_ID } from "data/benchmarks";
 import type { LeaderboardRow } from "data/leaderboardModels";
 import { mainLeaderboardModels, otherLeaderboardModels } from "data/leaderboardModels";
 import {
@@ -80,10 +79,8 @@ const modelCardClassName =
 
 function ModelCard({
   row,
-  benchmarkId,
 }: {
   row: EnrichedRow;
-  benchmarkId: BenchmarkId;
 }) {
   const bestRun = row.runs[0] ?? null;
   const modelId = modelIdForLeaderboardRow(row, bestRun);
@@ -96,7 +93,7 @@ function ModelCard({
     );
   }
 
-  const href = leaderboardModelPath(modelId, benchmarkId);
+  const href = leaderboardModelPath(modelId);
   const label = `${row.provider} / ${row.model}`;
 
   return (
@@ -116,13 +113,8 @@ function ModelCard({
   );
 }
 
-type ModelLeaderboardProps = {
-  benchmarkId?: BenchmarkId;
-};
-
-export function ModelLeaderboard({
-  benchmarkId = DEFAULT_BENCHMARK_ID,
-}: ModelLeaderboardProps) {
+export function ModelLeaderboard() {
+  const benchmarkId = DEFAULT_BENCHMARK_ID;
   const [runs, setRuns] = useState<EvaluationRunRow[]>([]);
 
   useEffect(() => {
@@ -193,14 +185,10 @@ export function ModelLeaderboard({
       });
   }, [runs, benchmarkId]);
 
-  const activeBenchmarkDescription =
-    getBenchmarkDefinition(benchmarkId)?.description ?? "";
-
   return (
     <section className="w-full space-y-4" aria-label="Model results">
-      <p className="text-sm text-[var(--muted)]">{activeBenchmarkDescription}</p>
       {leaderboardRows.map((row) => (
-        <ModelCard key={`${row.provider}-${row.model}`} row={row} benchmarkId={benchmarkId} />
+        <ModelCard key={`${row.provider}-${row.model}`} row={row} />
       ))}
     </section>
   );
