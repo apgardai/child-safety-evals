@@ -30,6 +30,7 @@ from app.crud.evaluation_runs import (
 from app.schemas.benchmark_preview import BenchmarkScenariosPreviewOut
 from app.services.benchmark_progress import count_scenario_test_tasks
 from app.services.benchmark_scenarios_preview import load_benchmark_scenarios_preview
+from app.services.benchmark_registry import list_benchmarks
 from app.services.local_benchmark_results import (
     is_local_run_id,
     list_model_result_runs,
@@ -590,21 +591,31 @@ def scenarios_viewer_data_public(request: Request, db: Session = Depends(get_db)
     )
 
 
+@router.get("/benchmarks")
+def list_benchmarks_public():
+    """Available benchmark variants (wellbeing, CSEA, etc.)."""
+    return {"benchmarks": list_benchmarks()}
+
+
 @router.get("/model-results")
-def list_model_results_public():
-    """Leaderboard rows from ``benchmark/data/model-results/*/results.json``."""
-    return {"runs": list_model_result_runs()}
+def list_model_results_public(benchmark: str | None = None):
+    """Leaderboard rows from ``benchmark/data/{resultsDir}/*/results.json``."""
+    return {"runs": list_model_result_runs(benchmark)}
 
 
 @router.get("/model-results/viewer-data")
 def model_result_viewer_data_query_public(
     model_id: str | None = None,
     runId: str | None = None,
+    benchmark: str | None = None,
 ):
     """Viewer data by ``model_id`` (preferred) or legacy ``local-model-{id}`` runId."""
     try:
         if model_id and model_id.strip():
-            return load_model_result_viewer_data(model_id.strip())
+            return load_model_result_viewer_data(
+                model_id.strip(),
+                benchmark_id=benchmark,
+            )
         if runId and runId.strip():
             if not is_local_run_id(runId):
                 raise HTTPException(status_code=400, detail="Invalid local run id.")
@@ -620,10 +631,10 @@ def model_result_viewer_data_query_public(
 
 
 @router.get("/model-results/{model_dir}/viewer-data")
-def model_result_viewer_data_public(model_dir: str):
+def model_result_viewer_data_public(model_dir: str, benchmark: str | None = None):
     """Scenario-level assessments for a filesystem model run."""
     try:
-        return load_model_result_viewer_data(model_dir)
+        return load_model_result_viewer_data(model_dir, benchmark_id=benchmark)
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except ValueError as exc:

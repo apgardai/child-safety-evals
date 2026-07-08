@@ -3,6 +3,8 @@ import {
   otherLeaderboardModels,
   type LeaderboardRow,
 } from "data/leaderboardModels";
+import type { BenchmarkId } from "data/benchmarks";
+import { DEFAULT_BENCHMARK_ID } from "data/benchmarks";
 
 import { LOCAL_MODEL_RUN_ID_PREFIX } from "lib/viewerDataApi";
 
@@ -11,8 +13,27 @@ const allLeaderboardRows: LeaderboardRow[] = [
   ...otherLeaderboardModels,
 ];
 
-export function leaderboardModelPath(modelId: string): string {
-  return `/leaderboard/${encodeURIComponent(modelId)}`;
+export function leaderboardModelPath(
+  modelId: string,
+  benchmarkId: BenchmarkId = DEFAULT_BENCHMARK_ID
+): string {
+  const base = `/leaderboard/${encodeURIComponent(modelId)}`;
+  if (benchmarkId === DEFAULT_BENCHMARK_ID) {
+    return base;
+  }
+  return `${base}?benchmark=${encodeURIComponent(benchmarkId)}`;
+}
+
+/** CSEA (or other non-default) benchmark preview pages under ``/leaderboard/preview/``. */
+export function leaderboardPreviewModelPath(
+  modelId: string,
+  benchmarkId: BenchmarkId = "csea"
+): string {
+  const base = `/leaderboard/preview/${encodeURIComponent(modelId)}`;
+  if (benchmarkId === DEFAULT_BENCHMARK_ID) {
+    return base;
+  }
+  return `${base}?benchmark=${encodeURIComponent(benchmarkId)}`;
 }
 
 export function localModelRunId(modelId: string): string {
@@ -49,4 +70,34 @@ export function findLeaderboardRowByModelId(modelId: string): LeaderboardRow | n
     if (targets.some((t) => t.toLowerCase() === id)) return row;
   }
   return null;
+}
+
+/** Compare slug tokens regardless of segment order (``llama-4-maverick`` ≡ ``llama-maverick-4``). */
+function modelSlugTokenKey(slug: string): string {
+  return slug
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter(Boolean)
+    .sort()
+    .join("-");
+}
+
+/**
+ * Map a URL or display slug to the canonical filesystem ``model_dir`` when possible.
+ * Prefers exact ``benchmarkTargets`` hits, then token-order-insensitive matches.
+ */
+export function resolveFilesystemModelId(modelId: string): string {
+  const id = modelId.trim();
+  if (!id) return id;
+
+  const exact = findLeaderboardRowByModelId(id);
+  if (exact?.benchmarkTargets?.[0]) return exact.benchmarkTargets[0];
+
+  const key = modelSlugTokenKey(id);
+  for (const row of allLeaderboardRows) {
+    for (const target of row.benchmarkTargets ?? []) {
+      if (modelSlugTokenKey(target) === key) return target;
+    }
+  }
+  return id;
 }

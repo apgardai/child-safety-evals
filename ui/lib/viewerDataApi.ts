@@ -1,18 +1,29 @@
-/** Filesystem runs: ``local-model-{model_id}`` → ``benchmark/data/model-results/{model_id}/``. */
+import type { BenchmarkId } from "data/benchmarks";
+import { DEFAULT_BENCHMARK_ID } from "data/benchmarks";
+
+/** Filesystem runs: ``local-model-{model_id}`` or ``local-csea-{model_id}``. */
 export const LOCAL_MODEL_RUN_ID_PREFIX = "local-model-";
+export const LOCAL_CSEA_RUN_ID_PREFIX = "local-csea-";
 
 export function isLocalRunId(runId: string): boolean {
-  return runId.trim().startsWith(LOCAL_MODEL_RUN_ID_PREFIX);
+  const rid = runId.trim();
+  return (
+    rid.startsWith(LOCAL_MODEL_RUN_ID_PREFIX) ||
+    rid.startsWith(LOCAL_CSEA_RUN_ID_PREFIX)
+  );
 }
 
-/** Load viewer data from ``benchmark/data/model-results/{model_id}/``. */
-export function viewerDataRequestForModelId(modelId: string): {
+/** Load viewer data from ``benchmark/data/{resultsDir}/{model_id}/``. */
+export function viewerDataRequestForModelId(
+  modelId: string,
+  benchmarkId: BenchmarkId = DEFAULT_BENCHMARK_ID
+): {
   url: string;
-  params: { model_id: string };
+  params: { model_id: string; benchmark: BenchmarkId };
 } {
   return {
     url: "/api/model-results/viewer-data",
-    params: { model_id: modelId },
+    params: { model_id: modelId, benchmark: benchmarkId },
   };
 }
 

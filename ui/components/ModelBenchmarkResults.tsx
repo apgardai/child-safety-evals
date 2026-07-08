@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 
+import type { BenchmarkId } from "data/benchmarks";
+import { DEFAULT_BENCHMARK_ID } from "data/benchmarks";
 import { ResultsOverview } from "components/ResultsOverview";
 import { TestResultsModelOverview } from "components/TestResultsModelOverview";
 import { ViewerDataExplorer } from "components/ViewerDataExplorer";
@@ -18,9 +20,14 @@ import type { ViewerData } from "lib/viewerDataFromZip";
 type ModelBenchmarkResultsProps = {
   modelId: string;
   scenariosHref: string;
+  benchmarkId?: BenchmarkId;
 };
 
-export function ModelBenchmarkResults({ modelId, scenariosHref }: ModelBenchmarkResultsProps) {
+export function ModelBenchmarkResults({
+  modelId,
+  scenariosHref,
+  benchmarkId = DEFAULT_BENCHMARK_ID,
+}: ModelBenchmarkResultsProps) {
   const [data, setData] = useState<ViewerData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -37,7 +44,7 @@ export function ModelBenchmarkResults({ modelId, scenariosHref }: ModelBenchmark
     setData(null);
     setSelectedRisk(null);
 
-    const { url, params } = viewerDataRequestForModelId(modelId);
+    const { url, params } = viewerDataRequestForModelId(modelId, benchmarkId);
     void requestsClient
       .get<ViewerData>(url, { params, validateStatus: () => true })
       .then((res) => {
@@ -64,7 +71,7 @@ export function ModelBenchmarkResults({ modelId, scenariosHref }: ModelBenchmark
     return () => {
       cancelled = true;
     };
-  }, [modelId]);
+  }, [modelId, benchmarkId]);
 
   const blockingError = !data && error;
 

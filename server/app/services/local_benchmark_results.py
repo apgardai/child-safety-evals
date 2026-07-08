@@ -1,4 +1,4 @@
-"""Read completed benchmark CLI outputs from ``benchmark/data/model-results/{model_dir}/``."""
+"""Read completed benchmark CLI outputs from ``benchmark/data/{resultsDir}/{model_dir}/``."""
 
 from __future__ import annotations
 
@@ -10,20 +10,26 @@ from pathlib import Path
 from typing import Any
 
 from app.crud.evaluation_runs import _overall_score_pct
-from app.services.benchmark_paths import benchmark_root
+from app.services.benchmark_registry import (
+    LOCAL_CSEA_RUN_ID_PREFIX,
+    LOCAL_MODEL_RUN_ID_PREFIX,
+    benchmark_definition,
+    default_benchmark_id,
+    load_benchmarks_registry,
+    load_risk_taxonomy,
+    model_results_root,
+    model_results_run_id,
+    normalize_benchmark_id,
+    parse_local_model_run_id,
+)
 
 _MODEL_DIR_RE = re.compile(r"^[a-z0-9._-]+$")
-LOCAL_MODEL_RUN_ID_PREFIX = "local-model-"
 
 # While ``yarn run:model`` / ``cs-bench run`` is in progress, per-test JSON is written here.
 _BENCHMARK_RUN_TMP_DIRNAME = ".benchmark-run-tmp"
 
 # Completed runs with ``results/testResults/`` — do not prefer in-progress temp checkpoints.
 _SKIP_RUN_TMP_MODEL_DIRS = frozenset({"llama-4-scout"})
-
-
-def model_results_root() -> Path:
-    return benchmark_root() / "data" / "model-results"
 
 
 def _validate_model_dir(model_dir: str) -> str:
@@ -33,22 +39,8 @@ def _validate_model_dir(model_dir: str) -> str:
     return name
 
 
-def model_results_run_id(model_dir: str) -> str:
-    return f"{LOCAL_MODEL_RUN_ID_PREFIX}{_validate_model_dir(model_dir)}"
-
-
 def is_local_run_id(run_id: str) -> bool:
-    return (run_id or "").strip().startswith(LOCAL_MODEL_RUN_ID_PREFIX)
-
-
-def parse_local_model_run_id(run_id: str) -> str | None:
-    rid = (run_id or "").strip()
-    if not rid.startswith(LOCAL_MODEL_RUN_ID_PREFIX):
-        return None
-    try:
-        return _validate_model_dir(rid[len(LOCAL_MODEL_RUN_ID_PREFIX) :])
-    except ValueError:
-        return None
+    return parse_local_model_run_id(run_id) is not None
 
 
 def _results_bundle_dir(base: Path) -> Path:
@@ -65,6 +57,7 @@ def _run_summary_from_bundle(
     run_id: str,
     model_dir: str | None = None,
     run_dir: Path | None = None,
+    benchmark_id: str | None = None,
 ) -> dict[str, Any] | None:
     results_json = bundle_dir / "results.json"
     doc = _read_results_document(results_json)
@@ -88,6 +81,7 @@ def _run_summary_from_bundle(
     overall = _overall_score_pct(doc) if doc else None
     risk_scores = _risk_scores(scores)
     risk_items = _risk_items(scores)
+    resolved_benchmark = _resolve_benchmark_id(doc, meta, benchmark_id)
 
     if overall is None and run_dir is not None and _has_benchmark_run_tmp(run_dir):
         partial_scores = _aggregate_scores_from_tmp(run_dir)
@@ -107,6 +101,7 @@ def _run_summary_from_bundle(
         "risk_scores": risk_scores,
         "risk_items": risk_items,
         "source": "local-file",
+        "benchmark": resolved_benchmark,
         "model_dir": model_dir,
         "file_path": str(results_json),
         "in_progress": bool(run_dir is not None and _has_benchmark_run_tmp(run_dir)),
@@ -233,13 +228,18 @@ def _resolve_target_model(
     return None
 
 
-def _load_risk_taxonomy() -> list[dict[str, Any]]:
-    path = benchmark_root() / "packages" / "benchmark" / "data" / "risks.json"
-    try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return []
-    return data if isinstance(data, list) else []
+def _resolve_benchmark_id(
+    doc: dict[str, Any] | None,
+    meta: dict[str, Any] | None,
+    fallback: str | None = None,
+) -> str:
+    if doc and isinstance(doc.get("benchmark"), str) and doc["benchmark"].strip():
+        return doc["benchmark"].strip()
+    if meta and isinstance(meta.get("benchmark"), str) and meta["benchmark"].strip():
+        return meta["benchmark"].strip()
+    if fallback:
+        return fallback
+    return default_benchmark_id()
 
 
 def _risk_label_maps(
@@ -489,11 +489,18 @@ def _scenarios_from_zip(
     return scenarios
 
 
-def list_model_result_runs() -> list[dict[str, Any]]:
+def list_model_result_runs(benchmark_id: str | None = None) -> list[dict[str, Any]]:
     """Summaries for leaderboard (mirrors Next ``/api/model-results``)."""
     runs: list[dict[str, Any]] = []
-    root = model_results_root()
-    if root.is_dir():
+    benchmark_ids = (
+        list(load_benchmarks_registry())
+        if (benchmark_id or "").strip().lower() == "all"
+        else [normalize_benchmark_id(benchmark_id)]
+    )
+    for bid in benchmark_ids:
+        root = model_results_root(bid)
+        if not root.is_dir():
+            continue
         for entry in sorted(root.iterdir()):
             if not entry.is_dir():
                 continue
@@ -503,9 +510,10 @@ def list_model_result_runs() -> list[dict[str, Any]]:
                 continue
             summary = _run_summary_from_bundle(
                 bundle,
-                run_id=model_results_run_id(entry.name),
+                run_id=model_results_run_id(entry.name, bid),
                 model_dir=entry.name,
                 run_dir=entry,
+                benchmark_id=bid,
             )
             if summary:
                 runs.append(summary)
@@ -527,14 +535,20 @@ def _artifact_roots(bundle_dir: Path, run_dir: Path) -> list[Path]:
     return roots
 
 
-def _load_viewer_from_bundle(bundle_dir: Path, *, run_dir: Path) -> dict[str, Any]:
+def _load_viewer_from_bundle(
+    bundle_dir: Path,
+    *,
+    run_dir: Path,
+    benchmark_id: str,
+) -> dict[str, Any]:
     results_json = bundle_dir / "results.json"
     doc = _read_results_document(results_json)
     meta = _read_run_meta(run_dir)
     if not doc and not meta:
         raise ValueError(f"Invalid results.json in {bundle_dir}")
 
-    risks = _load_risk_taxonomy()
+    resolved_benchmark = _resolve_benchmark_id(doc, meta, benchmark_id)
+    risks = load_risk_taxonomy(resolved_benchmark)
     category_by_id, risk_by_key = _risk_label_maps(risks)
     in_progress = False
 
@@ -616,12 +630,14 @@ def _load_viewer_from_bundle(bundle_dir: Path, *, run_dir: Path) -> dict[str, An
     return {
         "generatedAt": generated_at,
         "inProgress": in_progress,
+        "benchmark": resolved_benchmark,
         "summary": {
             "target": str(_resolve_target_model(doc, meta) or ""),
             "judge": judge_model or "",
             "user": user_model or "",
             "prompts": prompts,
             "scores": scores,
+            "benchmark": resolved_benchmark,
         },
         "risks": risks,
         "scenarios": scenarios,
@@ -629,21 +645,49 @@ def _load_viewer_from_bundle(bundle_dir: Path, *, run_dir: Path) -> dict[str, An
 
 
 def load_local_run_viewer_data(run_id: str) -> dict[str, Any]:
-    """Resolve ``local-model-{model_id}`` to filesystem viewer data under model-results/."""
-    model_dir = parse_local_model_run_id(run_id)
-    if model_dir:
-        return load_model_result_viewer_data(model_dir)
+    """Resolve ``local-model-{model_id}`` / ``local-csea-{model_id}`` viewer data."""
+    parsed = parse_local_model_run_id(run_id)
+    if parsed:
+        model_dir, benchmark_id = parsed
+        return load_model_result_viewer_data(model_dir, benchmark_id=benchmark_id)
     raise ValueError(f"Unknown local run id: {(run_id or '').strip()}")
 
 
-def load_model_result_viewer_data(model_dir: str) -> dict[str, Any]:
-    """ViewerData-compatible payload (summary scores + per-scenario assessments)."""
+def _model_slug_token_key(slug: str) -> str:
+    parts = [p for p in re.split(r"[^a-z0-9]+", slug.lower()) if p]
+    return "-".join(sorted(parts))
+
+
+def _resolve_model_dir_name(model_dir: str, benchmark_id: str) -> str:
+    """Map URL slugs to an on-disk model dir (token-order insensitive)."""
     name = _validate_model_dir(model_dir)
-    run_dir = model_results_root() / name
+    root = model_results_root(benchmark_id)
+    if (root / name).is_dir():
+        return name
+    key = _model_slug_token_key(name)
+    if not key:
+        return name
+    for entry in sorted(root.iterdir()):
+        if not entry.is_dir():
+            continue
+        if _model_slug_token_key(entry.name) == key:
+            return entry.name
+    return name
+
+
+def load_model_result_viewer_data(
+    model_dir: str,
+    *,
+    benchmark_id: str | None = None,
+) -> dict[str, Any]:
+    """ViewerData-compatible payload (summary scores + per-scenario assessments)."""
+    bid = normalize_benchmark_id(benchmark_id)
+    name = _resolve_model_dir_name(model_dir, bid)
+    run_dir = model_results_root(bid) / name
     if not run_dir.is_dir():
         raise FileNotFoundError(
-            f"Model results directory not found: {run_dir} "
-            f"(expected benchmark/data/model-results/{name}/)"
+            f"Model results not found for benchmark '{bid}' "
+            f"(expected benchmark/data/{benchmark_definition(bid)['resultsDir']}/{name}/)"
         )
     bundle = _results_bundle_dir(run_dir)
-    return _load_viewer_from_bundle(bundle, run_dir=run_dir)
+    return _load_viewer_from_bundle(bundle, run_dir=run_dir, benchmark_id=bid)

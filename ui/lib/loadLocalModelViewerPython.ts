@@ -2,6 +2,7 @@ import { execFile } from "node:child_process";
 import path from "node:path";
 import { promisify } from "node:util";
 
+import type { BenchmarkId } from "data/benchmarks";
 import { LOCAL_MODEL_RUN_ID_PREFIX } from "lib/viewerDataApi";
 
 const execFileAsync = promisify(execFile);
@@ -9,19 +10,25 @@ const execFileAsync = promisify(execFile);
 const PYTHON_LOADER = `
 import json, sys
 from app.services.local_benchmark_results import load_model_result_viewer_data
-print(json.dumps(load_model_result_viewer_data(sys.argv[1])))
+benchmark = sys.argv[2] if len(sys.argv) > 2 and sys.argv[2] else None
+print(json.dumps(load_model_result_viewer_data(sys.argv[1], benchmark_id=benchmark)))
 `;
 
 /** Fresh Python process (picks up latest server code; includes in-progress .benchmark-run-tmp). */
 export async function loadLocalModelViewerViaPython(
-  modelId: string
+  modelId: string,
+  benchmarkId?: BenchmarkId
 ): Promise<unknown | null> {
   const id = modelId.trim();
   if (!id) return null;
 
   const serverDir = path.resolve(process.cwd(), "..", "server");
+  const args = ["-c", PYTHON_LOADER, id];
+  if (benchmarkId) {
+    args.push(benchmarkId);
+  }
   try {
-    const { stdout } = await execFileAsync("python3", ["-c", PYTHON_LOADER, id], {
+    const { stdout } = await execFileAsync("python3", args, {
       cwd: serverDir,
       maxBuffer: 64 * 1024 * 1024,
     });

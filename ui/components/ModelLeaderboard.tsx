@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
+import type { BenchmarkId } from "data/benchmarks";
+import { DEFAULT_BENCHMARK_ID, getBenchmarkDefinition } from "data/benchmarks";
 import type { LeaderboardRow } from "data/leaderboardModels";
 import { mainLeaderboardModels, otherLeaderboardModels } from "data/leaderboardModels";
 import {
@@ -18,6 +20,7 @@ type EvaluationRunRow = {
   target_model: string | null;
   overall_score_pct?: number | null;
   source?: "local-file";
+  benchmark?: string | null;
   model_dir?: string | null;
 };
 
@@ -75,7 +78,13 @@ function ModelCardContent({ row }: { row: EnrichedRow }) {
 const modelCardClassName =
   "block rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 transition-colors md:p-5";
 
-function ModelCard({ row }: { row: EnrichedRow }) {
+function ModelCard({
+  row,
+  benchmarkId,
+}: {
+  row: EnrichedRow;
+  benchmarkId: BenchmarkId;
+}) {
   const bestRun = row.runs[0] ?? null;
   const modelId = modelIdForLeaderboardRow(row, bestRun);
 
@@ -87,7 +96,7 @@ function ModelCard({ row }: { row: EnrichedRow }) {
     );
   }
 
-  const href = leaderboardModelPath(modelId);
+  const href = leaderboardModelPath(modelId, benchmarkId);
   const label = `${row.provider} / ${row.model}`;
 
   return (
@@ -107,7 +116,13 @@ function ModelCard({ row }: { row: EnrichedRow }) {
   );
 }
 
-export function ModelLeaderboard() {
+type ModelLeaderboardProps = {
+  benchmarkId?: BenchmarkId;
+};
+
+export function ModelLeaderboard({
+  benchmarkId = DEFAULT_BENCHMARK_ID,
+}: ModelLeaderboardProps) {
   const [runs, setRuns] = useState<EvaluationRunRow[]>([]);
 
   useEffect(() => {
@@ -119,6 +134,7 @@ export function ModelLeaderboard() {
             validateStatus: () => true,
           }),
           requestsClient.get<{ runs?: EvaluationRunRow[] }>("/api/model-results", {
+            params: { benchmark: benchmarkId },
             validateStatus: () => true,
           }),
         ]);
@@ -127,6 +143,8 @@ export function ModelLeaderboard() {
         if (cancelled) return;
         const mergedById = new Map<string, EvaluationRunRow>();
         for (const run of [...localRuns, ...dbRuns]) {
+          const runBenchmark = run.benchmark ?? DEFAULT_BENCHMARK_ID;
+          if (runBenchmark !== benchmarkId) continue;
           mergedById.set(run.id, run);
         }
         setRuns(Array.from(mergedById.values()));
@@ -137,7 +155,7 @@ export function ModelLeaderboard() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [benchmarkId]);
 
   const leaderboardRows = useMemo(() => {
     const baseRows = [...mainLeaderboardModels, ...otherLeaderboardModels];
@@ -145,6 +163,8 @@ export function ModelLeaderboard() {
       .map((row): EnrichedRow => {
         const matchingRuns = runs
           .filter((run) => {
+            const runBenchmark = run.benchmark ?? DEFAULT_BENCHMARK_ID;
+            if (runBenchmark !== benchmarkId) return false;
             const matched = resolveLeaderboardRowForTarget(run.target_model ?? "");
             return matched?.provider === row.provider && matched?.model === row.model;
           })
@@ -171,12 +191,16 @@ export function ModelLeaderboard() {
         if (scoreA !== scoreB) return scoreB - scoreA;
         return a.provider.localeCompare(b.provider);
       });
-  }, [runs]);
+  }, [runs, benchmarkId]);
+
+  const activeBenchmarkDescription =
+    getBenchmarkDefinition(benchmarkId)?.description ?? "";
 
   return (
-    <section className="w-full space-y-3" aria-label="Model results">
+    <section className="w-full space-y-4" aria-label="Model results">
+      <p className="text-sm text-[var(--muted)]">{activeBenchmarkDescription}</p>
       {leaderboardRows.map((row) => (
-        <ModelCard key={`${row.provider}-${row.model}`} row={row} />
+        <ModelCard key={`${row.provider}-${row.model}`} row={row} benchmarkId={benchmarkId} />
       ))}
     </section>
   );

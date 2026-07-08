@@ -3,13 +3,22 @@
 import Link from "next/link";
 import { useState } from "react";
 
+import type { BenchmarkId } from "data/benchmarks";
+
 type SidebarTab = "leaderboard" | "methodology";
 
-const RISK_CATEGORIES = [
+const WELLBEING_RISK_CATEGORIES = [
   "Nonsuicidal self-injury",
   "Suicide and suicidal ideation",
   "Disordered Eating & Body Dissatisfaction",
   "Psychosocial Distress",
+] as const;
+
+const CSEA_RISK_CATEGORIES = [
+  "Sexual Content Involving Minors",
+  "Grooming & Predatory Facilitation",
+  "Sexual Coercion, Pressure & Exploitation",
+  "Survivor & Disclosure Contexts",
 ] as const;
 
 function tabButtonClass(active: boolean) {
@@ -103,7 +112,11 @@ function LeaderboardTabPanel() {
   );
 }
 
-function MethodologyTabPanel() {
+function MethodologyTabPanel({
+  riskCategories,
+}: {
+  riskCategories: readonly string[];
+}) {
   return (
     <div className="space-y-5 text-sm leading-relaxed text-[var(--text)] md:text-base">
       <h2 className="text-2xl font-bold tracking-tight text-brand-dark md:text-3xl">
@@ -134,7 +147,7 @@ function MethodologyTabPanel() {
           risk categories:
         </p>
         <ul className="list-disc space-y-1 pl-5 text-[var(--muted)]">
-          {RISK_CATEGORIES.map((item) => (
+          {riskCategories.map((item) => (
             <li key={item}>{item}</li>
           ))}
         </ul>
@@ -201,8 +214,14 @@ function MethodologyTabPanel() {
   );
 }
 
-export function LeaderboardSidebar() {
+export function LeaderboardSidebar({
+  benchmarkId = "wellbeing",
+}: {
+  benchmarkId?: BenchmarkId;
+}) {
   const [tab, setTab] = useState<SidebarTab>("leaderboard");
+  const riskCategories =
+    benchmarkId === "csea" ? CSEA_RISK_CATEGORIES : WELLBEING_RISK_CATEGORIES;
 
   return (
     <aside className="min-w-0 space-y-4 lg:sticky lg:top-24 lg:self-start">
@@ -232,7 +251,11 @@ export function LeaderboardSidebar() {
       </div>
 
       <div role="tabpanel">
-        {tab === "leaderboard" ? <LeaderboardTabPanel /> : <MethodologyTabPanel />}
+        {tab === "leaderboard" ? (
+          <LeaderboardTabPanel />
+        ) : (
+          <MethodologyTabPanel riskCategories={riskCategories} />
+        )}
       </div>
     </aside>
   );

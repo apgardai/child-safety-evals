@@ -18,6 +18,7 @@ export async function GET(request: NextRequest) {
     request.nextUrl.searchParams.get("model_id"),
     request.nextUrl.searchParams.get("runId")
   );
+  const benchmarkId = request.nextUrl.searchParams.get("benchmark")?.trim() || undefined;
 
   try {
     const { status, body, contentType } = await fastApiForward(path, cookieHeader);
@@ -27,7 +28,10 @@ export async function GET(request: NextRequest) {
       localBenchmarkApiEnabled() &&
       shouldTryPythonViewerFallback(status, body)
     ) {
-      const fallback = await loadLocalModelViewerViaPython(modelId);
+      const fallback = await loadLocalModelViewerViaPython(
+        modelId,
+        benchmarkId as import("data/benchmarks").BenchmarkId | undefined
+      );
       if (fallback) {
         return NextResponse.json(fallback);
       }
