@@ -90,7 +90,7 @@ function buildArgs(body: RunRequestBody): string[] {
     case "run": {
       const args = [
         body.targetModel,
-        body.judgeModel ?? "gpt-5.2:high:limited",
+        body.judgeModel ?? "gpt-5.2:medium:limited",
         body.userModel ?? "deepseek-v3.2",
       ];
       if (body.input) args.push("-i", body.input);
@@ -237,7 +237,7 @@ export async function POST(request: NextRequest) {
         method: "POST",
         body: {
           target_model: runBody.targetModel,
-          judge_model: runBody.judgeModel ?? "gpt-5.2:high:limited",
+          judge_model: runBody.judgeModel ?? "gpt-5.2:medium:limited",
           user_model: runBody.userModel ?? "deepseek-v3.2",
           input: runBody.input ?? "data/scenarios.jsonl",
           prompts: runBody.prompts,
@@ -379,7 +379,7 @@ export async function GET(request: NextRequest) {
       },
       run: {
         targetModel: "string (required)",
-        judgeModel: "string (default: gpt-5.2:high:limited)",
+        judgeModel: "string (default: gpt-5.2:medium:limited)",
         userModel: "string (default: deepseek-v3.2)",
         input: "string (default: data/scenarios.jsonl)",
         prompts: `array of: ${PROMPTS.join(", ")}`,

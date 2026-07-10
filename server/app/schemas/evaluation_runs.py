@@ -7,7 +7,7 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 class EvaluationRunStart(BaseModel):
     target_model: str = Field(..., min_length=1)
-    judge_model: str = "gpt-5.2:high:limited"
+    judge_model: str = "gpt-5.2:medium:limited"
     user_model: str = "deepseek-v3.2"
     input: str = "data/scenarios.jsonl"
     prompts: list[str] | None = None

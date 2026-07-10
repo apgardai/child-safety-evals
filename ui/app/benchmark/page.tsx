@@ -405,7 +405,7 @@ function PipelineForm({
   const [apiKeyMessage, setApiKeyMessage] = useState<string | null>(null);
   const [apiKeyExpanded, setApiKeyExpanded] = useState(true);
   const [targetModel, setTargetModel] = useState("gpt-4o");
-  const [judgeModel, setJudgeModel] = useState("gpt-5.2:high:limited");
+  const [judgeModel, setJudgeModel] = useState("gpt-5.2:medium:limited");
   const [userModel, setUserModel] = useState("deepseek-v3.2");
   const [prompts, setPrompts] = useState<string[]>(["default"]);
   const [customDisplayName, setCustomDisplayName] = useState("");
@@ -740,7 +740,7 @@ function PipelineForm({
           value={judgeModel}
           onChange={setJudgeModel}
           modelList={nonCustomModelOptions}
-          placeholder="gpt-5.2:high:limited"
+          placeholder="gpt-5.2:medium:limited"
           dropdownOnly
         />
         <ModelField

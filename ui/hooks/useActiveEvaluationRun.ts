@@ -319,7 +319,7 @@ export function useActiveEvaluationRun(options?: {
           "/api/evaluation-runs/start",
           {
             target_model: payload.targetModel,
-            judge_model: payload.judgeModel ?? "gpt-5.2:high:limited",
+            judge_model: payload.judgeModel ?? "gpt-5.2:medium:limited",
             user_model: payload.userModel ?? "deepseek-v3.2",
             input: "data/scenarios.jsonl",
             prompts: payload.prompts,
