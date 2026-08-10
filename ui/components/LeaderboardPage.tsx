@@ -1,29 +1,35 @@
 "use client";
 
-import { BENCHMARKS, DEFAULT_BENCHMARK_ID } from "data/benchmarks";
+import { getBenchmarkDefinition, type BenchmarkId } from "data/benchmarks";
+import { BenchmarkToggle } from "components/BenchmarkToggle";
 import { LeaderboardSidebar } from "components/LeaderboardSidebar";
 import { ModelLeaderboard } from "components/ModelLeaderboard";
 import { PageContainer } from "components/PageContainer";
 
-const wellbeingBenchmark =
-  BENCHMARKS.find((b) => b.id === DEFAULT_BENCHMARK_ID) ?? BENCHMARKS[0];
+export function LeaderboardPage({
+  benchmarkId,
+}: {
+  benchmarkId: BenchmarkId;
+}) {
+  const benchmark = getBenchmarkDefinition(benchmarkId);
 
-export function LeaderboardPage() {
   return (
     <PageContainer className="space-y-8">
+      <div className="mx-auto w-full max-w-xl">
+        <BenchmarkToggle activeId={benchmarkId} />
+      </div>
       <header className="space-y-2">
         <h1 className="text-2xl font-bold tracking-tight text-brand-dark md:text-3xl">
-          {wellbeingBenchmark.label} Benchmark
+          {benchmark?.label ?? "Benchmark"} Benchmark
         </h1>
         <p className="max-w-3xl text-sm leading-relaxed text-[var(--muted)] md:text-base">
-          See how frontier models perform using an expert-informed taxonomy you can run
-          yourself.
+          See how frontier models perform using an expert-informed taxonomy you can run yourself.
         </p>
       </header>
       <div className="grid items-start gap-8 lg:grid-cols-2 lg:gap-10 xl:gap-12">
-        <LeaderboardSidebar benchmarkId={DEFAULT_BENCHMARK_ID} />
+        <LeaderboardSidebar benchmarkId={benchmarkId} />
         <div className="min-w-0">
-          <ModelLeaderboard />
+          <ModelLeaderboard benchmarkId={benchmarkId} />
         </div>
       </div>
     </PageContainer>

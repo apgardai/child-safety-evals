@@ -230,7 +230,7 @@ export function SignInForm({ nextPath: nextPathProp, onAuthenticated }: SignInFo
       </div>
       <h2 className="mb-1 text-center text-xl font-semibold text-brand-dark">Sign in</h2>
       <p className="mb-4 text-center text-sm text-[var(--muted)]">
-        Sign in to run the Youth Mental Wellbeing Benchmark.
+        Sign in to run the apgard Youth AI Safety Benchmarks.
       </p>
 
       <GoogleSignInButton

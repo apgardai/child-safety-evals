@@ -3,11 +3,14 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
+import type { BenchmarkId } from "data/benchmarks";
 import { DEFAULT_BENCHMARK_ID } from "data/benchmarks";
 import type { LeaderboardRow } from "data/leaderboardModels";
 import { mainLeaderboardModels, otherLeaderboardModels } from "data/leaderboardModels";
+import { ScoreBar } from "components/ScoreBar";
 import {
   leaderboardModelPath,
+  leaderboardPreviewModelPath,
   modelIdForLeaderboardRow,
 } from "lib/leaderboardRoutes";
 import requestsClient from "lib/requests-client";
@@ -28,39 +31,6 @@ type EnrichedRow = LeaderboardRow & {
   bestScore: number | null;
 };
 
-function ScoreBar({ score }: { score: number | null }) {
-  const pct = typeof score === "number" ? Math.round(score) : null;
-  const width = pct != null ? Math.min(100, Math.max(0, pct)) : 0;
-
-  return (
-    <div className="space-y-1.5">
-      <div className="flex justify-end text-xs">
-        <span className="shrink-0 font-semibold tabular-nums text-[var(--text)]">
-          {pct != null ? `${pct}%` : "—"}
-        </span>
-      </div>
-      <div
-        className="h-2.5 min-w-0 overflow-hidden rounded-full bg-[var(--gray-100)]"
-        role="progressbar"
-        aria-valuenow={pct ?? 0}
-        aria-valuemin={0}
-        aria-valuemax={100}
-        aria-label={pct != null ? `${pct} percent` : "No benchmark runs yet"}
-      >
-        <div
-          className={[
-            "h-full rounded-full transition-[width] duration-300",
-            pct != null
-              ? "bg-gradient-to-r from-[var(--error)] via-[var(--warning)] to-[var(--success)]"
-              : "bg-transparent",
-          ].join(" ")}
-          style={{ width: `${width}%` }}
-        />
-      </div>
-    </div>
-  );
-}
-
 function ModelCardContent({ row }: { row: EnrichedRow }) {
   return (
     <div className="space-y-2">
@@ -77,10 +47,19 @@ function ModelCardContent({ row }: { row: EnrichedRow }) {
 const modelCardClassName =
   "block rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 transition-colors md:p-5";
 
+function modelDetailHref(modelId: string, benchmarkId: BenchmarkId): string {
+  if (benchmarkId === DEFAULT_BENCHMARK_ID) {
+    return leaderboardModelPath(modelId, benchmarkId);
+  }
+  return leaderboardPreviewModelPath(modelId, benchmarkId);
+}
+
 function ModelCard({
   row,
+  benchmarkId,
 }: {
   row: EnrichedRow;
+  benchmarkId: BenchmarkId;
 }) {
   const bestRun = row.runs[0] ?? null;
   const modelId = modelIdForLeaderboardRow(row, bestRun);
@@ -93,7 +72,7 @@ function ModelCard({
     );
   }
 
-  const href = leaderboardModelPath(modelId);
+  const href = modelDetailHref(modelId, benchmarkId);
   const label = `${row.provider} / ${row.model}`;
 
   return (
@@ -113,8 +92,13 @@ function ModelCard({
   );
 }
 
-export function ModelLeaderboard() {
-  const benchmarkId = DEFAULT_BENCHMARK_ID;
+type ModelLeaderboardProps = {
+  benchmarkId?: BenchmarkId;
+};
+
+export function ModelLeaderboard({
+  benchmarkId = DEFAULT_BENCHMARK_ID,
+}: ModelLeaderboardProps) {
   const [runs, setRuns] = useState<EvaluationRunRow[]>([]);
 
   useEffect(() => {
@@ -188,7 +172,11 @@ export function ModelLeaderboard() {
   return (
     <section className="w-full space-y-4" aria-label="Model results">
       {leaderboardRows.map((row) => (
-        <ModelCard key={`${row.provider}-${row.model}`} row={row} />
+        <ModelCard
+          key={`${row.provider}-${row.model}`}
+          row={row}
+          benchmarkId={benchmarkId}
+        />
       ))}
     </section>
   );

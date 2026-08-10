@@ -12,7 +12,7 @@ import { notifySessionUpdated } from "lib/session-events";
 
 const baseTabs = [
   { href: "/about", label: "About" },
-  { href: "/", label: "Leaderboard" },
+  { href: "/mental-wellbeing", label: "Leaderboard" },
 ] as const;
 
 const benchmarkTab = { href: "/benchmark", label: "Run Evaluations" } as const;
@@ -64,8 +64,10 @@ export function TopNav() {
         >
           {navTabs.map((tab) => {
             const active =
-              tab.href === "/"
-                ? pathname === "/" || pathname.startsWith("/leaderboard/")
+              tab.href === "/mental-wellbeing"
+                ? pathname === "/mental-wellbeing" ||
+                  pathname === "/sexual-safety" ||
+                  pathname.startsWith("/leaderboard/")
                 : pathname === tab.href || pathname.startsWith(`${tab.href}/`);
             return (
               <Link key={tab.href} href={tab.href} className={tabClassName(active)}>

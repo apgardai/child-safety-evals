@@ -133,7 +133,7 @@ export default function AboutPage() {
           </ul>
         </div>
         <div className="flex flex-wrap items-center gap-3 pt-2">
-          <Link href="/" className="apgard-btn-secondary">
+          <Link href="/mental-wellbeing" className="apgard-btn-secondary">
             View leaderboard
           </Link>
           <Link href="/benchmark" className="apgard-btn-primary">
