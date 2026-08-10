@@ -123,6 +123,7 @@ def _cors_origins() -> list[str]:
     defaults = [
         "https://benchmark.apgardai.com",
         "http://localhost:3000",
+        "https://child-safety-evals-git-development-apgards-projects.vercel.app",
     ]
     raw = os.getenv("CORS_ALLOWED_ORIGINS", "").strip()
     if not raw:
