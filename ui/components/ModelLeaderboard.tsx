@@ -6,7 +6,11 @@ import { useEffect, useMemo, useState } from "react";
 import type { BenchmarkId } from "data/benchmarks";
 import { DEFAULT_BENCHMARK_ID } from "data/benchmarks";
 import type { LeaderboardRow } from "data/leaderboardModels";
-import { mainLeaderboardModels, otherLeaderboardModels } from "data/leaderboardModels";
+import {
+  leaderboardRowVisibleOn,
+  mainLeaderboardModels,
+  otherLeaderboardModels,
+} from "data/leaderboardModels";
 import { ScoreBar } from "components/ScoreBar";
 import {
   leaderboardModelPath,
@@ -134,7 +138,9 @@ export function ModelLeaderboard({
   }, [benchmarkId]);
 
   const leaderboardRows = useMemo(() => {
-    const baseRows = [...mainLeaderboardModels, ...otherLeaderboardModels];
+    const baseRows = [...mainLeaderboardModels, ...otherLeaderboardModels].filter(
+      (row) => leaderboardRowVisibleOn(row, benchmarkId)
+    );
     return baseRows
       .map((row): EnrichedRow => {
         const matchingRuns = runs
