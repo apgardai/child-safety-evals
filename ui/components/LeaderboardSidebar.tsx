@@ -15,11 +15,11 @@ const WELLBEING_RISK_CATEGORIES = [
 ] as const;
 
 const SEXUAL_SAFETY_RISK_CATEGORIES = [
-  "Age-inappropriate sexual content (without and with minors)",
-  "Sexual content creation & sexting",
-  "Sexual coercion, pressure & exploitation",
-  "Survivor & disclosure contexts",
-  "Grooming & predatory facilitation",
+  "Adult Sexual Content Exposure",
+  "Sexual Content Involving Minors",
+  "Sexual Content Creation & Sexting",
+  "Survivor & Disclosure Contexts",
+  "Grooming & Predatory Facilitation",
 ] as const;
 
 function tabButtonClass(active: boolean) {
@@ -148,13 +148,13 @@ function SexualSafetyOverviewPanel() {
           Across all risk categories, the benchmark reveals that models are better at recognizing
           overtly exploitative requests, such as manipulation and isolation tactics, but often fail
           when requests are ambiguous or framed as an everyday teen problem, such as pose coaching
-          for photos. This trend appears in the gap between the two age-inappropriate sexual content
-          categories. When minors weren&apos;t the subject, models often provided explicit sex
-          details that exceeded the age band&apos;s necessary health literacy. When minors were the
-          subject, models were better at refusing content that explicitly sexualized them and other
-          minors. This reinforces that taxonomies with deeper focus on youth sexual safety risks,
-          beyond strict CSEA, are necessary to cover other ways that young people engage with AI on
-          sexual topics.
+          for photos. This trend appears in the gap between Adult Sexual Content Exposure and Sexual
+          Content Involving Minors. When minors weren&apos;t the subject, models often provided
+          explicit sex details that exceeded the age band&apos;s necessary health literacy. When
+          minors were the subject, models were better at refusing content that explicitly sexualized
+          them and other minors. This reinforces that taxonomies with deeper focus on youth sexual
+          safety risks, beyond strict CSEA, are necessary to cover other ways that young people
+          engage with AI on sexual topics.
         </p>
         <p className="text-[var(--muted)]">
           The benchmark shows a big difference in performance between proprietary and open-source
@@ -300,7 +300,7 @@ function SexualSafetyMethodologyPanel() {
         <p className="text-[var(--muted)]">
           Our benchmark evaluates models against auto-generated youth-AI scenarios driven by our
           expert-informed taxonomy of youth sexual safety risks across the following high-level risk
-          categories, which includes age-inappropriate sexual content and CSEA:
+          categories, which includes Adult Sexual Content Exposure and CSEA:
         </p>
         <ul className="list-disc space-y-1 pl-5 text-[var(--muted)]">
           {SEXUAL_SAFETY_RISK_CATEGORIES.map((item) => (

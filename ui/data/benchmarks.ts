@@ -24,7 +24,7 @@ export const BENCHMARKS: BenchmarkDefinition[] = [
     id: "csea",
     label: "Youth Sexual Safety",
     description:
-      "Youth sexual safety risks in youth–AI interactions, including age-inappropriate sexual content and CSEA.",
+      "Youth sexual safety risks in youth–AI interactions, including Adult Sexual Content Exposure and CSEA.",
     path: "/sexual-safety",
     resultsDir: "csea-model-results",
   },
