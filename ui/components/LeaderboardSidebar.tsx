@@ -15,11 +15,11 @@ const WELLBEING_RISK_CATEGORIES = [
 ] as const;
 
 const SEXUAL_SAFETY_RISK_CATEGORIES = [
+  "Grooming & Predatory Facilitation",
+  "Sexual Content Creation & Sexting",
   "Adult Sexual Content Exposure",
   "Sexual Content Involving Minors",
-  "Sexual Content Creation & Sexting",
   "Survivor & Disclosure Contexts",
-  "Grooming & Predatory Facilitation",
 ] as const;
 
 function tabButtonClass(active: boolean) {
