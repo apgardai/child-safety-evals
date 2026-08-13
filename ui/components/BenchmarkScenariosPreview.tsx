@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import type { BenchmarkId } from "data/benchmarks";
+import { getBenchmarkDefinition } from "data/benchmarks";
 import requestsClient from "lib/requests-client";
 import { humanizeSlug } from "lib/humanizeSlug";
 
@@ -20,7 +22,9 @@ export type BenchmarkScenarioPreviewRow = {
 };
 
 type PreviewResponse = {
-  input_path: string;
+  benchmark?: string | null;
+  label?: string | null;
+  description?: string | null;
   scenario_count: number;
   test_count: number;
   prompt_variants: string[];
@@ -35,14 +39,14 @@ function formatAgeRange(value: string): string {
 
 type Props = {
   prompts: string[];
-  scenariosInput?: string;
+  benchmarkId: BenchmarkId;
   /** When true, omit outer card chrome (for nesting inside another panel). */
   embedded?: boolean;
 };
 
 export default function BenchmarkScenariosPreview({
   prompts,
-  scenariosInput = "data/scenarios.jsonl",
+  benchmarkId,
   embedded = false,
 }: Props) {
   const [expanded, setExpanded] = useState(false);
@@ -55,13 +59,16 @@ export default function BenchmarkScenariosPreview({
     [prompts]
   );
 
+  const fallbackLabel = getBenchmarkDefinition(benchmarkId)?.label ?? benchmarkId;
+
   useEffect(() => {
     let cancelled = false;
     void (async () => {
       setLoading(true);
       setError(null);
+      setExpanded(false);
       try {
-        const params = new URLSearchParams({ input: scenariosInput });
+        const params = new URLSearchParams({ benchmark: benchmarkId });
         if (prompts.length) {
           params.set("prompts", prompts.join(","));
         }
@@ -92,26 +99,44 @@ export default function BenchmarkScenariosPreview({
     return () => {
       cancelled = true;
     };
-  }, [scenariosInput, promptsKey, prompts]);
+  }, [benchmarkId, promptsKey, prompts]);
 
   const rootClass = embedded
     ? "mt-3"
     : "mt-6 rounded-xl border border-[var(--border)] bg-[var(--gray-100)] p-4 md:p-5";
 
+  const label = data?.label?.trim() || fallbackLabel;
+  const description = data?.description?.trim() || getBenchmarkDefinition(benchmarkId)?.description;
+
   return (
     <section className={rootClass}>
-      <div className="flex flex-wrap items-center gap-3">
-        <button
-          type="button"
-          onClick={() => setExpanded((v) => !v)}
-          disabled={loading || !!error || !data?.scenarios.length}
-          className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-xs font-medium text-[var(--text)] hover:bg-[var(--gray-100)] disabled:opacity-50"
-        >
-          {expanded ? "Hide table" : "Preview Scenarios"}
-        </button>
-        {!embedded && (
-          <h3 className="text-sm font-semibold text-[var(--text)]">Expanded scenarios preview</h3>
-        )}
+      <div className="space-y-2">
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setExpanded((v) => !v)}
+            disabled={loading || !!error || !data?.scenarios.length}
+            className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-xs font-medium text-[var(--text)] hover:bg-[var(--gray-100)] disabled:opacity-50"
+          >
+            {expanded ? "Hide table" : "Preview Scenarios"}
+          </button>
+          {!embedded && (
+            <h3 className="text-sm font-semibold text-[var(--text)]">{label}</h3>
+          )}
+        </div>
+
+        {description ? (
+          <p className="text-xs text-[var(--muted)] leading-relaxed">{description}</p>
+        ) : null}
+
+        {!loading && !error && data ? (
+          <p className="text-xs text-[var(--muted)]">
+            <span className="font-medium text-[var(--text)]">{data.scenario_count}</span> scenarios
+            {" · "}
+            <span className="font-medium text-[var(--text)]">{data.test_count}</span> tests with
+            selected prompt variants
+          </p>
+        ) : null}
       </div>
 
       {loading && (
@@ -151,9 +176,6 @@ export default function BenchmarkScenariosPreview({
                   <td className="px-2 py-2 text-[var(--muted)]">{row.index}</td>
                   <td className="px-2 py-2 max-w-[10rem]">
                     <span className="font-medium text-[var(--text)]">{row.short_title}</span>
-                    <div className="mt-0.5 text-[10px] text-[var(--muted)] truncate" title={row.scenario_id}>
-                      {row.scenario_id}
-                    </div>
                   </td>
                   <td className="px-2 py-2">{humanizeSlug(row.risk_category_id)}</td>
                   <td className="px-2 py-2">{humanizeSlug(row.risk_id)}</td>

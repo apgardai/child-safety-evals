@@ -9,7 +9,14 @@ class EvaluationRunStart(BaseModel):
     target_model: str = Field(..., min_length=1)
     judge_model: str = "gpt-5.2:medium:limited"
     user_model: str = "deepseek-v3.2"
-    input: str = "data/scenarios.jsonl"
+    benchmark: str | None = Field(
+        None,
+        description="Benchmark id (wellbeing, csea). Resolves the scenarios file server-side.",
+    )
+    input: str | None = Field(
+        None,
+        description="Optional explicit scenarios path. Prefer `benchmark` for UI clients.",
+    )
     prompts: list[str] | None = None
     custom_api_key: str | None = None
     custom_api_endpoint: str | None = None

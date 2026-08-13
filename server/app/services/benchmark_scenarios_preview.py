@@ -8,6 +8,12 @@ from typing import Any
 
 from app.schemas.benchmark_preview import BenchmarkScenarioPreviewRow, BenchmarkScenariosPreviewOut
 from app.services.benchmark_progress import count_scenario_test_tasks, resolve_scenarios_path
+from app.services.benchmark_registry import (
+    benchmark_definition,
+    default_benchmark_id,
+    normalize_benchmark_id,
+    scenarios_file_for_benchmark,
+)
 
 _PREVIEW_MESSAGE_LEN = 160
 _PREVIEW_ROW_LIMIT = 50
@@ -41,14 +47,42 @@ def _sample_preview_rows(
     return sorted(sample, key=lambda row: row.index)
 
 
+def resolve_scenarios_input(
+    *,
+    benchmark: str | None = None,
+    scenarios_input: str | None = None,
+) -> tuple[str, str | None]:
+    """
+    Resolve scenarios path for preview/run.
+
+    Prefer ``benchmark`` id (maps via registry). Fall back to explicit path or default benchmark.
+    Returns ``(scenarios_input, benchmark_id_or_none)``.
+    """
+    explicit = (scenarios_input or "").strip()
+    bid_raw = (benchmark or "").strip()
+    if bid_raw:
+        bid = normalize_benchmark_id(bid_raw)
+        return scenarios_file_for_benchmark(bid), bid
+    if explicit:
+        return explicit, None
+    bid = default_benchmark_id()
+    return scenarios_file_for_benchmark(bid), bid
+
+
 def load_benchmark_scenarios_preview(
-    scenarios_input: str = "data/scenarios.jsonl",
+    *,
+    benchmark: str | None = None,
+    scenarios_input: str | None = None,
     prompts: list[str] | None = None,
 ) -> BenchmarkScenariosPreviewOut:
     prompt_list = prompts if prompts else ["default"]
-    scenarios_path = resolve_scenarios_path(scenarios_input)
+    resolved_input, bid = resolve_scenarios_input(
+        benchmark=benchmark,
+        scenarios_input=scenarios_input,
+    )
+    scenarios_path = resolve_scenarios_path(resolved_input)
     if not scenarios_path.is_file():
-        raise FileNotFoundError(f"Scenarios file not found: {scenarios_path}")
+        raise FileNotFoundError(f"Scenarios file not found for selected benchmark")
 
     rows: list[BenchmarkScenarioPreviewRow] = []
     with scenarios_path.open(encoding="utf-8") as handle:
@@ -77,9 +111,18 @@ def load_benchmark_scenarios_preview(
                 )
             )
 
-    test_count = count_scenario_test_tasks(scenarios_input, prompt_list)
+    test_count = count_scenario_test_tasks(resolved_input, prompt_list)
+    label: str | None = None
+    description: str | None = None
+    if bid:
+        definition = benchmark_definition(bid)
+        label = str(definition.get("label") or bid)
+        description = str(definition.get("description") or "") or None
+
     return BenchmarkScenariosPreviewOut(
-        input_path=scenarios_input,
+        benchmark=bid,
+        label=label,
+        description=description,
         scenario_count=len(rows),
         test_count=test_count,
         prompt_variants=prompt_list,
