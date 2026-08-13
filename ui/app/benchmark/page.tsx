@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { Suspense, useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import type { BenchmarkId } from "data/benchmarks";
+import { BENCHMARKS, DEFAULT_BENCHMARK_ID, getBenchmarkDefinition } from "data/benchmarks";
 import { SignInForm } from "components/SignInForm";
 import { useSession } from "hooks/useSession";
 import { notifySessionUpdated } from "lib/session-events";
@@ -88,12 +90,15 @@ type FlowPhase = "idle" | "running" | "complete";
 function PipelineChecklist({
   phase,
   prompts,
+  benchmarkId,
   runStep,
 }: {
   phase: FlowPhase;
   prompts: string[];
+  benchmarkId: BenchmarkId;
   runStep: ReactNode;
 }) {
+  const benchmark = getBenchmarkDefinition(benchmarkId);
   const runChecked = phase === "complete";
   const runActive = phase === "running" || phase === "idle";
 
@@ -115,10 +120,17 @@ function PipelineChecklist({
       body: (
         <>
           <p className="text-xs text-[var(--muted)] leading-relaxed">
-            Expanded scenarios have been pre-generated. Default scenario expander model used is
-            gpt-4o.
+            Expanded scenarios for{" "}
+            <span className="font-medium text-[var(--text)]">
+              {benchmark?.label ?? benchmarkId}
+            </span>{" "}
+            have been pre-generated. Default scenario expander model used is gpt-4o.
           </p>
-          <BenchmarkScenariosPreview prompts={prompts} embedded />
+          <BenchmarkScenariosPreview
+            prompts={prompts}
+            benchmarkId={benchmarkId}
+            embedded
+          />
         </>
       ),
     },
@@ -218,6 +230,8 @@ function BenchmarkAuthenticated() {
   const [customModelList, setCustomModelList] = useState<string[]>([]);
   const [customModelLabels, setCustomModelLabels] = useState<Record<string, string>>({});
   const [overviewData, setOverviewData] = useState<ViewerData | null>(null);
+  const [benchmarkId, setBenchmarkId] = useState<BenchmarkId>(DEFAULT_BENCHMARK_ID);
+  const selectedBenchmark = getBenchmarkDefinition(benchmarkId);
 
   const loadModels = useCallback(async () => {
     try {
@@ -283,8 +297,13 @@ function BenchmarkAuthenticated() {
       <header className="mb-10 flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-[var(--text)] tracking-tight">
-            Youth Mental Wellbeing Benchmark
+            {selectedBenchmark?.label ?? "Benchmark"}
           </h1>
+          {selectedBenchmark?.description ? (
+            <p className="mt-2 max-w-2xl text-sm text-[var(--muted)] leading-relaxed">
+              {selectedBenchmark.description}
+            </p>
+          ) : null}
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Link
@@ -310,6 +329,8 @@ function BenchmarkAuthenticated() {
         customModelLabels={customModelLabels}
         onModelsRefresh={loadModels}
         flowPhase={flowPhase}
+        benchmarkId={benchmarkId}
+        onBenchmarkChange={setBenchmarkId}
       />
 
       {resumableRun && (
@@ -370,6 +391,8 @@ function PipelineForm({
   customModelLabels,
   onModelsRefresh,
   flowPhase,
+  benchmarkId,
+  onBenchmarkChange,
 }: {
   onRun: (payload: {
     apiKey: string;
@@ -380,6 +403,7 @@ function PipelineForm({
     judgeModel?: string;
     userModel?: string;
     prompts?: string[];
+    benchmark?: string;
   }) => void | Promise<void>;
   disabled: boolean;
   modelList: string[];
@@ -387,6 +411,8 @@ function PipelineForm({
   customModelLabels: Record<string, string>;
   onModelsRefresh: () => Promise<void>;
   flowPhase: FlowPhase;
+  benchmarkId: BenchmarkId;
+  onBenchmarkChange: (id: BenchmarkId) => void;
 }) {
   const targetModelOptions = useMemo(
     () => [...modelList, ADD_CUSTOM_TARGET_OPTION],
@@ -542,6 +568,7 @@ function PipelineForm({
         : prompts.length
           ? prompts
           : undefined,
+      benchmark: benchmarkId,
     });
   };
 
@@ -796,10 +823,52 @@ function PipelineForm({
       <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5">
         <h2 className="text-lg font-semibold text-[var(--text)] mb-1">Evaluation Pipeline</h2>
         <p className="text-sm text-[var(--muted)] mb-4">
-        Run youth mental wellbeing evaluations against a target model using pre-generated test scenarios. Configure the target model below.
+          Run evaluations against a target model using pre-generated test scenarios. Choose a
+          benchmark, then configure the target model below.
         </p>
 
-        <PipelineChecklist phase={pipelinePhase} prompts={prompts} runStep={runStep} />
+        <div className="mb-6">
+          <label className="block text-sm font-medium text-[var(--muted)] mb-2">
+            Benchmark
+          </label>
+          <div
+            className="flex flex-col gap-2 sm:flex-row"
+            role="radiogroup"
+            aria-label="Benchmark"
+          >
+            {BENCHMARKS.map((benchmark) => {
+              const active = benchmark.id === benchmarkId;
+              return (
+                <button
+                  key={benchmark.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={active}
+                  disabled={disabled}
+                  onClick={() => onBenchmarkChange(benchmark.id)}
+                  className={[
+                    "flex-1 rounded-lg border px-4 py-3 text-left transition-colors disabled:opacity-50",
+                    active
+                      ? "border-[var(--accent)] bg-[var(--accent)]/10 ring-1 ring-[var(--accent)]/40"
+                      : "border-[var(--border)] bg-white hover:bg-[var(--gray-100)]",
+                  ].join(" ")}
+                >
+                  <div className="text-sm font-semibold text-[var(--text)]">{benchmark.label}</div>
+                  <p className="mt-1 text-xs text-[var(--muted)] leading-relaxed">
+                    {benchmark.description}
+                  </p>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <PipelineChecklist
+          phase={pipelinePhase}
+          prompts={prompts}
+          benchmarkId={benchmarkId}
+          runStep={runStep}
+        />
       </section>
     </form>
   );

@@ -55,6 +55,8 @@ type RunOptions = {
   customParsingKey?: string;
   judgeModel?: string;
   userModel?: string;
+  /** Benchmark id (wellbeing | csea). Prefer over raw input path. */
+  benchmark?: string;
   input?: string;
   output?: string;
   prompts?: string[];
@@ -239,7 +241,8 @@ export async function POST(request: NextRequest) {
           target_model: runBody.targetModel,
           judge_model: runBody.judgeModel ?? "gpt-5.2:medium:limited",
           user_model: runBody.userModel ?? "deepseek-v3.2",
-          input: runBody.input ?? "data/scenarios.jsonl",
+          benchmark: runBody.benchmark ?? undefined,
+          input: runBody.input ?? undefined,
           prompts: runBody.prompts,
           custom_api_key: customApiKey || undefined,
           custom_api_endpoint: customApiEndpoint || undefined,
@@ -381,7 +384,8 @@ export async function GET(request: NextRequest) {
         targetModel: "string (required)",
         judgeModel: "string (default: gpt-5.2:medium:limited)",
         userModel: "string (default: deepseek-v3.2)",
-        input: "string (default: data/scenarios.jsonl)",
+        benchmark: "string (wellbeing | csea; preferred over input)",
+        input: "string (optional explicit scenarios path)",
         prompts: `array of: ${PROMPTS.join(", ")}`,
       },
     },

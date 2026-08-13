@@ -118,6 +118,8 @@ export type StartEvaluationPayload = {
   judgeModel?: string;
   userModel?: string;
   prompts?: string[];
+  /** wellbeing | csea — server maps to the scenarios file */
+  benchmark?: string;
 };
 
 export function useActiveEvaluationRun(options?: {
@@ -321,7 +323,7 @@ export function useActiveEvaluationRun(options?: {
             target_model: payload.targetModel,
             judge_model: payload.judgeModel ?? "gpt-5.2:medium:limited",
             user_model: payload.userModel ?? "deepseek-v3.2",
-            input: "data/scenarios.jsonl",
+            benchmark: payload.benchmark ?? "wellbeing",
             prompts: payload.prompts,
             custom_api_key: payload.customApiKey,
             custom_api_endpoint: payload.customApiEndpoint,

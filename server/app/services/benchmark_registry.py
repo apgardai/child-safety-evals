@@ -43,16 +43,28 @@ def benchmark_definition(benchmark_id: str | None) -> dict[str, Any]:
     bid = normalize_benchmark_id(benchmark_id)
     entry = load_benchmarks_registry()[bid]
     root = benchmark_root()
+    scenarios_file = str(entry.get("scenariosFile") or "")
     return {
         "id": bid,
         "label": str(entry.get("label") or bid),
         "description": str(entry.get("description") or ""),
         "resultsDir": str(entry.get("resultsDir") or ""),
-        "scenariosFile": str(entry.get("scenariosFile") or ""),
+        "scenariosFile": scenarios_file,
         "risksFile": str(entry.get("risksFile") or ""),
         "resultsRoot": root / "data" / str(entry.get("resultsDir") or ""),
         "risksPath": root / str(entry.get("risksFile") or ""),
+        "scenariosPath": root / scenarios_file if scenarios_file else root,
     }
+
+
+def scenarios_file_for_benchmark(benchmark_id: str | None) -> str:
+    """Relative scenarios path (from benchmark root) for a benchmark id."""
+    scenarios_file = str(benchmark_definition(benchmark_id).get("scenariosFile") or "").strip()
+    if not scenarios_file:
+        raise ValueError(
+            f"Benchmark '{normalize_benchmark_id(benchmark_id)}' has no scenariosFile configured"
+        )
+    return scenarios_file
 
 
 def list_benchmarks() -> list[dict[str, Any]]:
@@ -66,7 +78,6 @@ def list_benchmarks() -> list[dict[str, Any]]:
                 "label": str(entry.get("label") or bid),
                 "description": str(entry.get("description") or ""),
                 "default": bool(entry.get("default")),
-                "resultsDir": str(entry.get("resultsDir") or ""),
             }
         )
     out.sort(key=lambda b: (not b.get("default"), b.get("label") or ""))

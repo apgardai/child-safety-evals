@@ -133,6 +133,11 @@ export function resolveLeaderboardRowForTarget(
       slug: "llama-4-scout",
     },
     {
+      match: (slug) =>
+        slug.includes("gpt-5.6-terra") || slug.includes("gpt-5.6"),
+      slug: "gpt-5.6-terra:high",
+    },
+    {
       match: (slug) => slug.includes("gpt-5.5") || slug.startsWith("gpt-5.5"),
       slug: "gpt-5.5",
     },

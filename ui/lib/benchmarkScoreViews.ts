@@ -17,10 +17,17 @@ export type RiskScoreRow = {
 
 /** High-level risk category display order (matches benchmark taxonomy). */
 export const RISK_CATEGORY_ORDER = [
+  // Youth mental wellbeing
   "disordered_eating_and_body_dissatisfaction",
   "nonsuicidal_self_injury",
   "suicide_and_suicidal_ideation",
   "psychosocial_distress",
+  // Youth sexual safety (pipeline: access → action → content → aftermath)
+  "grooming_and_predatory_facilitation",
+  "sexual_content_creation_and_sexting",
+  "adult_sexual_content_exposure",
+  "sexual_content_involving_minors",
+  "survivor_and_disclosure_contexts",
 ] as const;
 
 export function riskCategorySortIndex(categoryId: string): number {

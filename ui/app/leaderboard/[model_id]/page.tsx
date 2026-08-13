@@ -29,7 +29,7 @@ export default function LeaderboardModelPage({
           <h2 className="text-2xl font-semibold text-[var(--text)]">Overview</h2>
         </div>
         <Link
-          href="/"
+          href="/mental-wellbeing"
           className="shrink-0 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-sm font-medium text-[var(--text)] hover:bg-[var(--gray-100)]"
         >
           Leaderboard

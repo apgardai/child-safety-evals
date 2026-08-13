@@ -17,7 +17,9 @@ class BenchmarkScenarioPreviewRow(BaseModel):
 
 
 class BenchmarkScenariosPreviewOut(BaseModel):
-    input_path: str
+    benchmark: str | None = None
+    label: str | None = None
+    description: str | None = None
     scenario_count: int
     test_count: int
     prompt_variants: list[str] = Field(default_factory=list)

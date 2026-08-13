@@ -14,8 +14,9 @@ const poppins = Poppins({
 });
 
 export const metadata: Metadata = {
-  title: "apgard — Youth Mental Wellbeing Evaluations",
-  description: "Benchmark tooling and scenario review for youth mental wellbeing evaluations",
+  title: "apgard — Youth AI Safety Benchmark",
+  description:
+    "See how frontier models perform on youth mental wellbeing and youth sexual safety risks",
   icons: {
     icon: "/favicon.png",
   },

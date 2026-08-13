@@ -1,14 +1,21 @@
 import Link from "next/link";
 
+import { UserModelScoreCard } from "components/UserModelScoreCard";
+
 const linkClass = "font-semibold text-[var(--accent)] hover:underline";
 
 export default function AboutPage() {
   return (
     <div className="page-container flex min-h-[calc(100vh-4rem)] flex-col items-center justify-center py-12">
       <div className="w-full max-w-4xl space-y-6">
-        <h1 className="text-3xl font-bold tracking-tight text-brand-dark md:text-4xl">
-          About the apgard Benchmark
-        </h1>
+        <header className="grid items-start gap-6 lg:grid-cols-2 lg:gap-10">
+          <h1 className="text-3xl font-bold tracking-tight text-brand-dark md:text-4xl">
+            About the apgard Benchmark
+          </h1>
+          <div className="min-w-0 lg:justify-self-end lg:w-full lg:max-w-md">
+            <UserModelScoreCard />
+          </div>
+        </header>
         <div className="space-y-4 text-base leading-relaxed text-[var(--muted)] md:text-lg">
           <p>
             The apgard Benchmark is an open-source effort to strengthen child-centered technology
@@ -133,7 +140,7 @@ export default function AboutPage() {
           </ul>
         </div>
         <div className="flex flex-wrap items-center gap-3 pt-2">
-          <Link href="/" className="apgard-btn-secondary">
+          <Link href="/mental-wellbeing" className="apgard-btn-secondary">
             View leaderboard
           </Link>
           <Link href="/benchmark" className="apgard-btn-primary">

@@ -1,5 +1,5 @@
-import { LeaderboardPage } from "components/LeaderboardPage";
+import { HomePage } from "components/HomePage";
 
-export default function HomePage() {
-  return <LeaderboardPage />;
+export default function Page() {
+  return <HomePage />;
 }

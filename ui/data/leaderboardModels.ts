@@ -1,3 +1,5 @@
+import type { BenchmarkId } from "data/benchmarks";
+
 export type DocLink = { label: string; href: string };
 
 /** Primary model capability category (normalized from vendor positioning). */
@@ -16,12 +18,25 @@ export type LeaderboardRow = {
   model: string;
   /** Known benchmark target slugs that should map to this leaderboard card. */
   benchmarkTargets?: string[];
+  /**
+   * If set, the model is only shown on these leaderboards.
+   * If omitted, the model appears on every benchmark leaderboard.
+   */
+  benchmarkIds?: BenchmarkId[];
   releaseDate: string;
   type: ModelType;
   license: string;
   apiLinks: DocLink[];
   inferenceLinks?: DocLink[];
 };
+
+export function leaderboardRowVisibleOn(
+  row: LeaderboardRow,
+  benchmarkId: BenchmarkId
+): boolean {
+  if (!row.benchmarkIds || row.benchmarkIds.length === 0) return true;
+  return row.benchmarkIds.includes(benchmarkId);
+}
 
 const ANTHROPIC_API: DocLink[] = [
   {
@@ -73,7 +88,23 @@ export const mainLeaderboardModels: LeaderboardRow[] = [
       "gpt-5.2:high",
       "gpt-5.2:high:limited",
     ],
+    benchmarkIds: ["wellbeing"],
     releaseDate: "12/11/25",
+    type: "Reasoning",
+    license: "Proprietary",
+    apiLinks: OPENAI_API,
+  },
+  {
+    provider: "OpenAI",
+    model: "GPT 5.6 Terra",
+    benchmarkTargets: [
+      "gpt-5.6-terra:high",
+      "gpt-5.6-terra",
+      "gpt-5.6-terra-high",
+      "openai/gpt-5.6-terra",
+    ],
+    benchmarkIds: ["csea"],
+    releaseDate: "08/06/26",
     type: "Reasoning",
     license: "Proprietary",
     apiLinks: OPENAI_API,

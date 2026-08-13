@@ -29,8 +29,11 @@ from app.crud.evaluation_runs import (
 )
 from app.schemas.benchmark_preview import BenchmarkScenariosPreviewOut
 from app.services.benchmark_progress import count_scenario_test_tasks
-from app.services.benchmark_scenarios_preview import load_benchmark_scenarios_preview
-from app.services.benchmark_registry import list_benchmarks
+from app.services.benchmark_scenarios_preview import (
+    load_benchmark_scenarios_preview,
+    resolve_scenarios_input,
+)
+from app.services.benchmark_registry import list_benchmarks, normalize_benchmark_id
 from app.services.local_benchmark_results import (
     is_local_run_id,
     list_model_result_runs,
@@ -339,6 +342,14 @@ def start_evaluation_run_public(
 
     prompts = body.prompts if body.prompts else ["default"]
     try:
+        scenarios_input, _benchmark_id = resolve_scenarios_input(
+            benchmark=body.benchmark,
+            scenarios_input=body.input,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    try:
         run = create_pending_evaluation_run(
             db,
             user=user,
@@ -358,12 +369,12 @@ def start_evaluation_run_public(
         ) from exc
 
     try:
-        scenarios_total = count_scenario_test_tasks(body.input, prompts)
+        scenarios_total = count_scenario_test_tasks(scenarios_input, prompts)
         set_evaluation_run_scenario_total(db, run, scenarios_total=scenarios_total)
     except (FileNotFoundError, json.JSONDecodeError) as e:
         raise HTTPException(
             status_code=400,
-            detail=f"Could not count scenarios in {body.input!r}: {e}",
+            detail=f"Could not count scenarios for the selected benchmark: {e}",
         ) from e
 
     async_result = run_evaluation.delay(
@@ -372,7 +383,7 @@ def start_evaluation_run_public(
         target_model=target_model,
         judge_model=body.judge_model,
         user_model=body.user_model,
-        scenarios_input=body.input,
+        scenarios_input=scenarios_input,
         prompts=prompts,
     )
     append_evaluation_run_log(
@@ -564,7 +575,8 @@ def run_viewer_data_public(
 @router.get("/benchmark/scenarios-preview", response_model=BenchmarkScenariosPreviewOut)
 def benchmark_scenarios_preview_public(
     request: Request,
-    input: str = "data/scenarios.jsonl",
+    benchmark: str | None = None,
+    input: str | None = None,
     prompts: str | None = None,
 ):
     require_session_email(request)
@@ -572,11 +584,17 @@ def benchmark_scenarios_preview_public(
     if prompts:
         prompt_list = [p.strip() for p in prompts.split(",") if p.strip()]
     try:
-        return load_benchmark_scenarios_preview(scenarios_input=input, prompts=prompt_list)
+        if benchmark:
+            normalize_benchmark_id(benchmark)
+        return load_benchmark_scenarios_preview(
+            benchmark=benchmark,
+            scenarios_input=input,
+            prompts=prompt_list,
+        )
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except (json.JSONDecodeError, ValueError, TypeError) as exc:
-        raise HTTPException(status_code=400, detail=f"Invalid scenarios file: {exc}") from exc
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @router.get("/scenarios/viewer-data")
