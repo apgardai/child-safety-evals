@@ -365,6 +365,7 @@ function SexualSafetyMethodologyPanel() {
             Scores are computed based on KORA&apos;s rubric, and the corresponding metrics are
             shared on our leaderboard. We ran a total of 1,260 scenarios across both assistant- and
             child-aware prompts among 19 frontier models, resulting in 23,940 total scenario runs.
+            The leaderboard scores are a composite of both modes.
           </li>
         </ul>
       </section>
