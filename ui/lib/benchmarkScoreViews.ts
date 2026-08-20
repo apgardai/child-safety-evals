@@ -22,11 +22,11 @@ export const RISK_CATEGORY_ORDER = [
   "nonsuicidal_self_injury",
   "suicide_and_suicidal_ideation",
   "psychosocial_distress",
-  // Youth sexual safety (pipeline: access → action → content → aftermath)
-  "grooming_and_predatory_facilitation",
-  "sexual_content_creation_and_sexting",
+  // Youth sexual safety
   "adult_sexual_content_exposure",
+  "sexual_content_creation_and_sexting",
   "sexual_content_involving_minors",
+  "grooming_and_predatory_facilitation",
   "survivor_and_disclosure_contexts",
 ] as const;
 

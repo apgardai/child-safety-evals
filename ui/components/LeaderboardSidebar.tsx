@@ -15,11 +15,11 @@ const WELLBEING_RISK_CATEGORIES = [
 ] as const;
 
 const SEXUAL_SAFETY_RISK_CATEGORIES = [
-  "Grooming & Predatory Facilitation",
-  "Sexual Content Creation & Sexting",
   "Adult Sexual Content Exposure",
-  "Sexual Content Involving Minors",
-  "Survivor & Disclosure Contexts",
+  "Sexual content creation & sexting",
+  "Sexual content involving minors",
+  "Grooming & predatory facilitation",
+  "Survivor & disclosure contexts",
 ] as const;
 
 function tabButtonClass(active: boolean) {
@@ -148,21 +148,22 @@ function SexualSafetyOverviewPanel() {
           Across all risk categories, the benchmark reveals that models are better at recognizing
           overtly exploitative requests, such as manipulation and isolation tactics, but often fail
           when requests are ambiguous or framed as an everyday teen problem, such as pose coaching
-          for photos. This trend appears in the gap between Adult Sexual Content Exposure and Sexual
-          Content Involving Minors. When minors weren&apos;t the subject, models often provided
-          explicit sex details that exceeded the age band&apos;s necessary health literacy. When
-          minors were the subject, models were better at refusing content that explicitly sexualized
-          them and other minors. This reinforces that taxonomies with deeper focus on youth sexual
-          safety risks, beyond strict CSEA, are necessary to cover other ways that young people
-          engage with AI on sexual topics.
+          for photos. This trend appears in the gap between the two sexual content categories (adult
+          sexual content exposure and involving minors). In the former, models often provided
+          explicit sex details that exceeded the age band&apos;s necessary health literacy. In the
+          latter, where most scenarios constitute CSEA, models were better at refusing content that
+          explicitly sexualized the young persona and other minors. This reinforces that taxonomies
+          with deeper focus on youth sexual safety risks, beyond strict CSEA, are necessary to cover
+          other ways that young people engage with AI on sexual topics.
         </p>
         <p className="text-[var(--muted)]">
-          The benchmark shows a big difference in performance between proprietary and open-source
-          models. For example, Llama 4 Scout and Maverick scored 30-50 points below every
-          proprietary model across sub-risks. Models were also three times more likely to fail in
+          Regarding failures, models were also approximately three times more likely to fail in
           default Assistant mode than in child-aware mode, where they were instructed they were
-          speaking with a child. And 51% of these failures were related to failure of redirecting
-          the young persona to a human.
+          speaking with a child. They were also more likely to fail as age bands got older; models
+          tended to treat the 13-17 year old age band as mature-enough to handle more explicit
+          conversations. ~20% of all failures were related to failure of redirecting the young
+          persona to a human, and ~30% of failing responses were related to providing escalated
+          explicit detail as the young persona pushed for more during the conversation.
         </p>
         <p className="text-[var(--muted)]">
           View more insights on the youth sexual safety benchmark here.
@@ -219,6 +220,8 @@ function WellbeingMethodologyPanel() {
               <a
                 href="https://docs.google.com/spreadsheets/d/1h30gyWQOpKcj-F_h94oHNGWhMuYKlLJfJjapqWz0mWE/edit?usp=sharing"
                 className={linkClass}
+                target="_blank"
+                rel="noopener noreferrer"
               >
                 Taxonomy
               </a>{" "}
@@ -282,16 +285,14 @@ function SexualSafetyMethodologyPanel() {
       <section className="space-y-3">
         <h2 className="text-lg font-semibold text-[var(--text)]">Overview</h2>
         <p className="text-[var(--muted)]">
-          Young people are increasingly turning to AI platforms to learn more about sexual topics
-          and their own sexuality, but few evaluations focus on youth sexual safety risks beyond
-          child sexual exploitation and abuse (CSEA). While some benchmarks focus on child safety
-          and CSEA as larger categories, few evaluate fine-grained youth sexual safety sub-risk
-          categories, which misses risks that are more ambiguous if not examined directly. For
-          example, measurements of how AI responds to a teen asking how to pose for sexy photos are
-          underrepresented if safety categories are only focused on illegal CSEA risks. To address
-          this gap, apgard is introducing the apgard Benchmark, going deeper on youth sexual safety
-          risks and failure modes so builders and policymakers can make better evidence-based
-          decisions to support young people and their distinct needs.
+          Young people are turning to AI platforms to learn more about sexual topics and their own
+          sexuality, but few evaluations focus on youth sexual safety risks beyond child sexual
+          exploitation and abuse (CSEA), which misses risks that are more ambiguous if not examined
+          directly. For example, measurements of how AI responds to a teen asking how to pose for
+          sexy photos are underrepresented if safety categories are only focused on illegal CSEA
+          risks. To address this, apgard is introducing this youth sexual safety benchmark,
+          evaluating how an AI responds to a teen around both CSEA-related topics and other sexual
+          topics, including sex education and sexual content creation questions.
         </p>
       </section>
 
@@ -300,7 +301,7 @@ function SexualSafetyMethodologyPanel() {
         <p className="text-[var(--muted)]">
           Our benchmark evaluates models against auto-generated youth-AI scenarios driven by our
           expert-informed taxonomy of youth sexual safety risks across the following high-level risk
-          categories, which includes Adult Sexual Content Exposure and CSEA:
+          categories:
         </p>
         <ul className="list-disc space-y-1 pl-5 text-[var(--muted)]">
           {SEXUAL_SAFETY_RISK_CATEGORIES.map((item) => (
@@ -314,8 +315,18 @@ function SexualSafetyMethodologyPanel() {
         <p className="text-[var(--muted)]">To conduct the assessment, we incorporated:</p>
         <ul className="list-disc space-y-3 pl-5 text-[var(--muted)]">
           <li>
-            <span className="font-semibold text-[var(--text)]">Taxonomy design:</span> We
-            synthesized existing research and literature into a youth- and AI-specific risk taxonomy
+            <span className="font-semibold text-[var(--text)]">
+              <a
+                href="https://docs.google.com/spreadsheets/d/1h30gyWQOpKcj-F_h94oHNGWhMuYKlLJfJjapqWz0mWE/edit?usp=sharing"
+                className={linkClass}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Taxonomy
+              </a>{" "}
+              design:
+            </span>{" "}
+            We synthesized existing research and literature into a youth- and AI-specific risk taxonomy
             for youth sexual safety.
           </li>
           <li>
@@ -339,12 +350,12 @@ function SexualSafetyMethodologyPanel() {
           </li>
           <li>
             <span className="font-semibold text-[var(--text)]">Benchmarking and scoring:</span> Each
-            target model was assessed by a single reasoning judge model (GPT 5.4 Mini, GPT 5.5,
+            target model was assessed by a single reasoning judge model (GPT 5.4 Mini, GPT 5.2,
             Claude Sonnet 4.6 or Gemini 3.5 Flash due to their ability to break down nuanced and
             complex meanings), with the judge always different from the target being evaluated.
             Scores are computed based on KORA&apos;s rubric, and the corresponding metrics are
-            shared on our leaderboard. We ran a total of 9,660 scenarios across both assistant- and
-            child-aware prompts among 18 frontier models.
+            shared on our leaderboard. We ran a total of 1,260 scenarios across both assistant- and
+            child-aware prompts among 19 frontier models, resulting in 23,940 total scenario runs.
           </li>
         </ul>
       </section>

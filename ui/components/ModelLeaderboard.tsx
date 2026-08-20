@@ -177,6 +177,9 @@ export function ModelLeaderboard({
 
   return (
     <section className="w-full space-y-4" aria-label="Model results">
+      <p className="text-xs text-[var(--muted)] md:text-sm">
+        Click to view scenario results
+      </p>
       {leaderboardRows.map((row) => (
         <ModelCard
           key={`${row.provider}-${row.model}`}
