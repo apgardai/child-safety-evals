@@ -166,7 +166,16 @@ function SexualSafetyOverviewPanel() {
           explicit detail as the young persona pushed for more during the conversation.
         </p>
         <p className="text-[var(--muted)]">
-          View more insights on the youth sexual safety benchmark here.
+          View more insights on the youth sexual safety benchmark{" "}
+          <a
+            href="https://apgardai.substack.com/p/introducing-the-apgard-benchmark-37a"
+            className={linkClass}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            here
+          </a>
+          .
         </p>
       </section>
       <FeedbackLine />
